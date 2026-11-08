@@ -1,0 +1,30 @@
+{
+  "title": "Trucks of Earth",
+  "type": "fernfahrer",
+  "version": 19,
+  "removedApps": {"utilityApps": 1, "gameplayApps": 1, "secondaryApps": 1, "messagesTasksApps": 2},
+  "apps": [
+    {"appName": "fernfahrerVideo", "placement": {"top": "0px", "left": "0px", "position": "absolute", "width": "100%", "height": "100%", "pointer-events": "none"}},
+    {"appName": "fernfahrerSzene", "placement": {"top": "0px", "left": "0px", "position": "absolute", "width": "100%", "height": "100%", "pointer-events": "none"}},
+    {"appName": "fernfahrerCockpit", "placement": {"top": "140px", "left": "0px", "position": "absolute", "width": "320px", "height": "480px"}},
+    {"appName": "fernfahrerFirma", "placement": {"top": "8px", "left": "8px", "position": "absolute", "width": "330px", "height": "50px"}},
+    {"appName": "fernfahrerFunk", "placement": {"top": "104px", "left": 0, "right": 0, "margin": "auto", "position": "absolute", "width": "560px", "height": "100px"}},
+    {"appName": "fernfahrerWarnung", "placement": {"top": "210px", "left": 0, "right": 0, "margin": "auto", "position": "absolute", "width": "420px", "height": "140px"}},
+    {"appName": "fernfahrerBerater", "placement": {"bottom": "10px", "right": "10px", "position": "absolute", "width": "460px", "height": "420px"}},
+    {"appName": "fernfahrerTacho", "placement": {"bottom": "436px", "right": "8px", "position": "absolute", "width": "210px", "height": "330px"}},
+    {"appName": "fernfahrerAntrieb", "placement": {"bottom": "548px", "right": "224px", "position": "absolute", "width": "182px", "height": "150px"}},
+    {"appName": "fernfahrerTempomat", "placement": {"bottom": "436px", "right": "224px", "position": "absolute", "width": "182px", "height": "108px"}},
+    {"appName": "fernfahrerKabine", "placement": {"bottom": "770px", "right": "8px", "position": "absolute", "width": "210px", "height": "84px"}},
+    {"appName": "fernfahrerRadio", "placement": {"bottom": "8px", "left": "5px", "position": "absolute", "width": "300px", "height": "190px"}},
+    {"appName": "tacho2", "appVersion": 1, "placement": {"bottom": "5px", "right": "480px", "width": "250px", "height": "250px"}, "settings": {"noCockpit": true}},
+    {"appName": "navigation", "appVersion": 5, "placement": {"bottom": "200px", "left": "5px", "width": "300px", "height": "300px"}},
+    {"appName": "damageApp", "appVersion": 2, "placement": {"bottom": "510px", "left": "5px", "position": "absolute", "width": "158px", "height": "280px"}},
+    {"appName": "beamngEarthStatus", "placement": {"top": "0px", "left": 0, "right": 0, "margin": "auto", "position": "absolute", "width": "700px", "height": "64px"}},
+    {"appName": "beamngEarthBanner", "placement": {"top": "36px", "left": 0, "right": 0, "margin": "auto", "position": "absolute", "width": "700px", "height": "60px"}},
+    {"appName": "beamngEarthCredits", "placement": {"bottom": "0px", "left": "310px", "position": "absolute", "width": "560px", "height": "64px"}},
+    {"appName": "inputHints", "placement": {"top": "120px", "right": "420px", "position": "absolute", "width": "450px", "height": "500px"}},
+    {"appName": "topLeftApps", "placement": {"top": "64px", "left": "0px", "position": "absolute", "width": "380px", "height": "560px"}},
+    {"appName": "topCenterApps", "placement": {"top": "360px", "left": 0, "right": 0, "margin": "auto", "position": "absolute", "width": "610px", "height": "300px"}}
+  ]
+}
+

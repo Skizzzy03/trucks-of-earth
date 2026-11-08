@@ -1,0 +1,10 @@
+{
+  "Configuration": "Autotransport (3 Neuwagen)",
+  "Description": "Flachbett-Auflieger mit festgezurrten Autos",
+  "Value": 47400,
+  "Weight": 24000,
+  "defaultPaintName1": "silver",
+  "defaultPaintName2": "silver",
+  "defaultPaintName3": "silver",
+  "hasLoad": true
+}

@@ -1,0 +1,14 @@
+{
+  "domElement": "<fernfahrer-video></fernfahrer-video>",
+  "name": "Trucks of Earth: Video",
+  "types": ["ui.apps.categories.utility"],
+  "description": "A video window over the game (a YouTube link or a direct video link): moved and sized freely, tilted in 3D to sit on the dashboard, see-through, full screen; or sent to the truck's own navigation screen. Opened from the cockpit strip (📺).",
+  "css": { "top": "0px", "left": "0px", "width": "100%", "height": "100%" },
+  "author": "fernfahrer_karriere",
+  "version": "1.0",
+  "directive": "fernfahrerVideo",
+  "appName": "fernfahrerVideo",
+  "category": "Gameplay",
+  "isAuxiliary": false,
+  "interactive": "no"
+}

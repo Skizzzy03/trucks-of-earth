@@ -1,0 +1,14 @@
+{
+  "domElement": "<fernfahrer-tacho></fernfahrer-tacho>",
+  "name": "Trucks of Earth: Fahrtenschreiber",
+  "types": ["ui.apps.categories.utility"],
+  "description": "Digital tachograph: driving recorded on its own, buttons for work / availability / break, driving time left, the last 24 h, the rules explained (book).",
+  "css": { "bottom": "440px", "right": "10px", "width": "225px", "height": "330px" },
+  "author": "fernfahrer_karriere",
+  "version": "1.0",
+  "directive": "fernfahrerTacho",
+  "appName": "fernfahrerTacho",
+  "category": "Gameplay",
+  "isAuxiliary": false,
+  "interactive": "required"
+}

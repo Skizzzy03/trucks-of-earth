@@ -1,0 +1,36 @@
+name: Fehler melden
+description: Etwas funktioniert nicht wie erwartet
+labels: [fehler]
+body:
+  - type: textarea
+    id: was
+    attributes:
+      label: Was ist passiert?
+      description: Was hast du gemacht, und was ist dann passiert?
+    validations:
+      required: true
+  - type: textarea
+    id: erwartet
+    attributes:
+      label: Was hättest du erwartet?
+  - type: input
+    id: mod
+    attributes:
+      label: Version der Mod
+      placeholder: "1.0.0"
+    validations:
+      required: true
+  - type: input
+    id: spiel
+    attributes:
+      label: Version von BeamNG.drive und BeamNG.Earth
+      placeholder: "0.40 / 1.8.2"
+    validations:
+      required: true
+  - type: textarea
+    id: log
+    attributes:
+      label: beamng.log
+      description: Direkt nach dem Fehler die Datei aus %LOCALAPPDATA%\BeamNG\BeamNG.drive\current hier hineinziehen. Das Protokoll wird beim nächsten Spielstart überschrieben.
+    validations:
+      required: true

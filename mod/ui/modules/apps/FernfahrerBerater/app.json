@@ -1,0 +1,14 @@
+{
+  "domElement": "<fernfahrer-berater></fernfahrer-berater>",
+  "name": "Trucks of Earth: Routenberater",
+  "types": ["ui.apps.categories.utility"],
+  "description": "Route advisor: speed, speed limit, fuel, vehicle condition; tabs for route, job and vehicle; actions for the place you are at (fuel, workshop, dealer, vehicle change, hitching).",
+  "css": { "bottom": "10px", "right": "10px", "width": "460px", "height": "420px", "min-width": "380px", "min-height": "300px" },
+  "author": "fernfahrer_karriere",
+  "version": "1.0",
+  "directive": "fernfahrerBerater",
+  "appName": "fernfahrerBerater",
+  "category": "Gameplay",
+  "isAuxiliary": false,
+  "interactive": "required"
+}

@@ -1,0 +1,14 @@
+{
+  "domElement": "<fernfahrer-antrieb></fernfahrer-antrieb>",
+  "name": "Trucks of Earth: Antrieb",
+  "types": ["ui.apps.categories.utility"],
+  "description": "Drivetrain: every differential of the vehicle (open / locked, click to switch), gear, parking brake, lights.",
+  "css": { "bottom": "440px", "right": "240px", "width": "220px", "height": "150px" },
+  "author": "fernfahrer_karriere",
+  "version": "1.0",
+  "directive": "fernfahrerAntrieb",
+  "appName": "fernfahrerAntrieb",
+  "category": "Gameplay",
+  "isAuxiliary": false,
+  "interactive": "required"
+}

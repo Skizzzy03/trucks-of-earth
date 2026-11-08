@@ -1,0 +1,14 @@
+{
+  "domElement": "<fernfahrer-radio></fernfahrer-radio>",
+  "name": "Trucks of Earth: Radio",
+  "types": ["ui.apps.categories.utility"],
+  "description": "The cab radio as a car radio without a display: a volume knob (mouse wheel or drag), a tuning knob for the stations, the source switch (radio, Spotify, line) and the transport keys. Played by the radio helper (tools/radio).",
+  "css": { "bottom": "8px", "left": "0", "right": "0", "margin": "auto", "width": "300px", "height": "190px" },
+  "author": "fernfahrer_karriere",
+  "version": "1.0",
+  "directive": "fernfahrerRadio",
+  "appName": "fernfahrerRadio",
+  "category": "Gameplay",
+  "isAuxiliary": false,
+  "interactive": "required"
+}

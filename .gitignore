@@ -1,0 +1,5 @@
+release/
+*.old
+*.part
+yt-dlp.exe
+

@@ -1,0 +1,14 @@
+{
+  "domElement": "<fernfahrer-firma></fernfahrer-firma>",
+  "name": "Trucks of Earth: Firma",
+  "types": ["ui.apps.categories.utility"],
+  "description": "The company bar: name, account balance and level.",
+  "css": { "top": "70px", "left": "320px", "width": "330px", "height": "50px" },
+  "author": "fernfahrer_karriere",
+  "version": "1.0",
+  "directive": "fernfahrerFirma",
+  "appName": "fernfahrerFirma",
+  "category": "Gameplay",
+  "isAuxiliary": false,
+  "interactive": "no"
+}

@@ -1,0 +1,170 @@
+<title>Ereignis-Katalog Fernfahrer</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;800&family=Barlow:wght@400;500;700&display=swap">
+<style>
+/* Asphalt with the yellow of German temporary road markings. Layout: scene list beside a workbench with the drive-through and the plan to scale. */
+:root{--bg:#1c1e20;--panel:#26292c;--panel2:#303438;--fg:#eceae3;--muted:#a3a59f;--line:#43474b;--yellow:#f6c500;--orange:#ff7a1a;--red:#e2453a;--blue:#4c9be8;--disp:"Barlow Condensed","Arial Narrow",sans-serif;--body:"Barlow",system-ui,sans-serif;color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.45}
+.wrap{max-width:1240px;margin:0 auto;padding-block:26px 40px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:22px}
+h1{font:800 clamp(34px,6vw,54px)/1 var(--disp);margin:0;letter-spacing:.01em;text-wrap:balance}
+header p{margin:6px 0 0;max-width:68ch;color:var(--muted)}
+.bench{display:grid;grid-template-columns:300px minmax(0,1fr);gap:18px;align-items:start}
+@media(max-width:860px){.bench{grid-template-columns:minmax(0,1fr)}}
+.list{display:grid;gap:14px;max-height:760px;overflow:auto;padding-right:4px}
+@media(max-width:860px){.list{max-height:320px}}
+.grp{font:600 13px var(--disp);letter-spacing:.12em;text-transform:uppercase;color:var(--yellow);margin:0 0 5px}
+.items{display:grid;gap:3px}
+button.it{all:unset;box-sizing:border-box;display:flex;gap:9px;align-items:baseline;cursor:pointer;padding:6px 9px;border-radius:4px;border-left:3px solid transparent}
+button.it:hover{background:var(--panel)}
+button.it:focus-visible{outline:2px solid var(--yellow);outline-offset:1px}
+button.it[aria-pressed="true"]{background:var(--panel2);border-left-color:var(--yellow)}
+.it .n{font-weight:700;min-width:0}
+.it .new{margin-left:auto;font:600 11px var(--disp);letter-spacing:.08em;color:#1c1e20;background:var(--yellow);padding:0 5px;border-radius:2px}
+.view{display:grid;gap:14px;min-width:0}
+.head{display:flex;flex-wrap:wrap;gap:6px 20px;align-items:baseline}
+.head h2{font:800 34px/1 var(--disp);margin:0}
+.facts{display:flex;flex-wrap:wrap;gap:6px 18px;color:var(--muted);font-variant-numeric:tabular-nums}
+.facts b{color:var(--fg)}
+.desc{margin:0;max-width:72ch}
+#st{position:relative;background:#7fa8c9;border-radius:6px;overflow:hidden;aspect-ratio:16/8;width:100%;max-width:100%}
+#st canvas{display:block;width:100%;height:100%}
+#st .none{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;background:var(--panel);color:var(--muted)}
+.hud{position:absolute;left:10px;top:10px;background:rgba(20,22,24,.8);padding:3px 9px;border-radius:3px;font:600 15px var(--disp);letter-spacing:.04em;font-variant-numeric:tabular-nums}
+.ctl{display:flex;gap:10px;align-items:center}
+.ctl button{all:unset;cursor:pointer;background:var(--yellow);color:#1c1e20;font:800 15px var(--disp);padding:5px 15px;border-radius:3px}
+.ctl button:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
+.ctl input{flex:1;min-width:0;accent-color:var(--yellow)}
+.plan{overflow-x:auto;background:var(--panel);border-radius:6px;padding:8px}
+.plan svg{display:block;min-width:760px;width:100%;height:auto}
+.leg{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:13px;color:var(--muted)}
+.leg i{display:inline-block;width:11px;height:11px;margin-right:5px;vertical-align:-1px;border-radius:2px}
+.note{color:var(--muted);font-size:13.5px;max-width:78ch;margin:0}
+h3{font:800 24px var(--disp);margin:6px 0 8px}
+.tw{overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:640px;font-variant-numeric:tabular-nums}
+th{font:600 13px var(--disp);letter-spacing:.09em;text-transform:uppercase;text-align:left;color:var(--muted);padding:6px 10px 6px 0;border-bottom:1px solid var(--line)}
+td{padding:7px 10px 7px 0;border-bottom:1px solid var(--line);vertical-align:top}
+td.r,th.r{text-align:right}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
+</style>
+<div class="wrap">
+<header><h1>Ereignis-Katalog</h1><p>Alles, was dir auf der Route begegnen kann. Abstände und Aufbau stammen direkt aus dem Mod-Code. Die 3D-Ansicht zeigt Platzhalter statt der echten Spielmodelle.</p></header>
+<div class="bench">
+  <nav class="list" id="list" aria-label="Ereignisse"></nav>
+  <section class="view">
+    <div class="head"><h2 id="t"></h2><div class="facts" id="f"></div></div>
+    <p class="desc" id="d"></p>
+    <div id="st"><div class="hud" id="h"></div></div>
+    <div class="ctl"><button id="p" type="button">Pause</button><input id="s" type="range" min="0" max="1000" value="0" aria-label="Position auf der Strecke"></div>
+    <div class="plan" id="pl"></div>
+    <div class="leg" id="lg"></div>
+  </section>
+</div>
+<section><h3>Alle Ereignisse</h3><div class="tw"><table><thead><tr><th>Ereignis</th><th>Was passiert</th><th class="r">Tempo</th><th class="r">Länge</th><th class="r">Teile</th></tr></thead><tbody id="tb"></tbody></table></div></section>
+<p class="note">Echte Bilder aus dem Spiel: Im Büro unter Einstellungen → „Ereignis testen“ lässt sich jede Szene etwa 750 m voraus auf die gesetzte Route legen.</p>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const DATA = __DATA__;
+const INFO = {
+ rand:['Baustellen','Bauarbeiten rechts neben der Fahrbahn: Absperrschranken an der Kante, Bagger, Erdhaufen, Bauzaun. Manchmal steht ein Blitzer darin.'],
+ ampel:['Baustellen','Deine Spur ist gesperrt. Eine Baustellenampel regelt den Wechsel: 26 Sekunden Rot, 20 Sekunden Grün. Bei Rot über die Linie kostet 120 €.',1],
+ belag:['Baustellen','Die Decke wird erneuert. Die Spur ist verengt, zwei Bagger und Materialhaufen stehen hinter einer Betonwand.',1],
+ wand:['Baustellen','Eine lange Betonschutzwand direkt an der Spur. Wenig zu sehen, aber sehr eng.',1],
+ kurz:['Baustellen','Kurzer Abschnitt mit Leitkegeln und einem Arbeitsfahrzeug.',1],
+ kanal:['Baustellen','Eine Grube in der Fahrspur, ringsum Absperrung, ein Bagger steht quer.',1],
+ bruecke:['Baustellen','Betonwand an der Spur und Bauzaun am Rand über die ganze Länge.',1],
+ nacht:['Baustellen','Nur bei Dunkelheit: Baustelle unter eingeschalteten Flutlichtern.',1],
+ radar:['Tempo','Fester Blitzer am Rand, in der Hälfte der Fälle ohne Vorwarnung. Zu schnell: Bußgeld.'],
+ laser:['Tempo','Streifenwagen misst am Rand. Meist siehst du ihn zu spät.'],
+ control:['Polizei','Polizeikontrolle, nur mit Auftrag. In die blaue Fläche fahren und anhalten; geprüft werden Papiere, Fahrtenschreiber, Promille, Ladung und Begrenzer. Danach kommt der Beamte ans Fenster: Du kannst ehrlich sein, dich rausreden oder es mit Schmiergeld versuchen. Vorbeifahren kostet 250 €.'],
+ siren:['Polizei','Rettungswagen oder Polizei kommt mit Blaulicht von hinten. Rechts halten.'],
+ heavy:['Polizei','Schwertransport mit Polizeibegleitung fährt langsam vor dir.'],
+ ghost:['Polizei','Verkehrsfunk meldet einen Falschfahrer auf deiner Strecke.'],
+ breakdown:['Pannen und Unfälle','Auto mit Warnblinker auf dem Seitenstreifen, davor ein Warndreieck und zwei Kegel.'],
+ crash:['Pannen und Unfälle','Unfallauto in der Spur, Polizei daneben, Kegel sperren die Spur.'],
+ cargo:['Fahrbahn','Kisten und Paletten liegen auf der Spur.'],
+ oil:['Fahrbahn','Ölspur auf 140 m, gesichert mit Sandfässern.'],
+ grit:['Fahrbahn','Loser Rollsplitt auf 150 m.',1],
+ potholes:['Fahrbahn','Drei Schlaglöcher, jeweils mit Kegeln markiert.',1],
+ mowing:['Fahrbahn','Arbeitsfahrzeug am Rand, Leittafeln davor.',1],
+};
+const ORDER=['Baustellen','Tempo','Polizei','Pannen und Unfälle','Fahrbahn'];
+const KEY=d=>d.variant||d.kind;
+const COL={board:'#f6c500',barrier:'#e8e8e8',barrierRed:'#e2453a',barrel:'#ff7a1a',cone:'#ff7a1a',jersey:'#9a9d9f',slab:'#8a8d8f',pile:'#8a6a45',pileSmall:'#8a6a45',fence:'#6d8a6a',sandbarrel:'#d9b03a',flood:'#dfe3e8',excavator:'#f2b600',sign:'#ffffff',cam:'#4c9be8',vehicle:'#4c9be8',triangle:'#e2453a',crate:'#b98b56',pallet:'#b98b56',sig:'#35d07f'};
+const GROUP=k=>k.startsWith('sign')?'sign':(k.startsWith('cam')?'cam':k);
+const NAME={board:'Leittafel',barrier:'Schranke weiß',barrierRed:'Schranke rot',barrel:'Leitbake',cone:'Kegel',jersey:'Betonwand',slab:'Betonteil',pile:'Haufen',pileSmall:'kleiner Haufen',fence:'Bauzaun',sandbarrel:'Sandfass',flood:'Flutlicht',excavator:'Bagger',sign:'Schild',cam:'Blitzer',vehicle:'Fahrzeug',triangle:'Warndreieck',crate:'Kiste',pallet:'Palette',sig:'Ampel'};
+const itemKey=i=>i.vehicle?'vehicle':(i.sig||i.lamp||i.light)?'sig':GROUP(i.key||'');
+const $=id=>document.getElementById(id);
+let cur=null,playing=true,pos=0,last=0,R=null,S=null,C=null,G=null;
+const HALF=3.25;
+function range(d){const a=(d.items||[]).map(i=>i.at);return{a:Math.min(-60,...a)-40,b:Math.max(d.zone||60,...a)+60}}
+
+function init3(){
+ if(!window.THREE)return false;
+ R=new THREE.WebGLRenderer({antialias:true});R.setPixelRatio(Math.min(2,devicePixelRatio));$('st').prepend(R.domElement);
+ S=new THREE.Scene();S.background=new THREE.Color(0x9cc0dc);S.fog=new THREE.Fog(0x9cc0dc,120,620);
+ C=new THREE.PerspectiveCamera(58,2,.1,900);
+ S.add(new THREE.HemisphereLight(0xdfeeff,0x6a6a5a,.9));const sun=new THREE.DirectionalLight(0xffffff,.8);sun.position.set(40,80,30);S.add(sun);
+ const size=()=>{const w=$('st').clientWidth,h=$('st').clientHeight;R.setSize(w,h,false);C.aspect=w/h;C.updateProjectionMatrix()};
+ new ResizeObserver(size).observe($('st'));size();return true}
+const mat=c=>new THREE.MeshLambertMaterial({color:c});
+function box(w,h,d,c,x,y,z,g){const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat(c));m.position.set(x,y,z);g.add(m);return m}
+function cyl(r0,r1,h,c,x,y,z,g,n){const m=new THREE.Mesh(new THREE.CylinderGeometry(r0,r1,h,n||12),mat(c));m.position.set(x,y,z);g.add(m);return m}
+function piece(i,g){const k=i.key||'',x=HALF+(i.edge||0),z=-i.at,ly=i.lift||0;
+ if(i.vehicle){const pol=i.vehicle==='police';box(1.8,.7,4.4,pol?0xf0f0f0:0x5b7fa6,x,.7,z,g);box(1.6,.6,2.2,pol?0x2c7a4b:0x41566e,x,1.3,z+.2,g);if(pol)box(1.2,.14,.3,0x2a6cff,x,1.68,z+.2,g);return}
+ if(i.sig){cyl(.14,.14,.3,i.sig==='red'?0xff2a1a:0x25d06a,x,ly,z,g);return}
+ if(i.lamp||i.light)return;
+ if(k.startsWith('sign')){cyl(.04,.04,2.2,0x999999,x,1.1,z,g,6);const round=/\d|NoPass/.test(k);if(round){const c=cyl(.42,.42,.04,0xffffff,x,2.45,z,g,20);c.rotation.x=Math.PI/2;const r=cyl(.44,.44,.03,0xd8281e,x,2.45,z+.012,g,20);r.rotation.x=Math.PI/2;const q=cyl(.3,.3,.04,0xffffff,x,2.45,z+.012,g,20);q.rotation.x=Math.PI/2}else{const t=cyl(0,.55,.04,0xf6c500,x,2.45,z,g,3);t.rotation.x=Math.PI/2}return}
+ switch(k){
+  case'board':box(.08,1,2,0xf6c500,x,.7,z,g);box(.09,.26,2.01,0xe2453a,x,.75,z,g);break;
+  case'barrier':case'barrierRed':box(.1,.22,2,k==='barrier'?0xeeeeee:0xe2453a,x,.8,z,g);box(.08,.8,.08,0x777777,x,.4,z-.9,g);box(.08,.8,.08,0x777777,x,.4,z+.9,g);break;
+  case'barrel':cyl(.26,.3,1,0xff7a1a,x,.5,z,g);cyl(.27,.28,.16,0xffffff,x,.6,z,g);break;
+  case'cone':cyl(.03,.18,.7,0xff7a1a,x,.35,z,g,10);break;
+  case'jersey':box(.5,.85,3.3,0x9a9d9f,x,.42,z,g);break;
+  case'slab':box(.6,1,2.6,0x8a8d8f,x,.5+ly,z,g);break;
+  case'pile':cyl(0,5.5,3.4,0x7a5e3e,x,1.7,z,g,9);break;
+  case'pileSmall':cyl(0,3.2,1.9,0x8a6a45,x,.95,z,g,8);break;
+  case'fence':box(.05,1.9,2.05,0x7d9a78,x,.95,z,g);break;
+  case'sandbarrel':cyl(.4,.42,.9,0xd9b03a,x,.45,z,g);break;
+  case'flood':cyl(.05,.05,5,0xbbbbbb,x,2.5,z,g,6);box(1,.4,.2,0xfff4cc,x,5,z,g);break;
+  case'excavator':{box(2.8,.7,4.2,0x333333,x,.35,z,g);box(2.6,1.5,3,0xf2b600,x,1.5,z,g);box(1,1.6,1.1,0x3f5f6a,x+.7,2.3,z-.5,g);const a=box(.4,.4,4.6,0xf2b600,x-.5,2.8,z-3,g);a.rotation.x=.45;break}
+  case'triangle':{const t=cyl(0,.4,.04,0xe2453a,x,.4,z,g,3);t.rotation.x=Math.PI/2;break}
+  case'crate':box(1.1,.9,1.1,0xb98b56,x,.45,z,g);break;
+  case'pallet':box(1.2,.16,1,0xb98b56,x,.1,z,g);break;
+  case'camPole':cyl(.1,.1,3.2,0x777777,x,1.6,z,g,8);break;
+  case'camBox':box(.5,.7,.5,0x4c9be8,x,ly+.3,z,g);break;
+ }}
+function buildScene(d){if(!S)return;if(G)S.remove(G);G=new THREE.Group();const r=range(d),len=r.b-r.a+700,mid=-(r.a+r.b)/2;
+ const road=box(2*HALF,.02,len,0x3a3c3f,0,-.02,mid,G);road.material.color.set(0x3a3c3f);
+ box(400,.01,len,0x6f8a4e,0,-.05,mid,G);box(.14,.015,len,0xe8e8e0,HALF-.1,0,mid,G);box(.14,.015,len,0xe8e8e0,-HALF+.1,0,mid,G);
+ for(let s=r.a-300;s<r.b+300;s+=12)box(.14,.015,4,0xe8e8e0,0,0,-s,G);
+ (d.items||[]).forEach(i=>piece(i,G));S.add(G)}
+function render(){if(!R)return;const r=range(cur);const s=r.a+(r.b-r.a)*pos;C.position.set(HALF-1.7,2.5,-s);C.lookAt(HALF-2.1,1.5,-s-30);R.render(S,C);$('h').textContent=(s<0?'noch '+Math.round(-s)+' m':(cur.zone&&s<=cur.zone?'in der Zone · ':'')+Math.round(s)+' m');$('s').value=Math.round(pos*1000)}
+function tick(t){const dt=Math.min(.05,(t-last)/1000);last=t;if(playing&&cur&&!cur.noScene){const r=range(cur);pos+=dt*17/(r.b-r.a);if(pos>1)pos=0;render()}requestAnimationFrame(tick)}
+
+function plan(d){const r=range(d),W=1000,H=210,mx=W/(r.b-r.a),X=s=>(s-r.a)*mx,top=70,sc=8,Y=e=>top+(2*HALF+e)*sc;const parts=[];
+ parts.push(`<rect x="0" y="0" width="${W}" height="${H}" fill="#2f3a2a"/><rect x="0" y="${top}" width="${W}" height="${2*HALF*sc}" fill="#46494c"/><line x1="0" x2="${W}" y1="${top+HALF*sc}" y2="${top+HALF*sc}" stroke="#d9d9d0" stroke-width="1" stroke-dasharray="16 16"/>`);
+ if(d.zone)parts.push(`<rect x="${X(0)}" y="${top}" width="${(d.zone)*mx}" height="${2*HALF*sc}" fill="#f6c500" fill-opacity=".1"/>`);
+ (d.items||[]).forEach(i=>{const k=itemKey(i),c=COL[k]||'#fff',x=X(i.at),y=Y(i.edge||0);const big=k==='excavator'||k==='pile'||k==='vehicle';const w=big?9:(k==='jersey'||k==='fence'||k==='barrier'||k==='barrierRed'||k==='board')?4.5:3.2,h=big?13:(k==='sign'?5:4.2);parts.push(`<rect x="${(x-w/2).toFixed(1)}" y="${(y-h/2).toFixed(1)}" width="${w}" height="${h}" fill="${c}" rx="1"><title>${NAME[k]||k} · ${Math.round(i.at)} m</title></rect>`)});
+ const step=(r.b-r.a)>420?100:50;for(let s=Math.ceil(r.a/step)*step;s<=r.b;s+=step){parts.push(`<line x1="${X(s)}" x2="${X(s)}" y1="${H-26}" y2="${H-20}" stroke="#a3a59f"/><text x="${X(s)}" y="${H-7}" fill="#a3a59f" font-size="12" text-anchor="middle" font-family="Barlow,sans-serif">${s} m</text>`)}
+ parts.push(`<text x="10" y="22" fill="#a3a59f" font-size="13" font-family="Barlow,sans-serif">Fahrtrichtung →   Plan von oben, Breite stark überhöht</text>`);
+ $('pl').innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Lageplan ${d.title}">${parts.join('')}</svg>`;
+ const seen=[...new Set((d.items||[]).map(itemKey))];$('lg').innerHTML=seen.map(k=>`<span><i style="background:${COL[k]||'#fff'}"></i>${NAME[k]||k}</span>`).join('')}
+
+function pick(d){cur=d;document.querySelectorAll('button.it').forEach(b=>b.setAttribute('aria-pressed',b.dataset.k===KEY(d)));
+ $('t').textContent=d.title;const inf=INFO[KEY(d)]||[];$('d').textContent=inf[1]||d.sub||'';
+ $('f').innerHTML=[d.limit?`Tempo <b>${d.limit} km/h</b>`:'',d.zone?`Länge <b>${d.zone} m</b>`:'',d.items&&d.items.length?`<b>${d.items.length}</b> Teile`:''].filter(Boolean).join('<span> </span>');
+ const none=$('st').querySelector('.none');if(none)none.remove();
+ if(d.noScene){const n=document.createElement('div');n.className='none';n.textContent='Kein fester Aufbau: Dieses Ereignis besteht aus einem fahrenden Fahrzeug oder einer Funkmeldung.';$('st').append(n);$('pl').innerHTML='';$('lg').innerHTML='';return}
+ const r0=range(d);pos=Math.max(0,(-55-r0.a)/(r0.b-r0.a));buildScene(d);plan(d);render()}
+
+const byKey={};DATA.forEach(d=>byKey[KEY(d)]=d);
+ORDER.forEach(g=>{const w=document.createElement('div');const rows=Object.keys(INFO).filter(k=>INFO[k][0]===g&&byKey[k]);w.innerHTML=`<p class="grp">${g}</p><div class="items">${rows.map(k=>`<button class="it" type="button" data-k="${k}" aria-pressed="false"><span class="n">${byKey[k].title}</span>${INFO[k][2]?'<span class="new">NEU</span>':''}</button>`).join('')}</div>`;$('list').append(w)});
+$('list').addEventListener('click',e=>{const b=e.target.closest('button.it');if(b)pick(byKey[b.dataset.k])});
+$('tb').innerHTML=ORDER.flatMap(g=>Object.keys(INFO).filter(k=>INFO[k][0]===g&&byKey[k]).map(k=>{const d=byKey[k];return`<tr><td><b>${d.title}</b></td><td>${INFO[k][1]}</td><td class="r">${d.limit?d.limit+' km/h':'–'}</td><td class="r">${d.zone?d.zone+' m':'–'}</td><td class="r">${(d.items||[]).length||'–'}</td></tr>`})).join('');
+$('p').onclick=()=>{playing=!playing;$('p').textContent=playing?'Pause':'Abspielen'};
+$('s').oninput=e=>{pos=e.target.value/1000;playing=false;$('p').textContent='Abspielen';render()};
+const ok3=init3();if(!ok3){$('h').textContent='3D-Ansicht nicht verfügbar'}
+pick(byKey.ampel);requestAnimationFrame(t=>{last=t;tick(t)});
+</script>

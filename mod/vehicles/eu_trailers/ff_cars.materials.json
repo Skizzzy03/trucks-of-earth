@@ -1,0 +1,359 @@
+{
+  "ff_paint_red": {
+    "name": "ff_paint_red",
+    "mapTo": "ff_paint_red",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.62,
+          0.07,
+          0.08,
+          1
+        ],
+        "roughnessFactor": 0.3,
+        "metallicFactor": 0.4
+      },
+      {},
+      {},
+      {}
+    ]
+  },
+  "ff_paint_blue": {
+    "name": "ff_paint_blue",
+    "mapTo": "ff_paint_blue",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.06,
+          0.17,
+          0.46,
+          1
+        ],
+        "roughnessFactor": 0.3,
+        "metallicFactor": 0.4
+      },
+      {},
+      {},
+      {}
+    ]
+  },
+  "ff_paint_silver": {
+    "name": "ff_paint_silver",
+    "mapTo": "ff_paint_silver",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.62,
+          0.63,
+          0.66,
+          1
+        ],
+        "roughnessFactor": 0.3,
+        "metallicFactor": 0.7
+      },
+      {},
+      {},
+      {}
+    ]
+  },
+  "ff_paint_white": {
+    "name": "ff_paint_white",
+    "mapTo": "ff_paint_white",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.86,
+          0.86,
+          0.87,
+          1
+        ],
+        "roughnessFactor": 0.35,
+        "metallicFactor": 0.1
+      },
+      {},
+      {},
+      {}
+    ]
+  },
+  "ff_paint_black": {
+    "name": "ff_paint_black",
+    "mapTo": "ff_paint_black",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.03,
+          0.03,
+          0.035,
+          1
+        ],
+        "roughnessFactor": 0.3,
+        "metallicFactor": 0.3
+      },
+      {},
+      {},
+      {}
+    ]
+  },
+  "ff_paint_green": {
+    "name": "ff_paint_green",
+    "mapTo": "ff_paint_green",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.1,
+          0.3,
+          0.19,
+          1
+        ],
+        "roughnessFactor": 0.35,
+        "metallicFactor": 0.3
+      },
+      {},
+      {},
+      {}
+    ]
+  },
+  "ff_rust_a": {
+    "name": "ff_rust_a",
+    "mapTo": "ff_rust_a",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.33,
+          0.17,
+          0.09,
+          1
+        ],
+        "roughnessFactor": 0.9,
+        "metallicFactor": 0.1
+      },
+      {},
+      {},
+      {}
+    ]
+  },
+  "ff_rust_b": {
+    "name": "ff_rust_b",
+    "mapTo": "ff_rust_b",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.28,
+          0.27,
+          0.25,
+          1
+        ],
+        "roughnessFactor": 0.85,
+        "metallicFactor": 0.2
+      },
+      {},
+      {},
+      {}
+    ]
+  },
+  "ff_rust_c": {
+    "name": "ff_rust_c",
+    "mapTo": "ff_rust_c",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.42,
+          0.36,
+          0.2,
+          1
+        ],
+        "roughnessFactor": 0.85,
+        "metallicFactor": 0.1
+      },
+      {},
+      {},
+      {}
+    ]
+  },
+  "ff_glass": {
+    "name": "ff_glass",
+    "mapTo": "ff_glass",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.04,
+          0.06,
+          0.08,
+          1
+        ],
+        "roughnessFactor": 0.08,
+        "metallicFactor": 0.3
+      },
+      {},
+      {},
+      {}
+    ]
+  },
+  "ff_glass_broken": {
+    "name": "ff_glass_broken",
+    "mapTo": "ff_glass_broken",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.02,
+          0.02,
+          0.02,
+          1
+        ],
+        "roughnessFactor": 0.9,
+        "metallicFactor": 0
+      },
+      {},
+      {},
+      {}
+    ]
+  },
+  "ff_tire": {
+    "name": "ff_tire",
+    "mapTo": "ff_tire",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.025,
+          0.025,
+          0.025,
+          1
+        ],
+        "roughnessFactor": 0.9,
+        "metallicFactor": 0
+      },
+      {},
+      {},
+      {}
+    ]
+  },
+  "ff_rim": {
+    "name": "ff_rim",
+    "mapTo": "ff_rim",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.55,
+          0.56,
+          0.58,
+          1
+        ],
+        "roughnessFactor": 0.3,
+        "metallicFactor": 0.8
+      },
+      {},
+      {},
+      {}
+    ]
+  },
+  "ff_under": {
+    "name": "ff_under",
+    "mapTo": "ff_under",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.02,
+          0.02,
+          0.02,
+          1
+        ],
+        "roughnessFactor": 0.9,
+        "metallicFactor": 0
+      },
+      {},
+      {},
+      {}
+    ]
+  },
+  "ff_lamp": {
+    "name": "ff_lamp",
+    "mapTo": "ff_lamp",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.92,
+          0.92,
+          0.86,
+          1
+        ],
+        "roughnessFactor": 0.15,
+        "metallicFactor": 0.3
+      },
+      {},
+      {},
+      {}
+    ]
+  },
+  "ff_rear": {
+    "name": "ff_rear",
+    "mapTo": "ff_rear",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.6,
+          0.03,
+          0.03,
+          1
+        ],
+        "roughnessFactor": 0.2,
+        "metallicFactor": 0.2
+      },
+      {},
+      {},
+      {}
+    ]
+  },
+  "ff_strap": {
+    "name": "ff_strap",
+    "mapTo": "ff_strap",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.92,
+          0.55,
+          0.05,
+          1
+        ],
+        "roughnessFactor": 0.8,
+        "metallicFactor": 0
+      },
+      {},
+      {},
+      {}
+    ]
+  }
+}

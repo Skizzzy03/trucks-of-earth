@@ -1,0 +1,38 @@
+﻿Fernfahrer-Radio – Radio und Spotify im Führerhaus
+==================================================
+
+Die kleine App spielt die Musik. Ohne sie läuft die Karriere normal, nur ohne Radio.
+
+Start: Fernfahrer-Radio.exe. Unten rechts erscheint ein Symbol im Infobereich.
+Dann BeamNG starten und die Karriere laden. Die Quelle wählst du im Spiel am Radio.
+Windows kann beim ersten Start warnen, weil die App nicht signiert ist: "Weitere Informationen" → "Trotzdem ausführen".
+Der Quelltext liegt bei (FernfahrerRadio.cs), du kannst sie auch selbst bauen (siehe unten).
+
+RADIO (nichts einzurichten)
+  Internetsender, dazu ein Sender je Bundesland: Fährst du in ein anderes Bundesland, wechselt das Radio mit kurzem
+  Rauschen auf den Sender von dort. Von Hand umschalten geht jederzeit, abschalten in den Einstellungen im Büro.
+  Mit Autolautsprecher-Klang:
+  - im LKW in der Fahrersicht: klar
+  - LKW von außen: gedämpft, leiser
+  - zu Fuß: gedämpft, über etwa 45 m leiser werdend
+  - bei Navi-Ansagen kurz leiser
+  EQ am Radio: Bässe, Mitten, Höhen.
+
+SPOTIFY (nichts einzurichten, Spotify einfach normal laufen lassen)
+  Die App regelt die Lautstärke von Spotify im Windows-Mixer: innen laut, außen deutlich leiser, zu Fuß nach etwa 30 m aus,
+  bei Navi-Ansagen leiser. ⏮ ⏯ ⏭ steuern Spotify. Beim Verlassen der Karriere geht die Lautstärke zurück.
+  Der EQ wirkt hier nicht. Wer ihn für Spotify will, nimmt LINE.
+  Geht auch mit Deezer, Amazon Music, TIDAL, Apple Music, VLC, foobar2000, MusicBee, AIMP.
+
+LINE (mit EQ und Klangfilter)
+  Spotify in Windows auf die Ausgabe "Steam Streaming Speakers" stellen; die App nimmt den Ton dort ab und spielt ihn gefiltert.
+
+VIDEO-TON (Quelle VIDEO)
+  Läuft im Spiel der Videoplayer (📺), spielt die App dessen Ton im Takt mit dem Bild. Direkte Links gehen sofort.
+  Für YouTube, Twitch und Livestreams lädt sie beim ersten Mal einmalig yt-dlp von github.com/yt-dlp/yt-dlp neben sich.
+  Der Ton wird in temp\fernfahrer\videoaudio zwischengespeichert. Livestreams sind nur auf diesem PC erreichbar.
+
+Beenden: Rechtsklick auf das Symbol → Beenden.
+Prüfen: Fernfahrer-Radio.exe --probe <Stream-URL>   (dekodiert 4 s)
+        Fernfahrer-Radio.exe --sessions             (Programme im Windows-Mixer)
+Selbst bauen: C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe /target:winexe /out:Fernfahrer-Radio.exe FernfahrerRadio.cs

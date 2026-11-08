@@ -1,0 +1,14 @@
+{
+  "domElement": "<fernfahrer-kabine></fernfahrer-kabine>",
+  "name": "Trucks of Earth: Kabine",
+  "types": ["ui.apps.categories.utility"],
+  "description": "The cab: a beer, a cigarette, a joint (a short scene in the driver's view) and the blood alcohol / THC a police check would find.",
+  "css": { "bottom": "600px", "right": "240px", "width": "220px", "height": "96px" },
+  "author": "fernfahrer_karriere",
+  "version": "1.0",
+  "directive": "fernfahrerKabine",
+  "appName": "fernfahrerKabine",
+  "category": "Gameplay",
+  "isAuxiliary": false,
+  "interactive": "required"
+}

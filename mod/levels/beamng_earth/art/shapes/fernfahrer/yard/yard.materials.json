@@ -1,0 +1,526 @@
+{
+  "ff_yard_concrete": {
+    "name": "ff_yard_concrete",
+    "mapTo": "ff_yard_concrete",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "roughnessFactor": 0.85,
+        "metallicFactor": 0,
+        "baseColorMap": "/assets/materials/tileable/concrete/Concrete_large/concrete_large_d.dds",
+        "normalMap": "/assets/materials/tileable/concrete/Concrete_large/concrete_large_n.dds"
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": true
+  },
+  "ff_yard_joint": {
+    "name": "ff_yard_joint",
+    "mapTo": "ff_yard_joint",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.24,
+          0.24,
+          0.23,
+          1
+        ],
+        "roughnessFactor": 0.9,
+        "metallicFactor": 0
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": true
+  },
+  "ff_yard_fence": {
+    "name": "ff_yard_fence",
+    "mapTo": "ff_yard_fence",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.12,
+          0.25,
+          0.16,
+          1
+        ],
+        "roughnessFactor": 0.5,
+        "metallicFactor": 0.4
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": true
+  },
+  "ff_yard_post": {
+    "name": "ff_yard_post",
+    "mapTo": "ff_yard_post",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.3,
+          0.32,
+          0.34,
+          1
+        ],
+        "roughnessFactor": 0.5,
+        "metallicFactor": 0.6
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": true
+  },
+  "ff_yard_gate": {
+    "name": "ff_yard_gate",
+    "mapTo": "ff_yard_gate",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.55,
+          0.57,
+          0.6,
+          1
+        ],
+        "roughnessFactor": 0.4,
+        "metallicFactor": 0.8
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": true
+  },
+  "ff_yard_wall": {
+    "name": "ff_yard_wall",
+    "mapTo": "ff_yard_wall",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "roughnessFactor": 0.5,
+        "metallicFactor": 0.3,
+        "baseColorMap": "/assets/materials/tileable/metal/moderncorrugated_tin/eca_bld_moderncorrugated_tin_d.dds",
+        "normalMap": "/assets/materials/tileable/metal/moderncorrugated_tin/eca_bld_moderncorrugated_tin_n.dds"
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": true
+  },
+  "ff_yard_roof": {
+    "name": "ff_yard_roof",
+    "mapTo": "ff_yard_roof",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "roughnessFactor": 0.55,
+        "metallicFactor": 0.4,
+        "baseColorMap": "/assets/materials/tileable/metal/ind_tin_03/ut_corrugated_tin_V3_d.dds",
+        "normalMap": "/assets/materials/tileable/metal/ind_tin_03/ut_corrugated_tin_V3_n.dds"
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": true
+  },
+  "ff_yard_stripe": {
+    "name": "ff_yard_stripe",
+    "mapTo": "ff_yard_stripe",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.96,
+          0.6,
+          0.1,
+          1
+        ],
+        "roughnessFactor": 0.5,
+        "metallicFactor": 0
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": true
+  },
+  "ff_yard_glass": {
+    "name": "ff_yard_glass",
+    "mapTo": "ff_yard_glass",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.08,
+          0.13,
+          0.18,
+          1
+        ],
+        "roughnessFactor": 0.08,
+        "metallicFactor": 0.6
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": true
+  },
+  "ff_yard_metal": {
+    "name": "ff_yard_metal",
+    "mapTo": "ff_yard_metal",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.45,
+          0.47,
+          0.5,
+          1
+        ],
+        "roughnessFactor": 0.4,
+        "metallicFactor": 0.8
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": true
+  },
+  "ff_yard_shelf": {
+    "name": "ff_yard_shelf",
+    "mapTo": "ff_yard_shelf",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.15,
+          0.3,
+          0.55,
+          1
+        ],
+        "roughnessFactor": 0.5,
+        "metallicFactor": 0.4
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": true
+  },
+  "ff_yard_line": {
+    "name": "ff_yard_line",
+    "mapTo": "ff_yard_line",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.92,
+          0.92,
+          0.88,
+          1
+        ],
+        "roughnessFactor": 0.7,
+        "metallicFactor": 0
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": true
+  },
+  "ff_yard_base": {
+    "name": "ff_yard_base",
+    "mapTo": "ff_yard_base",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "roughnessFactor": 0.9,
+        "metallicFactor": 0,
+        "baseColorMap": "/assets/materials/tileable/concrete/si_concrete/si_concrete_d.dds",
+        "normalMap": "/assets/materials/tileable/concrete/si_concrete/si_concrete_n.dds"
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": true
+  },
+  "ff_yard_house": {
+    "name": "ff_yard_house",
+    "mapTo": "ff_yard_house",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "roughnessFactor": 0.9,
+        "metallicFactor": 0,
+        "baseColorMap": "/assets/materials/tileable/plaster/gas_station_01_wall_plaster_01/wall_plaster_01_d.dds"
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": true
+  },
+  "ff_yard_tiles": {
+    "name": "ff_yard_tiles",
+    "mapTo": "ff_yard_tiles",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.52,
+          0.16,
+          0.1,
+          1
+        ],
+        "roughnessFactor": 0.8,
+        "metallicFactor": 0
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": true
+  },
+  "ff_yard_frame": {
+    "name": "ff_yard_frame",
+    "mapTo": "ff_yard_frame",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.93,
+          0.93,
+          0.93,
+          1
+        ],
+        "roughnessFactor": 0.6,
+        "metallicFactor": 0
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": true
+  },
+  "ff_yard_door": {
+    "name": "ff_yard_door",
+    "mapTo": "ff_yard_door",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.32,
+          0.2,
+          0.12,
+          1
+        ],
+        "roughnessFactor": 0.7,
+        "metallicFactor": 0
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": true
+  },
+  "ff_yard_sign": {
+    "name": "ff_yard_sign",
+    "mapTo": "ff_yard_sign",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.08,
+          0.1,
+          0.13,
+          1
+        ],
+        "roughnessFactor": 0.5,
+        "metallicFactor": 0
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": true
+  },
+  "ff_yard_brick": {
+    "name": "ff_yard_brick",
+    "mapTo": "ff_yard_brick",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "roughnessFactor": 0.9,
+        "metallicFactor": 0,
+        "baseColorMap": "/assets/materials/tileable/brick/eca_bld_bricks_dark/eca_bld_bricks_dark_d.dds"
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": true
+  },
+  "ff_yard_lamp": {
+    "name": "ff_yard_lamp",
+    "mapTo": "ff_yard_lamp",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          1,
+          0.92,
+          0.75,
+          1
+        ],
+        "roughnessFactor": 0.4,
+        "metallicFactor": 0,
+        "emissiveFactor": [
+          1,
+          0.85,
+          0.6
+        ],
+        "glow": true
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": true
+  },
+  "ff_yard_container": {
+    "name": "ff_yard_container",
+    "mapTo": "ff_yard_container",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.75,
+          0.18,
+          0.14,
+          1
+        ],
+        "roughnessFactor": 0.6,
+        "metallicFactor": 0.5,
+        "baseColorMap": "/assets/materials/tileable/metal/moderncorrugated_tin/eca_bld_moderncorrugated_tin_d.dds",
+        "normalMap": "/assets/materials/tileable/metal/moderncorrugated_tin/eca_bld_moderncorrugated_tin_n.dds"
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": true
+  },
+  "ff_yard_wood": {
+    "name": "ff_yard_wood",
+    "mapTo": "ff_yard_wood",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.55,
+          0.42,
+          0.26,
+          1
+        ],
+        "roughnessFactor": 0.9,
+        "metallicFactor": 0
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": true
+  },
+  "ff_yard_carton": {
+    "name": "ff_yard_carton",
+    "mapTo": "ff_yard_carton",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.66,
+          0.5,
+          0.32,
+          1
+        ],
+        "roughnessFactor": 0.95,
+        "metallicFactor": 0
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": true
+  }
+}

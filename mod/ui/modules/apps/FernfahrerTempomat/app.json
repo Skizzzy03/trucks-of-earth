@@ -1,0 +1,14 @@
+{
+  "domElement": "<fernfahrer-tempomat></fernfahrer-tempomat>",
+  "name": "Trucks of Earth: Tempomat",
+  "types": ["ui.apps.categories.utility"],
+  "description": "Cruise control: hold the current speed, resume the last one, change it in steps of 5 or 10 km/h; the truck's driver assistance switches.",
+  "css": { "bottom": "700px", "right": "240px", "width": "220px", "height": "140px" },
+  "author": "fernfahrer_karriere",
+  "version": "1.0",
+  "directive": "fernfahrerTempomat",
+  "appName": "fernfahrerTempomat",
+  "category": "Gameplay",
+  "isAuxiliary": false,
+  "interactive": "required"
+}

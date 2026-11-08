@@ -1,0 +1,14 @@
+{
+  "domElement": "<fernfahrer-warnung></fernfahrer-warnung>",
+  "name": "Trucks of Earth: Warnungen",
+  "types": ["ui.apps.categories.utility"],
+  "description": "Road event warnings: roadworks, speed cameras and police checks ahead, the camera flash, fines.",
+  "css": { "top": "210px", "left": "0", "right": "0", "margin": "auto", "width": "420px", "height": "140px" },
+  "author": "fernfahrer_karriere",
+  "version": "1.0",
+  "directive": "fernfahrerWarnung",
+  "appName": "fernfahrerWarnung",
+  "category": "Gameplay",
+  "isAuxiliary": false,
+  "interactive": "no"
+}

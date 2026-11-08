@@ -1,0 +1,14 @@
+{
+  "domElement": "<fernfahrer-speed></fernfahrer-speed>",
+  "name": "Trucks of Earth: Tempo & Tempolimit",
+  "types": ["ui.apps.categories.utility"],
+  "description": "Speed in km/h and the posted speed limit of the road (BeamNG.Earth) as a road sign; warns when speeding.",
+  "css": { "bottom": "315px", "right": "10px", "width": "250px", "height": "96px", "min-width": "200px", "min-height": "80px" },
+  "author": "fernfahrer_karriere",
+  "version": "1.0",
+  "directive": "fernfahrerSpeed",
+  "appName": "fernfahrerSpeed",
+  "category": "Gameplay",
+  "isAuxiliary": false,
+  "interactive": "no"
+}

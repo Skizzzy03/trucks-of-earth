@@ -1,0 +1,1355 @@
+{
+  "ff_can_green": {
+    "name": "ff_can_green",
+    "mapTo": "ff_can_green",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.03,
+          0.26,
+          0.09,
+          1
+        ],
+        "roughnessFactor": 0.3,
+        "metallicFactor": 0.7
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": false
+  },
+  "ff_can_label": {
+    "name": "ff_can_label",
+    "mapTo": "ff_can_label",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.78,
+          0.6,
+          0.18,
+          1
+        ],
+        "roughnessFactor": 0.35,
+        "metallicFactor": 0.8
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": false
+  },
+  "ff_can_metal": {
+    "name": "ff_can_metal",
+    "mapTo": "ff_can_metal",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.72,
+          0.74,
+          0.76,
+          1
+        ],
+        "roughnessFactor": 0.3,
+        "metallicFactor": 0.9
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": false
+  },
+  "ff_can_tab": {
+    "name": "ff_can_tab",
+    "mapTo": "ff_can_tab",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.8,
+          0.82,
+          0.84,
+          1
+        ],
+        "roughnessFactor": 0.25,
+        "metallicFactor": 0.95
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": false
+  },
+  "ff_can_hole": {
+    "name": "ff_can_hole",
+    "mapTo": "ff_can_hole",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.03,
+          0.03,
+          0.03,
+          1
+        ],
+        "roughnessFactor": 0.8,
+        "metallicFactor": 0
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": false
+  },
+  "ff_cig_filter": {
+    "name": "ff_cig_filter",
+    "mapTo": "ff_cig_filter",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.78,
+          0.47,
+          0.18,
+          1
+        ],
+        "roughnessFactor": 0.7,
+        "metallicFactor": 0
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": false
+  },
+  "ff_cig_paper": {
+    "name": "ff_cig_paper",
+    "mapTo": "ff_cig_paper",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.93,
+          0.93,
+          0.9,
+          1
+        ],
+        "roughnessFactor": 0.8,
+        "metallicFactor": 0
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": false
+  },
+  "ff_joint_crutch": {
+    "name": "ff_joint_crutch",
+    "mapTo": "ff_joint_crutch",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.72,
+          0.62,
+          0.45,
+          1
+        ],
+        "roughnessFactor": 0.85,
+        "metallicFactor": 0
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": false
+  },
+  "ff_joint_paper": {
+    "name": "ff_joint_paper",
+    "mapTo": "ff_joint_paper",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.9,
+          0.87,
+          0.78,
+          1
+        ],
+        "roughnessFactor": 0.85,
+        "metallicFactor": 0
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": false
+  },
+  "ff_ember": {
+    "name": "ff_ember",
+    "mapTo": "ff_ember",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.9,
+          0.22,
+          0.03,
+          1
+        ],
+        "roughnessFactor": 0.9,
+        "metallicFactor": 0,
+        "emissiveFactor": [
+          1,
+          0.3,
+          0.05
+        ],
+        "glow": true
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": false
+  },
+  "ff_lighter_red": {
+    "name": "ff_lighter_red",
+    "mapTo": "ff_lighter_red",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.6,
+          0.04,
+          0.05,
+          1
+        ],
+        "roughnessFactor": 0.4,
+        "metallicFactor": 0
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": false
+  },
+  "ff_lighter_black": {
+    "name": "ff_lighter_black",
+    "mapTo": "ff_lighter_black",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.05,
+          0.05,
+          0.05,
+          1
+        ],
+        "roughnessFactor": 0.5,
+        "metallicFactor": 0.4
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": false
+  },
+  "ff_flame": {
+    "name": "ff_flame",
+    "mapTo": "ff_flame",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          1,
+          0.62,
+          0.15,
+          1
+        ],
+        "roughnessFactor": 1,
+        "metallicFactor": 0,
+        "emissiveFactor": [
+          1,
+          0.55,
+          0.12
+        ],
+        "glow": true
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": false
+  },
+  "ff_flame_blue": {
+    "name": "ff_flame_blue",
+    "mapTo": "ff_flame_blue",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.2,
+          0.35,
+          1,
+          1
+        ],
+        "roughnessFactor": 1,
+        "metallicFactor": 0,
+        "emissiveFactor": [
+          0.25,
+          0.4,
+          1
+        ],
+        "glow": true
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": false
+  },
+  "ff_ring_green": {
+    "name": "ff_ring_green",
+    "mapTo": "ff_ring_green",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.2,
+          1,
+          0.45,
+          1
+        ],
+        "roughnessFactor": 0.6,
+        "metallicFactor": 0,
+        "emissiveFactor": [
+          0.2,
+          1,
+          0.45
+        ],
+        "glow": true
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": false
+  },
+  "ff_ringfloor_green": {
+    "name": "ff_ringfloor_green",
+    "mapTo": "ff_ringfloor_green",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.2,
+          1,
+          0.45,
+          0.13
+        ],
+        "roughnessFactor": 1,
+        "metallicFactor": 0,
+        "emissiveFactor": [
+          0.1,
+          0.5,
+          0.225
+        ],
+        "glow": true,
+        "opacityFactor": 0.13
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": false,
+    "translucent": true,
+    "translucentBlendOp": "AddAlpha",
+    "translucentZWrite": false,
+    "doubleSided": true
+  },
+  "ff_ringwall_green": {
+    "name": "ff_ringwall_green",
+    "mapTo": "ff_ringwall_green",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.2,
+          1,
+          0.45,
+          0.42
+        ],
+        "roughnessFactor": 1,
+        "metallicFactor": 0,
+        "emissiveFactor": [
+          0.2,
+          1,
+          0.45
+        ],
+        "glow": true,
+        "opacityFactor": 0.42
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": false,
+    "translucent": true,
+    "translucentBlendOp": "AddAlpha",
+    "translucentZWrite": false,
+    "doubleSided": true
+  },
+  "ff_ringwallhi_green": {
+    "name": "ff_ringwallhi_green",
+    "mapTo": "ff_ringwallhi_green",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.2,
+          1,
+          0.45,
+          0.14
+        ],
+        "roughnessFactor": 1,
+        "metallicFactor": 0,
+        "emissiveFactor": [
+          0.13999999999999999,
+          0.7,
+          0.315
+        ],
+        "glow": true,
+        "opacityFactor": 0.14
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": false,
+    "translucent": true,
+    "translucentBlendOp": "AddAlpha",
+    "translucentZWrite": false,
+    "doubleSided": true
+  },
+  "ff_ring_orange": {
+    "name": "ff_ring_orange",
+    "mapTo": "ff_ring_orange",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          1,
+          0.6,
+          0.12,
+          1
+        ],
+        "roughnessFactor": 0.6,
+        "metallicFactor": 0,
+        "emissiveFactor": [
+          1,
+          0.6,
+          0.12
+        ],
+        "glow": true
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": false
+  },
+  "ff_ringfloor_orange": {
+    "name": "ff_ringfloor_orange",
+    "mapTo": "ff_ringfloor_orange",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          1,
+          0.6,
+          0.12,
+          0.13
+        ],
+        "roughnessFactor": 1,
+        "metallicFactor": 0,
+        "emissiveFactor": [
+          0.5,
+          0.3,
+          0.06
+        ],
+        "glow": true,
+        "opacityFactor": 0.13
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": false,
+    "translucent": true,
+    "translucentBlendOp": "AddAlpha",
+    "translucentZWrite": false,
+    "doubleSided": true
+  },
+  "ff_ringwall_orange": {
+    "name": "ff_ringwall_orange",
+    "mapTo": "ff_ringwall_orange",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          1,
+          0.6,
+          0.12,
+          0.42
+        ],
+        "roughnessFactor": 1,
+        "metallicFactor": 0,
+        "emissiveFactor": [
+          1,
+          0.6,
+          0.12
+        ],
+        "glow": true,
+        "opacityFactor": 0.42
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": false,
+    "translucent": true,
+    "translucentBlendOp": "AddAlpha",
+    "translucentZWrite": false,
+    "doubleSided": true
+  },
+  "ff_ringwallhi_orange": {
+    "name": "ff_ringwallhi_orange",
+    "mapTo": "ff_ringwallhi_orange",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          1,
+          0.6,
+          0.12,
+          0.14
+        ],
+        "roughnessFactor": 1,
+        "metallicFactor": 0,
+        "emissiveFactor": [
+          0.7,
+          0.42,
+          0.08399999999999999
+        ],
+        "glow": true,
+        "opacityFactor": 0.14
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": false,
+    "translucent": true,
+    "translucentBlendOp": "AddAlpha",
+    "translucentZWrite": false,
+    "doubleSided": true
+  },
+  "ff_ring_red": {
+    "name": "ff_ring_red",
+    "mapTo": "ff_ring_red",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          1,
+          0.25,
+          0.2,
+          1
+        ],
+        "roughnessFactor": 0.6,
+        "metallicFactor": 0,
+        "emissiveFactor": [
+          1,
+          0.25,
+          0.2
+        ],
+        "glow": true
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": false
+  },
+  "ff_ringfloor_red": {
+    "name": "ff_ringfloor_red",
+    "mapTo": "ff_ringfloor_red",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          1,
+          0.25,
+          0.2,
+          0.13
+        ],
+        "roughnessFactor": 1,
+        "metallicFactor": 0,
+        "emissiveFactor": [
+          0.5,
+          0.125,
+          0.1
+        ],
+        "glow": true,
+        "opacityFactor": 0.13
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": false,
+    "translucent": true,
+    "translucentBlendOp": "AddAlpha",
+    "translucentZWrite": false,
+    "doubleSided": true
+  },
+  "ff_ringwall_red": {
+    "name": "ff_ringwall_red",
+    "mapTo": "ff_ringwall_red",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          1,
+          0.25,
+          0.2,
+          0.42
+        ],
+        "roughnessFactor": 1,
+        "metallicFactor": 0,
+        "emissiveFactor": [
+          1,
+          0.25,
+          0.2
+        ],
+        "glow": true,
+        "opacityFactor": 0.42
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": false,
+    "translucent": true,
+    "translucentBlendOp": "AddAlpha",
+    "translucentZWrite": false,
+    "doubleSided": true
+  },
+  "ff_ringwallhi_red": {
+    "name": "ff_ringwallhi_red",
+    "mapTo": "ff_ringwallhi_red",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          1,
+          0.25,
+          0.2,
+          0.14
+        ],
+        "roughnessFactor": 1,
+        "metallicFactor": 0,
+        "emissiveFactor": [
+          0.7,
+          0.175,
+          0.13999999999999999
+        ],
+        "glow": true,
+        "opacityFactor": 0.14
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": false,
+    "translucent": true,
+    "translucentBlendOp": "AddAlpha",
+    "translucentZWrite": false,
+    "doubleSided": true
+  },
+  "ff_ring_blue": {
+    "name": "ff_ring_blue",
+    "mapTo": "ff_ring_blue",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.3,
+          0.6,
+          1,
+          1
+        ],
+        "roughnessFactor": 0.6,
+        "metallicFactor": 0,
+        "emissiveFactor": [
+          0.3,
+          0.6,
+          1
+        ],
+        "glow": true
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": false
+  },
+  "ff_ringfloor_blue": {
+    "name": "ff_ringfloor_blue",
+    "mapTo": "ff_ringfloor_blue",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.3,
+          0.6,
+          1,
+          0.13
+        ],
+        "roughnessFactor": 1,
+        "metallicFactor": 0,
+        "emissiveFactor": [
+          0.15,
+          0.3,
+          0.5
+        ],
+        "glow": true,
+        "opacityFactor": 0.13
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": false,
+    "translucent": true,
+    "translucentBlendOp": "AddAlpha",
+    "translucentZWrite": false,
+    "doubleSided": true
+  },
+  "ff_ringwall_blue": {
+    "name": "ff_ringwall_blue",
+    "mapTo": "ff_ringwall_blue",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.3,
+          0.6,
+          1,
+          0.42
+        ],
+        "roughnessFactor": 1,
+        "metallicFactor": 0,
+        "emissiveFactor": [
+          0.3,
+          0.6,
+          1
+        ],
+        "glow": true,
+        "opacityFactor": 0.42
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": false,
+    "translucent": true,
+    "translucentBlendOp": "AddAlpha",
+    "translucentZWrite": false,
+    "doubleSided": true
+  },
+  "ff_ringwallhi_blue": {
+    "name": "ff_ringwallhi_blue",
+    "mapTo": "ff_ringwallhi_blue",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.3,
+          0.6,
+          1,
+          0.14
+        ],
+        "roughnessFactor": 1,
+        "metallicFactor": 0,
+        "emissiveFactor": [
+          0.21,
+          0.42,
+          0.7
+        ],
+        "glow": true,
+        "opacityFactor": 0.14
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": false,
+    "translucent": true,
+    "translucentBlendOp": "AddAlpha",
+    "translucentZWrite": false,
+    "doubleSided": true
+  },
+  "ff_ring_violet": {
+    "name": "ff_ring_violet",
+    "mapTo": "ff_ring_violet",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.7,
+          0.4,
+          1,
+          1
+        ],
+        "roughnessFactor": 0.6,
+        "metallicFactor": 0,
+        "emissiveFactor": [
+          0.7,
+          0.4,
+          1
+        ],
+        "glow": true
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": false
+  },
+  "ff_ringfloor_violet": {
+    "name": "ff_ringfloor_violet",
+    "mapTo": "ff_ringfloor_violet",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.7,
+          0.4,
+          1,
+          0.13
+        ],
+        "roughnessFactor": 1,
+        "metallicFactor": 0,
+        "emissiveFactor": [
+          0.35,
+          0.2,
+          0.5
+        ],
+        "glow": true,
+        "opacityFactor": 0.13
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": false,
+    "translucent": true,
+    "translucentBlendOp": "AddAlpha",
+    "translucentZWrite": false,
+    "doubleSided": true
+  },
+  "ff_ringwall_violet": {
+    "name": "ff_ringwall_violet",
+    "mapTo": "ff_ringwall_violet",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.7,
+          0.4,
+          1,
+          0.42
+        ],
+        "roughnessFactor": 1,
+        "metallicFactor": 0,
+        "emissiveFactor": [
+          0.7,
+          0.4,
+          1
+        ],
+        "glow": true,
+        "opacityFactor": 0.42
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": false,
+    "translucent": true,
+    "translucentBlendOp": "AddAlpha",
+    "translucentZWrite": false,
+    "doubleSided": true
+  },
+  "ff_ringwallhi_violet": {
+    "name": "ff_ringwallhi_violet",
+    "mapTo": "ff_ringwallhi_violet",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.7,
+          0.4,
+          1,
+          0.14
+        ],
+        "roughnessFactor": 1,
+        "metallicFactor": 0,
+        "emissiveFactor": [
+          0.48999999999999994,
+          0.27999999999999997,
+          0.7
+        ],
+        "glow": true,
+        "opacityFactor": 0.14
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": false,
+    "translucent": true,
+    "translucentBlendOp": "AddAlpha",
+    "translucentZWrite": false,
+    "doubleSided": true
+  },
+  "ff_ring_yellow": {
+    "name": "ff_ring_yellow",
+    "mapTo": "ff_ring_yellow",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          1,
+          0.85,
+          0.2,
+          1
+        ],
+        "roughnessFactor": 0.6,
+        "metallicFactor": 0,
+        "emissiveFactor": [
+          1,
+          0.85,
+          0.2
+        ],
+        "glow": true
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": false
+  },
+  "ff_ringfloor_yellow": {
+    "name": "ff_ringfloor_yellow",
+    "mapTo": "ff_ringfloor_yellow",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          1,
+          0.85,
+          0.2,
+          0.13
+        ],
+        "roughnessFactor": 1,
+        "metallicFactor": 0,
+        "emissiveFactor": [
+          0.5,
+          0.425,
+          0.1
+        ],
+        "glow": true,
+        "opacityFactor": 0.13
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": false,
+    "translucent": true,
+    "translucentBlendOp": "AddAlpha",
+    "translucentZWrite": false,
+    "doubleSided": true
+  },
+  "ff_ringwall_yellow": {
+    "name": "ff_ringwall_yellow",
+    "mapTo": "ff_ringwall_yellow",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          1,
+          0.85,
+          0.2,
+          0.42
+        ],
+        "roughnessFactor": 1,
+        "metallicFactor": 0,
+        "emissiveFactor": [
+          1,
+          0.85,
+          0.2
+        ],
+        "glow": true,
+        "opacityFactor": 0.42
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": false,
+    "translucent": true,
+    "translucentBlendOp": "AddAlpha",
+    "translucentZWrite": false,
+    "doubleSided": true
+  },
+  "ff_ringwallhi_yellow": {
+    "name": "ff_ringwallhi_yellow",
+    "mapTo": "ff_ringwallhi_yellow",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          1,
+          0.85,
+          0.2,
+          0.14
+        ],
+        "roughnessFactor": 1,
+        "metallicFactor": 0,
+        "emissiveFactor": [
+          0.7,
+          0.595,
+          0.13999999999999999
+        ],
+        "glow": true,
+        "opacityFactor": 0.14
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": false,
+    "translucent": true,
+    "translucentBlendOp": "AddAlpha",
+    "translucentZWrite": false,
+    "doubleSided": true
+  },
+  "ff_ring_cyan": {
+    "name": "ff_ring_cyan",
+    "mapTo": "ff_ring_cyan",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.2,
+          0.9,
+          0.95,
+          1
+        ],
+        "roughnessFactor": 0.6,
+        "metallicFactor": 0,
+        "emissiveFactor": [
+          0.2,
+          0.9,
+          0.95
+        ],
+        "glow": true
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": false
+  },
+  "ff_ringfloor_cyan": {
+    "name": "ff_ringfloor_cyan",
+    "mapTo": "ff_ringfloor_cyan",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.2,
+          0.9,
+          0.95,
+          0.13
+        ],
+        "roughnessFactor": 1,
+        "metallicFactor": 0,
+        "emissiveFactor": [
+          0.1,
+          0.45,
+          0.475
+        ],
+        "glow": true,
+        "opacityFactor": 0.13
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": false,
+    "translucent": true,
+    "translucentBlendOp": "AddAlpha",
+    "translucentZWrite": false,
+    "doubleSided": true
+  },
+  "ff_ringwall_cyan": {
+    "name": "ff_ringwall_cyan",
+    "mapTo": "ff_ringwall_cyan",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.2,
+          0.9,
+          0.95,
+          0.42
+        ],
+        "roughnessFactor": 1,
+        "metallicFactor": 0,
+        "emissiveFactor": [
+          0.2,
+          0.9,
+          0.95
+        ],
+        "glow": true,
+        "opacityFactor": 0.42
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": false,
+    "translucent": true,
+    "translucentBlendOp": "AddAlpha",
+    "translucentZWrite": false,
+    "doubleSided": true
+  },
+  "ff_ringwallhi_cyan": {
+    "name": "ff_ringwallhi_cyan",
+    "mapTo": "ff_ringwallhi_cyan",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.2,
+          0.9,
+          0.95,
+          0.14
+        ],
+        "roughnessFactor": 1,
+        "metallicFactor": 0,
+        "emissiveFactor": [
+          0.13999999999999999,
+          0.63,
+          0.6649999999999999
+        ],
+        "glow": true,
+        "opacityFactor": 0.14
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": false,
+    "translucent": true,
+    "translucentBlendOp": "AddAlpha",
+    "translucentZWrite": false,
+    "doubleSided": true
+  },
+  "ff_tri_red": {
+    "name": "ff_tri_red",
+    "mapTo": "ff_tri_red",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.85,
+          0.05,
+          0.05,
+          1
+        ],
+        "roughnessFactor": 0.3,
+        "metallicFactor": 0,
+        "emissiveFactor": [
+          0.35,
+          0.02,
+          0.02
+        ],
+        "glow": true
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": false
+  },
+  "ff_tri_white": {
+    "name": "ff_tri_white",
+    "mapTo": "ff_tri_white",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.92,
+          0.92,
+          0.9,
+          1
+        ],
+        "roughnessFactor": 0.6,
+        "metallicFactor": 0
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": false
+  },
+  "ff_tri_metal": {
+    "name": "ff_tri_metal",
+    "mapTo": "ff_tri_metal",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.3,
+          0.32,
+          0.34,
+          1
+        ],
+        "roughnessFactor": 0.5,
+        "metallicFactor": 0.7
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": false
+  },
+  "ff_crate_wood": {
+    "name": "ff_crate_wood",
+    "mapTo": "ff_crate_wood",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.56,
+          0.42,
+          0.26,
+          1
+        ],
+        "roughnessFactor": 0.9,
+        "metallicFactor": 0
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": false
+  },
+  "ff_crate_strap": {
+    "name": "ff_crate_strap",
+    "mapTo": "ff_crate_strap",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.15,
+          0.25,
+          0.6,
+          1
+        ],
+        "roughnessFactor": 0.5,
+        "metallicFactor": 0.3
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": false
+  },
+  "ff_carton": {
+    "name": "ff_carton",
+    "mapTo": "ff_carton",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.68,
+          0.52,
+          0.33,
+          1
+        ],
+        "roughnessFactor": 0.95,
+        "metallicFactor": 0
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": false
+  }
+}

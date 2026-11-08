@@ -1,0 +1,14 @@
+{
+  "domElement": "<fernfahrer-cockpit></fernfahrer-cockpit>",
+  "name": "Trucks of Earth: Spiegel & Sitz",
+  "types": ["ui.apps.categories.utility"],
+  "description": "A slim strip at the screen's edge: adjust the mirrors (the view goes onto the mirror) and the seat (forward/back, height, tilt, field of view), as in ETS2. Only its buttons catch the mouse.",
+  "css": { "top": "140px", "left": "0px", "width": "320px", "height": "480px" },
+  "author": "fernfahrer_karriere",
+  "version": "1.0",
+  "directive": "fernfahrerCockpit",
+  "appName": "fernfahrerCockpit",
+  "category": "Gameplay",
+  "isAuxiliary": false,
+  "interactive": "no"
+}

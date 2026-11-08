@@ -1,0 +1,14 @@
+{
+  "domElement": "<fernfahrer-funk></fernfahrer-funk>",
+  "name": "Trucks of Earth: Funk",
+  "types": ["ui.apps.categories.utility"],
+  "description": "Radio messages from the dispatcher.",
+  "css": { "top": "70px", "left": "0", "right": "0", "margin": "auto", "width": "560px", "height": "100px" },
+  "author": "fernfahrer_karriere",
+  "version": "1.0",
+  "directive": "fernfahrerFunk",
+  "appName": "fernfahrerFunk",
+  "category": "Gameplay",
+  "isAuxiliary": false,
+  "interactive": "no"
+}
