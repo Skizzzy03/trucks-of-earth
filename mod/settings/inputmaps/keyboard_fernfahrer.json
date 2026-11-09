@@ -7,6 +7,7 @@
     {"control":"ctrl shift m", "action":"fernfahrer_mirrors"},
     {"control":"ctrl shift b", "action":"fernfahrer_earthRescue"},
     {"control":"ctrl shift a", "action":"fernfahrer_autodrive"},
+    {"control":"ctrl shift c", "action":"fernfahrer_cine"},
     {"control":"enter", "action":"fernfahrer_stop"}
   ]
 }

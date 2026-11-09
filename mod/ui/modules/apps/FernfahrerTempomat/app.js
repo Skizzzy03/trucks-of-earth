@@ -30,6 +30,7 @@ angular.module('beamng.apps')
     replace: true,
     link: function (scope) {
       'use strict'
+      // (the frame in the layout has room for the row of driver assistance; the content stands at its bottom)
       scope.h = { mode: false }
       scope.on = false
       scope.last = null

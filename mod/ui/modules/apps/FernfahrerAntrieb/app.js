@@ -30,9 +30,18 @@ angular.module('beamng.apps')
           '<span class="lt" ng-class="{on: e.highbeam > 0.5}">Fern</span><span ng-class="{on: e.hazard_enabled > 0.5}">Warn</span></div>' +
       '</div></div>',
     replace: true,
-    link: function (scope) {
+    link: function (scope, el) {
       'use strict'
       scope.h = { mode: false }
+      // (it stands right on the Tempomat, which is taller with driver assistance fitted in the workshop)
+      var wasAssist
+      function follow() {
+        var a = !!(scope.h.assist && Object.keys(scope.h.assist).length)
+        if (a === wasAssist) { return }
+        wasAssist = a
+        // (2026-11-09: only within its own frame, which has the room – moving the frame from here could put the whole app off the screen)
+        el[0].style.transform = a ? 'translateY(-24px)' : ''
+      }
       scope.e = {}
       var MODES = { open: 'OFFEN', locked: 'GESPERRT', lsd: 'SPERRDIFF', viscous: 'VISKO', welded: 'VERSCHW.', dualClutch: 'KUPPLUNG', activeLock: 'AKTIV' }
       var NAMES = [
@@ -75,7 +84,7 @@ angular.module('beamng.apps')
         lastKey = key
         scope.$evalAsync(function () { scope.e = { gear: el.gear, parkingbrake: el.parkingbrake, lowbeam: el.lowbeam, highbeam: el.highbeam, hazard_enabled: el.hazard_enabled } })
       })
-      scope.$on('FernfahrerHud', function (ev, data) { scope.$evalAsync(function () { scope.h = data || { mode: false }; rebuild(scope.h.drive) }) })
+      scope.$on('FernfahrerHud', function (ev, data) { scope.$evalAsync(function () { scope.h = data || { mode: false }; rebuild(scope.h.drive); follow() }) })
     }
   }
 }]);

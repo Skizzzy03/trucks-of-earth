@@ -7,18 +7,22 @@
     "Stages": [
       {
         "baseColorFactor": [
-          0.62,
-          0.07,
-          0.08,
+          0.48,
+          0.025,
+          0.03,
           1
         ],
-        "roughnessFactor": 0.3,
-        "metallicFactor": 0.4
+        "roughnessFactor": 0.28,
+        "metallicFactor": 0.45,
+        "normalMap": "/vehicles/eu_trailers/ff_tex/flake.normal.png",
+        "clearCoatFactor": 1,
+        "clearCoatRoughnessFactor": 0.03
       },
       {},
       {},
       {}
-    ]
+    ],
+    "dynamicCubemap": true
   },
   "ff_paint_blue": {
     "name": "ff_paint_blue",
@@ -28,18 +32,22 @@
     "Stages": [
       {
         "baseColorFactor": [
-          0.06,
-          0.17,
-          0.46,
+          0.03,
+          0.1,
+          0.36,
           1
         ],
-        "roughnessFactor": 0.3,
-        "metallicFactor": 0.4
+        "roughnessFactor": 0.26,
+        "metallicFactor": 0.75,
+        "normalMap": "/vehicles/eu_trailers/ff_tex/flake.normal.png",
+        "clearCoatFactor": 1,
+        "clearCoatRoughnessFactor": 0.03
       },
       {},
       {},
       {}
-    ]
+    ],
+    "dynamicCubemap": true
   },
   "ff_paint_silver": {
     "name": "ff_paint_silver",
@@ -49,18 +57,22 @@
     "Stages": [
       {
         "baseColorFactor": [
-          0.62,
-          0.63,
-          0.66,
+          0.56,
+          0.57,
+          0.6,
           1
         ],
         "roughnessFactor": 0.3,
-        "metallicFactor": 0.7
+        "metallicFactor": 0.95,
+        "normalMap": "/vehicles/eu_trailers/ff_tex/flake.normal.png",
+        "clearCoatFactor": 1,
+        "clearCoatRoughnessFactor": 0.03
       },
       {},
       {},
       {}
-    ]
+    ],
+    "dynamicCubemap": true
   },
   "ff_paint_white": {
     "name": "ff_paint_white",
@@ -70,18 +82,22 @@
     "Stages": [
       {
         "baseColorFactor": [
-          0.86,
-          0.86,
-          0.87,
+          0.82,
+          0.82,
+          0.83,
           1
         ],
-        "roughnessFactor": 0.35,
-        "metallicFactor": 0.1
+        "roughnessFactor": 0.3,
+        "metallicFactor": 0.05,
+        "normalMap": "/vehicles/eu_trailers/ff_tex/flake.normal.png",
+        "clearCoatFactor": 1,
+        "clearCoatRoughnessFactor": 0.03
       },
       {},
       {},
       {}
-    ]
+    ],
+    "dynamicCubemap": true
   },
   "ff_paint_black": {
     "name": "ff_paint_black",
@@ -91,18 +107,22 @@
     "Stages": [
       {
         "baseColorFactor": [
-          0.03,
-          0.03,
-          0.035,
+          0.012,
+          0.012,
+          0.015,
           1
         ],
-        "roughnessFactor": 0.3,
-        "metallicFactor": 0.3
+        "roughnessFactor": 0.22,
+        "metallicFactor": 0.6,
+        "normalMap": "/vehicles/eu_trailers/ff_tex/flake.normal.png",
+        "clearCoatFactor": 1,
+        "clearCoatRoughnessFactor": 0.03
       },
       {},
       {},
       {}
-    ]
+    ],
+    "dynamicCubemap": true
   },
   "ff_paint_green": {
     "name": "ff_paint_green",
@@ -112,18 +132,22 @@
     "Stages": [
       {
         "baseColorFactor": [
-          0.1,
-          0.3,
+          0.05,
           0.19,
+          0.12,
           1
         ],
-        "roughnessFactor": 0.35,
-        "metallicFactor": 0.3
+        "roughnessFactor": 0.26,
+        "metallicFactor": 0.7,
+        "normalMap": "/vehicles/eu_trailers/ff_tex/flake.normal.png",
+        "clearCoatFactor": 1,
+        "clearCoatRoughnessFactor": 0.03
       },
       {},
       {},
       {}
-    ]
+    ],
+    "dynamicCubemap": true
   },
   "ff_rust_a": {
     "name": "ff_rust_a",
@@ -133,13 +157,15 @@
     "Stages": [
       {
         "baseColorFactor": [
-          0.33,
-          0.17,
-          0.09,
+          0.72,
+          0.5,
+          0.38,
           1
         ],
-        "roughnessFactor": 0.9,
-        "metallicFactor": 0.1
+        "roughnessFactor": 0.86,
+        "metallicFactor": 0.05,
+        "baseColorMap": "/vehicles/eu_trailers/ff_tex/rust.color.png",
+        "normalMap": "/vehicles/eu_trailers/ff_tex/rust.normal.png"
       },
       {},
       {},
@@ -154,13 +180,15 @@
     "Stages": [
       {
         "baseColorFactor": [
-          0.28,
-          0.27,
-          0.25,
+          0.42,
+          0.55,
+          0.66,
           1
         ],
-        "roughnessFactor": 0.85,
-        "metallicFactor": 0.2
+        "roughnessFactor": 0.86,
+        "metallicFactor": 0.05,
+        "baseColorMap": "/vehicles/eu_trailers/ff_tex/rust.color.png",
+        "normalMap": "/vehicles/eu_trailers/ff_tex/rust.normal.png"
       },
       {},
       {},
@@ -175,13 +203,15 @@
     "Stages": [
       {
         "baseColorFactor": [
-          0.42,
-          0.36,
-          0.2,
+          0.72,
+          0.7,
+          0.5,
           1
         ],
-        "roughnessFactor": 0.85,
-        "metallicFactor": 0.1
+        "roughnessFactor": 0.86,
+        "metallicFactor": 0.05,
+        "baseColorMap": "/vehicles/eu_trailers/ff_tex/rust.color.png",
+        "normalMap": "/vehicles/eu_trailers/ff_tex/rust.normal.png"
       },
       {},
       {},
@@ -196,18 +226,23 @@
     "Stages": [
       {
         "baseColorFactor": [
-          0.04,
-          0.06,
-          0.08,
+          0.012,
+          0.018,
+          0.022,
           1
         ],
-        "roughnessFactor": 0.08,
-        "metallicFactor": 0.3
+        "roughnessFactor": 0.04,
+        "metallicFactor": 0.1,
+        "opacityFactor": 0.85
       },
       {},
       {},
       {}
-    ]
+    ],
+    "dynamicCubemap": true,
+    "translucent": true,
+    "translucentBlendOp": "PreMulAlpha",
+    "translucentRecvShadows": true
   },
   "ff_glass_broken": {
     "name": "ff_glass_broken",
@@ -217,34 +252,64 @@
     "Stages": [
       {
         "baseColorFactor": [
-          0.02,
-          0.02,
-          0.02,
+          1,
+          1,
+          1,
           1
         ],
-        "roughnessFactor": 0.9,
-        "metallicFactor": 0
+        "roughnessFactor": 0.7,
+        "metallicFactor": 0,
+        "baseColorMap": "/vehicles/eu_trailers/ff_tex/glass_broken.color.png",
+        "opacityFactor": 0.9
+      },
+      {},
+      {},
+      {}
+    ],
+    "translucent": true,
+    "translucentBlendOp": "PreMulAlpha",
+    "translucentRecvShadows": true
+  },
+  "ff_tire_tread": {
+    "name": "ff_tire_tread",
+    "mapTo": "ff_tire_tread",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "roughnessFactor": 0.92,
+        "metallicFactor": 0,
+        "baseColorMap": "/vehicles/eu_trailers/ff_tex/tire_tread.color.png",
+        "normalMap": "/vehicles/eu_trailers/ff_tex/tire_tread.normal.png"
       },
       {},
       {},
       {}
     ]
   },
-  "ff_tire": {
-    "name": "ff_tire",
-    "mapTo": "ff_tire",
+  "ff_tire_side": {
+    "name": "ff_tire_side",
+    "mapTo": "ff_tire_side",
     "class": "Material",
     "version": 1.5,
     "Stages": [
       {
         "baseColorFactor": [
-          0.025,
-          0.025,
-          0.025,
+          1,
+          1,
+          1,
           1
         ],
-        "roughnessFactor": 0.9,
-        "metallicFactor": 0
+        "roughnessFactor": 0.78,
+        "metallicFactor": 0,
+        "baseColorMap": "/vehicles/eu_trailers/ff_tex/tire_side.color.png",
+        "normalMap": "/vehicles/eu_trailers/ff_tex/tire_side.normal.png"
       },
       {},
       {},
@@ -259,13 +324,35 @@
     "Stages": [
       {
         "baseColorFactor": [
-          0.55,
-          0.56,
-          0.58,
+          0.62,
+          0.63,
+          0.66,
           1
         ],
-        "roughnessFactor": 0.3,
-        "metallicFactor": 0.8
+        "roughnessFactor": 0.24,
+        "metallicFactor": 0.95
+      },
+      {},
+      {},
+      {}
+    ],
+    "dynamicCubemap": true
+  },
+  "ff_brake": {
+    "name": "ff_brake",
+    "mapTo": "ff_brake",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.25,
+          0.25,
+          0.26,
+          1
+        ],
+        "roughnessFactor": 0.5,
+        "metallicFactor": 0.9
       },
       {},
       {},
@@ -280,18 +367,146 @@
     "Stages": [
       {
         "baseColorFactor": [
-          0.02,
-          0.02,
-          0.02,
+          0.012,
+          0.012,
+          0.014,
           1
         ],
-        "roughnessFactor": 0.9,
+        "roughnessFactor": 0.95,
         "metallicFactor": 0
       },
       {},
       {},
       {}
     ]
+  },
+  "ff_interior": {
+    "name": "ff_interior",
+    "mapTo": "ff_interior",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.03,
+          0.03,
+          0.032,
+          1
+        ],
+        "roughnessFactor": 0.85,
+        "metallicFactor": 0
+      },
+      {},
+      {},
+      {}
+    ]
+  },
+  "ff_seat": {
+    "name": "ff_seat",
+    "mapTo": "ff_seat",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.05,
+          0.05,
+          0.055,
+          1
+        ],
+        "roughnessFactor": 0.8,
+        "metallicFactor": 0
+      },
+      {},
+      {},
+      {}
+    ]
+  },
+  "ff_trim": {
+    "name": "ff_trim",
+    "mapTo": "ff_trim",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.018,
+          0.018,
+          0.02,
+          1
+        ],
+        "roughnessFactor": 0.6,
+        "metallicFactor": 0
+      },
+      {},
+      {},
+      {}
+    ]
+  },
+  "ff_gap": {
+    "name": "ff_gap",
+    "mapTo": "ff_gap",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.003,
+          0.003,
+          0.003,
+          1
+        ],
+        "roughnessFactor": 0.95,
+        "metallicFactor": 0
+      },
+      {},
+      {},
+      {}
+    ]
+  },
+  "ff_chrome": {
+    "name": "ff_chrome",
+    "mapTo": "ff_chrome",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.8,
+          0.8,
+          0.82,
+          1
+        ],
+        "roughnessFactor": 0.1,
+        "metallicFactor": 1
+      },
+      {},
+      {},
+      {}
+    ],
+    "dynamicCubemap": true
+  },
+  "ff_mirror": {
+    "name": "ff_mirror",
+    "mapTo": "ff_mirror",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.75,
+          0.78,
+          0.82,
+          1
+        ],
+        "roughnessFactor": 0.03,
+        "metallicFactor": 1
+      },
+      {},
+      {},
+      {}
+    ],
+    "dynamicCubemap": true
   },
   "ff_lamp": {
     "name": "ff_lamp",
@@ -301,18 +516,22 @@
     "Stages": [
       {
         "baseColorFactor": [
-          0.92,
-          0.92,
-          0.86,
+          1,
+          1,
+          1,
           1
         ],
-        "roughnessFactor": 0.15,
-        "metallicFactor": 0.3
+        "roughnessFactor": 0.08,
+        "metallicFactor": 0.4,
+        "baseColorMap": "/vehicles/eu_trailers/ff_tex/lamp.color.png",
+        "clearCoatFactor": 1,
+        "clearCoatRoughnessFactor": 0.03
       },
       {},
       {},
       {}
-    ]
+    ],
+    "dynamicCubemap": true
   },
   "ff_rear": {
     "name": "ff_rear",
@@ -322,13 +541,63 @@
     "Stages": [
       {
         "baseColorFactor": [
-          0.6,
-          0.03,
-          0.03,
+          1,
+          1,
+          1,
           1
         ],
-        "roughnessFactor": 0.2,
-        "metallicFactor": 0.2
+        "roughnessFactor": 0.12,
+        "metallicFactor": 0.1,
+        "baseColorMap": "/vehicles/eu_trailers/ff_tex/rear.color.png",
+        "normalMap": "/vehicles/eu_trailers/ff_tex/rear.normal.png",
+        "clearCoatFactor": 1,
+        "clearCoatRoughnessFactor": 0.03
+      },
+      {},
+      {},
+      {}
+    ],
+    "dynamicCubemap": true
+  },
+  "ff_grille": {
+    "name": "ff_grille",
+    "mapTo": "ff_grille",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "roughnessFactor": 0.55,
+        "metallicFactor": 0.2,
+        "baseColorMap": "/vehicles/eu_trailers/ff_tex/grille.color.png",
+        "normalMap": "/vehicles/eu_trailers/ff_tex/grille.normal.png"
+      },
+      {},
+      {},
+      {}
+    ]
+  },
+  "ff_plate": {
+    "name": "ff_plate",
+    "mapTo": "ff_plate",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "roughnessFactor": 0.4,
+        "metallicFactor": 0.1,
+        "baseColorMap": "/vehicles/eu_trailers/ff_tex/plate.color.png"
       },
       {},
       {},
@@ -343,12 +612,56 @@
     "Stages": [
       {
         "baseColorFactor": [
-          0.92,
-          0.55,
-          0.05,
+          1,
+          1,
+          1,
           1
         ],
-        "roughnessFactor": 0.8,
+        "roughnessFactor": 0.85,
+        "metallicFactor": 0,
+        "baseColorMap": "/vehicles/eu_trailers/ff_tex/strap.color.png",
+        "normalMap": "/vehicles/eu_trailers/ff_tex/strap.normal.png"
+      },
+      {},
+      {},
+      {}
+    ]
+  },
+  "ff_hook": {
+    "name": "ff_hook",
+    "mapTo": "ff_hook",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.2,
+          0.2,
+          0.22,
+          1
+        ],
+        "roughnessFactor": 0.4,
+        "metallicFactor": 0.9
+      },
+      {},
+      {},
+      {}
+    ]
+  },
+  "ff_chock": {
+    "name": "ff_chock",
+    "mapTo": "ff_chock",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.5,
+          0.34,
+          0.025,
+          1
+        ],
+        "roughnessFactor": 0.75,
         "metallicFactor": 0
       },
       {},

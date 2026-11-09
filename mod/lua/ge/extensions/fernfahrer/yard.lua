@@ -26,9 +26,10 @@ M.PARK = { -13, 12 }
 -- the search's passes: radius from the home, the most relief and clutter allowed (the colliders stand within ~320 m
 -- of the player, who is at the home: farther than that a building would not be seen)
 M.PASSES = {
-  { r = 180, relief = 1.4, obstacle = 1.3 },
-  { r = 300, relief = 2.4, obstacle = 1.5 },
-  { r = 300, relief = 3.0, obstacle = 1.7 },
+  { r = 180, relief = 1.4, obstacle = 1.3, drive = 0.5 },
+  { r = 300, relief = 2.4, obstacle = 1.5, drive = 0.5 },
+  { r = 300, relief = 3.0, obstacle = 1.7, drive = 0.5 },
+  { r = 300, relief = 3.0, obstacle = 1.7, drive = 0 },    -- (2026-11-08: real roads first, a forest track only at the last)
 }
 
 local Y                        -- the yard built: { id, lights, ox, oy, oz, ex, ey (unit vectors), anchorId }
@@ -44,6 +45,7 @@ local function clear()
   if not Y then return end
   deleteId(Y.id)
   deleteId(Y.deco)
+  deleteId(Y.driveId)
   for _, id in pairs(Y.props or {}) do deleteId(id) end
   for _, l in ipairs(Y.lights or {}) do deleteId(l) end
   Y = nil
@@ -126,7 +128,8 @@ local function roadInside(f, nodes, near)
 end
 
 -- candidates beside the roads around the home, nearest first
-local function candidates(home, nodes, radius, near)
+local function edgeDrive(e) return type(e) == 'table' and tonumber(e.drivability) or 1 end
+local function candidates(home, nodes, radius, near, minDrive)
   local out, seen = {}, {}
   for a, n in pairs(near or nodes) do
     local p = n.pos
@@ -134,7 +137,7 @@ local function candidates(home, nodes, radius, near)
       for b, _ in pairs(n.links or {}) do
         local key = a < b and (tostring(a) .. '|' .. tostring(b)) or (tostring(b) .. '|' .. tostring(a))
         local q = nodes[b] and nodes[b].pos
-        if q and not seen[key] then
+        if q and not seen[key] and edgeDrive(n.links[b]) >= (minDrive or 0) then
           seen[key] = true
           local dx, dy = q.x - p.x, q.y - p.y
           local len = math.sqrt(dx * dx + dy * dy)
@@ -296,6 +299,7 @@ function M.transform(xf)
   local ey = vec3(ax - Y.ox, ay - Y.oy, 0):normalized()
   Y.ey, Y.ex = ey, vec3(ey.y, -ey.x, 0)
   Y.shifted = true
+  Y.driveDirty = true          -- (a DecalRoad cannot be moved: drawn again)
   M.place(Y.night)
 end
 
@@ -333,6 +337,121 @@ function M.officeSpot()
 end
 M.hook = function() hook() end
 
+-- (2026-11-08) the driveway: an asphalt strip from the foot of the gate's ramp to the nearest real road on the gate's side,
+-- laid on the ground as Earth lays its roads (a DecalRoad: nothing to bump into). Planned once, kept in S.yard.drive
+-- ({ {lat, lon}, ... }), drawn again on every visit; yards from before get theirs on their next visit.
+-- (Earth's trees stay: they belong to its tiles. Of the nearest places on the roads the first with a free way is taken.)
+M.DRIVE_MAX_M, M.DRIVE_W, M.DRIVE_TRIES = 350, 9, 8
+
+local function corridorBlocked(ax, ay, bx, by, zRef)
+  local dx, dy = bx - ax, by - ay
+  local len = math.sqrt(dx * dx + dy * dy)
+  if len < 1 then return 0 end
+  local ux, uy, blocked, prev = dx / len, dy / len, 0, nil
+  for s = 2, len, 4 do
+    local lo, hi
+    for _, o in ipairs({ -3, 0, 3 }) do
+      local h = groundAt(ax + ux * s - uy * o, ay + uy * s + ux * o, zRef)
+      if h then lo, hi = math.min(lo or h, h), math.max(hi or h, h) end
+    end
+    if lo then
+      if hi - lo > 1.6 or (prev and lo - prev > 1.6) then blocked = blocked + 1 else prev = lo end
+    end
+  end
+  return blocked
+end
+
+local function planDrive(anchor, nodes)
+  local mx, my = toWorld(Y, 0, -3)
+  local real, any, reach = {}, {}, (M.DRIVE_MAX_M + 60) ^ 2
+  for _, n in pairs(nodes) do
+    local p = n.pos
+    if p and (p.x - mx) ^ 2 + (p.y - my) ^ 2 < reach then
+      for k, e in pairs(n.links or {}) do
+        local q = nodes[k] and nodes[k].pos
+        if q then
+          local dx, dy = q.x - p.x, q.y - p.y
+          local l2 = dx * dx + dy * dy
+          if l2 > 0.25 then
+            local t = math.max(0, math.min(1, ((mx - p.x) * dx + (my - p.y) * dy) / l2))
+            local x, y = p.x + dx * t, p.y + dy * t
+            local d = math.sqrt((x - mx) ^ 2 + (y - my) ^ 2)
+            -- (on the gate's side only: not through the yard)
+            if d <= M.DRIVE_MAX_M and (x - Y.ox) * Y.ey.x + (y - Y.oy) * Y.ey.y < -1 then
+              local s = { x = x, y = y, d = d }
+              any[#any + 1] = s
+              if edgeDrive(e) >= 0.5 then real[#real + 1] = s end
+            end
+          end
+        end
+      end
+    end
+  end
+  local list = #real > 0 and real or any
+  if #list == 0 then return nil end
+  table.sort(list, function(u, v) return u.d < v.d end)
+  local lx, ly = toWorld(Y, 0, -10)
+  local best, tested = nil, {}
+  for _, s in ipairs(list) do
+    local fresh = true
+    for _, o in ipairs(tested) do if (o.x - s.x) ^ 2 + (o.y - s.y) ^ 2 < 36 then fresh = false; break end end
+    if fresh then
+      tested[#tested + 1] = s
+      local sx, sy = s.d > 14 and lx or mx, s.d > 14 and ly or my
+      if corridorBlocked(sx, sy, s.x, s.y, Y.oz) == 0 then best = s; break end
+      if #tested >= 8 then break end
+    end
+  end
+  best = best or list[1]
+  local world = { { mx, my } }
+  local sx, sy = mx, my
+  if best.d > 14 then world[2] = { lx, ly }; sx, sy = lx, ly end
+  local len = math.sqrt((best.x - sx) ^ 2 + (best.y - sy) ^ 2)
+  local steps = math.max(2, math.floor(len / 8))
+  for i = 1, steps do world[#world + 1] = { sx + (best.x - sx) * i / steps, sy + (best.y - sy) * i / steps } end
+  local pts = {}
+  for i, w in ipairs(world) do
+    local lat, lon = anchor:worldToGeodetic(w[1], w[2], 0)
+    pts[i] = { lat, lon }
+  end
+  log('I', 'fernfahrer', string.format('yard: driveway of %.0f m to the road', best.d))
+  return pts
+end
+
+local function drawDrive(S, anchor)
+  deleteId(Y.driveId)
+  Y.driveId = nil
+  local r = createObject('DecalRoad')
+  if not r then return end
+  for _, f in ipairs({ { 'material', 'road_asphalt_2lane' }, { 'textureLength', '16' }, { 'renderPriority', '10' }, { 'drivability', '-1' },
+    { 'improvedSpline', 'true' }, { 'overObjects', 'false' }, { 'decalBias', '0.1' } }) do r:setField(f[1], 0, f[2]) end
+  r.canSave = false
+  r:registerObject('ff_yard_drive')
+  if scenetree.MissionGroup then pcall(function() scenetree.MissionGroup:addObject(r) end) end
+  local z = Y.oz
+  for _, p in ipairs(S.yard.drive) do
+    local x, y = anchor:geodeticToWorld(p[1], p[2], 0)
+    local h = groundAt(x, y, Y.oz)
+    if h and math.abs(h - z) < 3 then z = h end
+    r:insertNodeNoRegen(vec3(x, y, z + 0.05), M.DRIVE_W, -1)
+  end
+  r:regenerate()
+  Y.driveId = r:getID()
+end
+
+local function driveTick(S, anchor)
+  if Y.driveId and not Y.driveDirty then return end
+  if (Y.driveTries or 0) >= M.DRIVE_TRIES or os.clock() < (Y.driveNext or 0) then return end
+  Y.driveTries, Y.driveNext, Y.driveDirty = (Y.driveTries or 0) + (Y.driveDirty and 0 or 1), os.clock() + 3, nil
+  if not S.yard.drive then
+    local nodes = map and map.getMap and map.getMap().nodes
+    if not nodes or not next(nodes) then return end
+    S.yard.drive = planDrive(anchor, nodes)
+    if not S.yard.drive then return end
+  end
+  drawDrive(S, anchor)
+end
+
 -- the yard's middle on its concrete and its depth axis (the day's camera flight)
 function M.center()
   if not Y then return nil end
@@ -348,6 +467,11 @@ function M.update(ctx)
   local anchor, aid = ctx.anchor(), ctx.anchorId()
   local pp = ctx.playerPos()
   if not S or not anchor or not pp then return end
+  -- (the driveway does not wait for the rest of the world: it was never laid while Earth kept loading)
+  if Y and Y.anchorId == aid and S.yard and S.yard.lat then
+    local okD, errD = pcall(driveTick, S, anchor)
+    if not okD then Y.driveTries = M.DRIVE_TRIES; log('E', 'fernfahrer', 'yard driveway: ' .. tostring(errD)) end
+  end
   if ctx.loading() then if not Y then M.status = 'waiting for the world' end; return end
   -- a new world (teleport, a new session) without the shift: the yard built again
   if Y and Y.anchorId ~= aid then
@@ -387,7 +511,7 @@ function M.update(ctx)
       local p = n.pos
       if p and (p.x - home.x) ^ 2 + (p.y - home.y) ^ 2 < rr then near[id] = n end
     end
-    search = { near = near, cands = candidates(home, nodes, M.PASSES[1].r, near), i = 1, waits = 0, pass = 1 }
+    search = { near = near, cands = candidates(home, nodes, M.PASSES[1].r, near, M.PASSES[1].drive), i = 1, waits = 0, pass = 1 }
     log('I', 'fernfahrer', string.format('yard: searching near the home, %d places to look at', #search.cands))
     return
   end
@@ -400,7 +524,7 @@ function M.update(ctx)
     if not f then
       if search.pass < #M.PASSES then
         local nextPass, best = search.pass + 1, search.best
-        search = { near = search.near, cands = candidates(home, nodes, M.PASSES[nextPass].r, search.near), i = 1, waits = 0, pass = nextPass, best = best }
+        search = { near = search.near, cands = candidates(home, nodes, M.PASSES[nextPass].r, search.near, M.PASSES[nextPass].drive), i = 1, waits = 0, pass = nextPass, best = best }
         log('I', 'fernfahrer', string.format('yard: none found in pass %d – searching wider and less strict', nextPass - 1))
         return
       end

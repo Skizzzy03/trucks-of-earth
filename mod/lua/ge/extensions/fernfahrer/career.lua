@@ -277,7 +277,8 @@ local function defaults()
     owned = {}, active = 'loaner',
     stats = { jobs = 0, km = 0, earned = 0, late = 0, damaged = 0, fuelL = 0, fuelCost = 0, discoveries = 0, fines = 0 },
     story = {}, log = {}, job = nil, fines = {}, tacho = tacho.new(),
-    settings = { hitch = 'auto', speedWarn = true, traffic = 'auto', events = true, dayNight = true },
+    settings = { hitch = 'auto', speedWarn = true, traffic = 'auto', events = true, dayNight = true,
+      radioOn = false },                          -- (a new career starts quiet: no music behind the loading and the setup)
     clockHours = 7.5,
   }
 end
@@ -679,7 +680,7 @@ local function adoptPlayerVehicle()
   local v = playerVeh()
   if not v then return end
   local def = activeDef()
-  if def and configOf(v:getID()) == normPath(def.config) then
+  if def and type(def.config) == 'string' and configOf(v:getID()) == normPath(def.config) then       -- (on foot: no vehicle of the career)
     R.truckId = v:getID()
     roadEvents.protect(R.truckId)
     return true
@@ -997,7 +998,7 @@ end
 -- Spoken directions (the route advisor app speaks them: the browser's speech, a German voice when there is one):
 -- the next turn on the Earth route – a heading change of more than NAV_TURN_DEG at a junction of the road graph
 -- (bends of the road itself are not announced) – at 600 m, 200 m and "now"; the destination at its end.
-local NAV = { TURN_DEG = 28, UNKNOWN_DEG = 50, LOOK_M = 900, STAGES = { 600, 200, 45 }, JUNCTION_M = 45, NOW_S = 3.2, NOW_MAX_M = 110 }
+local NAV = { TURN_DEG = 28, MIN_DEG = 12, FOLLOW_MAX_DEG = 65, MINOR_DRV = 0.45, UNKNOWN_DEG = 50, LOOK_M = 900, STAGES = { 600, 200, 45 }, JUNCTION_M = 45, NOW_S = 3.2, NOW_MAX_M = 110 }
 
 local function hav(a1, o1, a2, o2)
   local p1, p2 = math.rad(a1), math.rad(a2)
@@ -1026,7 +1027,11 @@ end
 -- (one node with three links, or a junction split over several close nodes as Earth's graph has them on wide roads)
 -- (2026-11-08) nil: the game has no roads there yet (they load as one comes near) – at 600 m that said "no junction"
 -- and the turn was never announced, or only just before it
-function L.isJunctionAt(lat, lon)
+-- (2026-11-09) Is the route's bend here something to say? Not every bend at a junction is: a main road curving past a side
+-- street is simply followed. Said only when another road worth the name leaves here and the route is not the straightest way
+-- on (or the bend is sharp). h1, h2: the route's heading into and out of the point. true / false, or nil: no roads there yet.
+-- The answer is kept per route point: it went back and forth as the roads loaded, and announced turns vanished again.
+function L.navManeuver(lat, lon, h1, h2)
   local c = earthCore()
   local st = c and c._state and c._state()
   local anchor = st and st.anchor
@@ -1034,20 +1039,53 @@ function L.isJunctionAt(lat, lon)
   local x, y = anchor:geodeticToWorld(lat, lon, 0)
   local nodes = map.getMap().nodes or {}
   local r2 = NAV.JUNCTION_M * NAV.JUNCTION_M
-  local inside = {}
-  local any = false
+  local inside, any = {}, false
   for name, n in pairs(nodes) do
     local dx, dy = n.pos.x - x, n.pos.y - y
     if dx * dx + dy * dy < r2 then inside[name] = n; any = true end
   end
   if not any then return nil end
-  local exits = 0
-  for _, n in pairs(inside) do
-    for other in pairs(n.links or {}) do
-      if not inside[other] then exits = exits + 1; if exits > 2 then return true end end
+  local function rel(a, b) return (a - b + 540) % 360 - 180 end
+  local exits = {}
+  for name, n in pairs(inside) do
+    for other, link in pairs(n.links or {}) do
+      local o = nodes[other]
+      local entryOnly = type(link) == 'table' and link.oneWay and link.inNode ~= name
+      if o and not inside[other] and not entryOnly then
+        local e = math.deg(math.atan2(o.pos.x - x, o.pos.y - y))
+        local turn = rel(e, h1)
+        if math.abs(turn) < 145 then         -- (not the way we came)
+          exits[#exits + 1] = { turn = turn, off = math.abs(rel(e, h2)), drv = type(link) == 'table' and link.drivability or 1 }
+        end
+      end
     end
   end
-  return false
+  local route
+  for _, e in ipairs(exits) do if not route or e.off < route.off then route = e end end
+  if not route or route.off > 40 then return nil end
+  local straightest, others = true, 0
+  for _, e in ipairs(exits) do
+    local same = math.abs(rel(e.turn, route.turn)) < 12
+    local minor = e.drv < NAV.MINOR_DRV and route.drv >= NAV.MINOR_DRV     -- (field tracks and yards: no alternative to a road)
+    if e ~= route and not same and not minor then
+      others = others + 1
+      if math.abs(e.turn) + 5 < math.abs(route.turn) then straightest = false end
+    end
+  end
+  if others == 0 then return false end
+  return not straightest or math.abs(route.turn) >= NAV.FOLLOW_MAX_DEG
+end
+L.NAV_CHECKS = 8                                 -- (new route points looked at per update: each walks the road graph)
+function L.navManeuverAt(pts, pt, h1, h2)
+  if R.navJPts ~= pts then R.navJPts, R.navJ = pts, {} end
+  local key = string.format('%.5f,%.5f', pt[1], pt[2])
+  local known = R.navJ[key]
+  if known ~= nil then return known end
+  if (R.navJLeft or 0) <= 0 then return 'busy' end
+  R.navJLeft = R.navJLeft - 1
+  local r = L.navManeuver(pt[1], pt[2], h1, h2)
+  if r ~= nil then R.navJ[key] = r end
+  return r
 end
 
 -- (2026-11-08) a roundabout on the route from point i: the road keeps turning left (right-hand traffic), vertex after
@@ -1145,6 +1183,70 @@ function L.radioRegionTick(t)
   pcall(L.radioTick)
   save()
 end
+-- (2026-11-08) the favourites and the list of stations (the radio's ☰): with two favourites or more the tuning knob steps
+-- through those; the numbers of the stations stay what the saves hold them as
+function L.radioFavs()
+  if type(S.settings.radioFavs) ~= 'table' then S.settings.radioFavs = {} end
+  return S.settings.radioFavs
+end
+function L.radioStep(i, d)
+  local f = L.radioFavs()
+  if #f < 2 then return (i - 1 + d) % #L.STATIONS + 1 end
+  local pos
+  for k, v in ipairs(f) do if v == i then pos = k end end
+  if not pos then pos = d > 0 and 0 or 1 end
+  return f[(pos - 1 + d) % #f + 1]
+end
+function M.radioList()
+  if not S then return nil end
+  local regionOf, isFav, list = {}, {}, {}
+  for key, i in pairs(L.regionIdx) do regionOf[i] = L.regions.STATE[key][1] end
+  local favs = L.radioFavs()
+  for _, v in ipairs(favs) do isFav[v] = true end
+  for i, st in ipairs(L.STATIONS) do list[i] = { i = i, n = st[1], r = regionOf[i], f = isFav[i] or nil } end
+  local cur = L.radioStation()
+  return { list = list, cur = cur, regional = S.settings.radioRegional ~= false, favs = #favs }
+end
+function M.radioPick(i)
+  i = tonumber(i)
+  if not S or not i or not L.STATIONS[i] then return nil end
+  S.settings.radioStation, S.settings.radioOn = i, true
+  L.radioTuneNoise()
+  notify('📻 ' .. L.STATIONS[i][1], 2)
+  pcall(L.radioTick)
+  save()
+  return M.radioList()
+end
+function M.radioFav(i)
+  i = tonumber(i)
+  if not S or not i or not L.STATIONS[i] then return nil end
+  local f, at = L.radioFavs(), nil
+  for k, v in ipairs(f) do if v == i then at = k end end
+  if at then table.remove(f, at) else f[#f + 1] = i end
+  save()
+  return M.radioList()
+end
+-- (2026-11-08) where the truck is: the state or the country, in the map's corner and as a banner at a border
+L.WHERE_S = 3
+function L.whereTick(t)
+  if t - (R.whereT or 0) < L.WHERE_S or R.trip or R.sleep or R.pendingTeleport then return end
+  R.whereT = t
+  local p = here()
+  local w = p and L.regions.where(p.lat, p.lon)
+  if not w then return end
+  local key = w.code .. '|' .. (w.state or '')
+  if key == R.whereKey then R.whereWant = nil; return end
+  -- (the first answer, and an arrival under a screen: said without a banner)
+  if not R.whereKey or not L.screenGone(t) then R.whereKey, R.where, R.whereWant = key, w, nil; return end
+  -- (the same answer twice in a row: no flicker along a border)
+  if R.whereWant ~= key then R.whereWant = key; return end
+  local old = R.where
+  R.whereKey, R.where, R.whereWant = key, w, nil
+  local country = not old or old.code ~= w.code
+  guihooks.trigger('FernfahrerRegion', { kind = country and 'country' or 'state', code = w.code,
+    name = country and w.country or w.state, sub = country and w.state or w.country })
+  log('I', logTag, 'now in ' .. key)
+end
 function L.radioStation()
   local s = S and S.settings or {}
   local i = math.max(1, math.min(#L.STATIONS, tonumber(s.radioStation) or 1))
@@ -1182,7 +1284,7 @@ function M.radioCmd(cmd)
   if not S then return end
   if cmd == 'stnext' or cmd == 'stprev' then
     local i = L.radioStation()
-    S.settings.radioStation = (i - 1 + (cmd == 'stnext' and 1 or -1)) % #L.STATIONS + 1
+    S.settings.radioStation = L.radioStep(i, cmd == 'stnext' and 1 or -1)
     S.settings.radioOn = true
     L.radioTuneNoise()
     local _, st = L.radioStation()
@@ -1264,6 +1366,7 @@ end
 
 function L.updateNav()
   if S.settings.navVoice == false then R.nav = nil; return end
+  R.navJLeft = L.NAV_CHECKS
   local gps = earthModule('gps')
   local r = gps and gps.route and gps.route()
   local pts = r and r.points
@@ -1319,7 +1422,12 @@ function L.updateNav()
         turn = { dist = acc, deg = d, key = string.format('%.5f,%.5f', pts[i][1], pts[i][2]), ring = true }
         break
       end
-      local isJ = math.abs(d) > NAV.TURN_DEG and L.isJunctionAt(pts[i][1], pts[i][2])
+      -- (from 12°: leaving a main road at a fork or a slip road is a small bend; L.navManeuver decides)
+      local isJ = false
+      if math.abs(d) > NAV.MIN_DEG then
+        isJ = L.navManeuverAt(pts, pts[i], h1, h2)
+        if isJ == 'busy' then return end             -- (the rest next time; what is on the display stays)
+      end
       -- (the roads there not loaded yet: only what is clearly a turn)
       if isJ or (isJ == nil and math.abs(d) >= NAV.UNKNOWN_DEG) then
         -- (the corner has several route points: within 60 m of the last turn it is the same turn, one key)
@@ -1518,9 +1626,11 @@ local function loadShippedPlaces(center, radiusKm)
     local j = math.random(i)
     cands[i], cands[j] = cands[j], cands[i]
   end
-  local added = 0
+  -- (2026-11-09: the tiles hold thousands of places now and each try walks all the known ones: only a few per type are tried)
+  local added, tried, limit = 0, {}, C.DEPOTS_PER_TYPE * 3
   for _, p in ipairs(cands) do
-    if addDepot(p[1], p[2], p[5] ~= '' and p[5] or nil, tonumber(p[3]), tonumber(p[4])) then added = added + 1 end
+    tried[p[1]] = (tried[p[1]] or 0) + 1
+    if tried[p[1]] <= limit and addDepot(p[1], p[2], p[5] ~= '' and p[5] or nil, tonumber(p[3]), tonumber(p[4])) then added = added + 1 end
   end
   return added
 end
@@ -1621,7 +1731,7 @@ end
 -- WIDE_KM of the home, not only where the player has been – the office's map shows Hamburg's before one gets there,
 -- and a long haul ends where there are loads to take. Built once per career (S.wideNet), in the background, a city
 -- per frame or two: the shipped OSM places there, then the generated ones for the gaps.
-L.WIDE_KM, L.WIDE_CITY_KM, L.WIDE_MIN_POP, L.WIDE_VERSION = 650, 14, 80000, 2
+L.WIDE_KM, L.WIDE_CITY_KM, L.WIDE_MIN_POP, L.WIDE_VERSION = 650, 14, 80000, 3
 function L.buildWideNet()
   if not S or not S.home or (S.wideNet or 0) >= L.WIDE_VERSION or R.wideNetTask then return end
   R.wideNetTask = true
@@ -1658,6 +1768,36 @@ function L.buildWideNet()
       pcall(L.synthPlaces, c, L.WIDE_CITY_KM)
       coroutine.yield()
       if i % 10 == 0 then coroutine.yield() end
+    end
+    -- (2026-11-08) the network along the roads, not only at the cities: fuel stations, rest areas and workshops of every
+    -- tile in reach, one of a kind per cell of about 14 x 20 km – the places nearer by come in as one drives (discoverRegion)
+    do
+      local STOP, cells = { fuel = true, rest = true, workshop = true }, {}
+      local function cell(t, la, lo) return t .. ':' .. math.floor(la / 0.2) .. ':' .. math.floor(lo / 0.3) end
+      for _, d in ipairs(S.depots) do if STOP[d.type] then cells[cell(d.type, d.lat, d.lon)] = true end end
+      local reach, added = L.WIDE_KM * 1000, 0
+      for la = math.floor(home.lat - dLat), math.floor(home.lat + dLat) do
+        for lo = math.floor(home.lon - dLon), math.floor(home.lon + dLon) do
+          local path = string.format('/fernfahrer/places/%d_%d.json', la, lo)
+          if FS:fileExists(path) then
+            local tile = jsonReadFile(path)
+            for _, p in ipairs(type(tile) == 'table' and tile.places or {}) do
+              local plat, plon = tonumber(p[3]), tonumber(p[4])
+              local def = DEPOT_BY_KEY[p[1]]
+              if STOP[p[1]] and def and def.enabled ~= false and plat and plon and not cells[cell(p[1], plat, plon)]
+                 and haversine(home.lat, home.lon, plat, plon) <= reach then
+                cells[cell(p[1], plat, plon)] = true
+                S.nextDepot = (S.nextDepot or 0) + 1
+                local detail = p[5] ~= '' and p[5] or nil
+                table.insert(S.depots, { id = S.nextDepot, type = p[1], name = L.neutralName(p[1], p[2], detail, plat, plon), detail = detail, lat = plat, lon = plon })
+                added = added + 1
+              end
+            end
+            coroutine.yield()
+          end
+        end
+      end
+      log('I', logTag, string.format('wide network: %d stops along the roads', added))
     end
     S.wideNet = L.WIDE_VERSION
     R.wideNetTask = nil
@@ -2348,6 +2488,14 @@ local function updateNear()
     if dd <= 400 then
       best = { id = 'tour' .. S.tour.i, type = 'milk', name = tg.name, icon = '🥛', typeName = farm and 'Milchhof' or 'Molkerei – abliefern', action = 'tour',
         dist = dd, lat = tg.lat, lon = tg.lon }
+    end
+  end
+  -- (2026-11-09) on foot after a flight: the rental desk, whatever else is near
+  if L.onFoot() and S.rentalDesk and S.rentalDesk.placed then
+    local dd = haversine(p.lat, p.lon, S.rentalDesk.lat, S.rentalDesk.lon)
+    if dd <= 800 then
+      best = { id = 'rental', type = 'rental', name = 'Mietwagen-Schalter', icon = '🚗', typeName = 'Mietwagen auswählen', action = 'rental', dist = dd,
+        lat = S.rentalDesk.lat, lon = S.rentalDesk.lon }
     end
   end
   -- (2026-11-08) the fuel stations and car parks the world itself has (parked.lua). A car park only with nothing else
@@ -3603,6 +3751,12 @@ end
 
 function M.goHome(withVehicle)
   if not S or not S.home then return end
+  -- (on foot at an airport: home in the own truck or the loaner – and no way of being stranded without money)
+  if L.onFoot() then
+    S.rental, S.rentalDesk, S.active = nil, nil, 'loaner'
+    for id in pairs(S.owned or {}) do S.active = id; break end
+    withVehicle = true
+  end
   if R.trailerId then notify('Mit Auflieger geht das nicht – erst den Auftrag beenden.', 5); return end
   -- (2026-11-07: the damage goes along – the condition written fresh first, kept through the resets on the way)
   L.keepCondForTeleport()
@@ -3617,7 +3771,7 @@ function M.goHome(withVehicle)
   end
   R.teleportTries = 0
   R.pendingTeleport = now() + (withVehicle and 2.1 or 0.6)   -- (the condition back from the vehicle first)
-  R.parkAtYard = { t = now() + 1, untilT = now() + 150 }     -- (then in front of the hall, once the yard stands)
+  R.parkAtYard = { t = now() + 1, untilT = now() + 130 }     -- (then in front of the hall, once the yard stands)
   if withVehicle then
     runTask(function()
       local t0 = now()
@@ -3645,13 +3799,86 @@ local function hubHere()
   end
 end
 
-local function rentalFor(hub)
-  if EU_CC[hub.cc] then
-    return { kind = 'car', model = 'etk800', config = 'vehicles/etk800/844_150_A.pc', brand = 'ETK', modelName = '800 Kombi',
-      configName = 'Mietwagen', price = 0, rental = true }
+-- (2026-11-09) A flight takes the driver alone: on arrival one is on foot and walks to the rental desk (a ring near the arrival),
+-- where a car is picked from cheap to dear (FernfahrerRental.vue). On foot: S.rental = L.FOOT, the game's walking figure.
+L.FOOT = { kind = 'foot', foot = true, rental = true, model = 'unicycle', brand = '', modelName = 'Zu Fuß', configName = '', price = 0,
+  config = { model = 'unicycle', format = 2, parts = { unicycle_meshes = 'unicycle_character' } } }
+function L.onFoot() return S and S.active == 'rental' and S.rental and S.rental.foot and true or false end
+L.RENT_CLASSES = { { 0, 16000, 'Kleinwagen' }, { 16000, 32000, 'Kompaktklasse' }, { 32000, 60000, 'Mittelklasse' }, { 60000, 120000, 'Oberklasse' }, { 120000, math.huge, 'Luxus & Sport' } }
+L.RENT_SKIP = { 'police', 'polizei', 'race', 'drift', 'rally', 'taxi', 'ambulan', 'bare', 'stripped', 'derby', 'safari', 'baja', 'hillclimb', 'track', 'trial', 'prerunner', 'interceptor' }
+function L.rentalOffers()
+  local desk = S.rentalDesk
+  local key = desk and desk.id or '?'
+  if R.rentalOffers and R.rentalKey == key then return R.rentalOffers end
+  local out, eu = {}, not desk or EU_CC[desk.cc or ''] ~= nil
+  for _, cl in ipairs(L.RENT_CLASSES) do
+    local cands = {}
+    for _, m in ipairs(R.cars or {}) do
+      for _, c in ipairs(m.configs or {}) do
+        local name = tostring(c.configName or ''):lower()
+        local bad = false
+        for _, w in ipairs(L.RENT_SKIP) do if name:find(w, 1, true) then bad = true; break end end
+        if not bad and c.price >= cl[1] and c.price < cl[2] then cands[#cands + 1] = c; break end     -- (a model once per class)
+      end
+    end
+    for i = #cands, 2, -1 do local j = math.random(i); cands[i], cands[j] = cands[j], cands[i] end
+    table.sort(cands, function(a, b) return ((a.eu and true or false) == eu and 0 or 1) < ((b.eu and true or false) == eu and 0 or 1) end)
+    for i = 1, math.min(3, #cands) do
+      local c = cands[i]
+      out[#out + 1] = { model = c.model, config = c.config, brand = c.brand, modelName = c.modelName, configName = c.configName, class = cl[3],
+        power = c.power, drivetrain = c.drivetrain, preview = c.preview, rate = round(clamp(c.price * 0.0022, 39, 690), 1) }
+    end
   end
-  return { kind = 'car', model = 'midsize', config = 'vehicles/midsize/LX_A.pc', brand = 'Gavril', modelName = 'Grand Marshal',
-    configName = 'Mietwagen', price = 0, rental = true }
+  table.sort(out, function(a, b) return a.rate < b.rate end)
+  for i, o in ipairs(out) do o.i = i end
+  R.rentalOffers, R.rentalKey = out, key
+  return out
+end
+function M.uiRental()
+  if not S then return nil end
+  ensureCatalog()
+  return { offers = L.rentalOffers(), money = S.money, desk = S.rentalDesk and S.rentalDesk.name or 'Flughafen', onFoot = L.onFoot() }
+end
+function M.rentalTake(i)
+  if not S or not L.onFoot() then return { ok = false, error = 'Du hast schon ein Fahrzeug.' } end
+  local o = L.rentalOffers()[tonumber(i) or 0]
+  if not o then return { ok = false, error = 'Dieses Angebot gibt es nicht mehr.' } end
+  if S.money < o.rate then return { ok = false, error = 'Dafür reicht dein Geld nicht.' } end
+  L.pay('Reisen', -o.rate, 'Mietwagen ' .. tostring(o.brand) .. ' ' .. tostring(o.modelName))
+  S.stats.travelCost = (S.stats.travelCost or 0) + o.rate
+  S.rental = { kind = 'car', model = o.model, config = o.config, brand = o.brand, modelName = o.modelName, configName = 'Mietwagen', price = 0, rental = true }
+  S.active, S.rentalDesk, R.rentalOffers = 'rental', nil, nil
+  core_vehicles.replaceVehicle(o.model, { config = o.config, autoEnterVehicle = true })
+  R.truckId, R.fuel = nil, nil
+  R.pendingAdopt = now() + 0.5
+  navClear()
+  notify('Dein Mietwagen: ' .. tostring(o.brand) .. ' ' .. tostring(o.modelName) .. ' · gute Fahrt!', 6)
+  save()
+  return { ok = true }
+end
+-- after the landing: the desk placed a little way off, the message; walking into its ring opens the desk
+function L.rentalTick(t)
+  if not L.onFoot() or not S.rentalDesk then return end
+  local desk = S.rentalDesk
+  if R.rentalHinted ~= desk.id and L.screenGone(t) and not R.boot then
+    R.rentalHinted = desk.id
+    local p = here()
+    if p and not desk.placed then
+      desk.lat, desk.lon, desk.placed = p.lat + 28 / 111320, p.lon + 12 / (111320 * math.cos(math.rad(p.lat))), true
+    end
+    guihooks.trigger('FernfahrerRegion', { kind = 'notice', eyebrow = 'Gelandet · ' .. tostring(desk.name), name = 'Mietwagen-Schalter',
+      sub = 'Sie haben jetzt die Möglichkeit, einen Mietwagen auszuwählen.' })
+    notify('Sie haben jetzt die Möglichkeit, einen Mietwagen auszuwählen. Geh zum leuchtenden Kreis.', 12)
+    navTo(desk, 'Mietwagen-Schalter')
+    save()
+  end
+  local inRing = R.near and R.near.action == 'rental' and stops.inside()
+  if inRing and not R.rentalOpened and not R.officeOpen and not R.stopOpen then
+    R.rentalOpened = true
+    navigate('fernfahrerRental')
+  elseif not inRing then
+    R.rentalOpened = nil
+  end
 end
 
 -- the hours on board: the clock and the deadlines move on; a long crossing is the daily rest, a short one the break
@@ -3678,8 +3905,8 @@ local function startTrip(to, mode, opts)
   R.tripView.arrival = clockText()               -- (the clock has been moved on by passTime already)
   R.tripView.trailer = opts and opts.trailer or nil
   navigate('fernfahrerTravel')
-  R.trip = { to = { lat = to.lat, lon = to.lon, name = to.name, id = to.id }, mode = mode, t0 = now(),
-    rental = opts and opts.rental, trailer = opts and opts.trailer }
+  R.trip = { to = { lat = to.lat, lon = to.lon, name = to.name, id = to.id, cc = to.cc }, mode = mode, t0 = now(),
+    foot = opts and opts.foot, trailer = opts and opts.trailer }
   R.teleportTarget = { lat = to.lat, lon = to.lon, name = to.name }
   R.teleportTries = 0
   L.keepCondForTeleport()                          -- (the damage goes along on the ferry, 2026-11-07)
@@ -3693,8 +3920,7 @@ local function travelView()
   local p = here()
   local hub = hubHere()
   local kind = activeKind()
-  local v = { kind = kind, job = S.job ~= nil, trailer = R.trailerId ~= nil, rentalFee = travel.RENTAL.fee,
-    ferries = {}, airports = {} }
+  local v = { kind = kind, job = S.job ~= nil, trailer = R.trailerId ~= nil, ferries = {}, airports = {} }
   if hub then
     v.hub = { id = hub.id, name = hub.name, kind = hub.kind, train = hub.train or nil, cc = hub.cc }
     v.options = {}
@@ -3731,6 +3957,10 @@ local function earthLoading()
   local w = {}
   if st.pending or (st.clock and st.clock < (st.loadingUntil or 0)) or st.placeFrames or st.rebasing then w.ground = true end
   if st.terrainPending or st.commitFrames then w.ground = true end
+  -- (2026-11-08) the clock of this arrival: a fixed time from the new world on. It ran anew whenever Earth said "ready" for a
+  -- moment, and with colliders still coming in that kept the loading screen, the day's card and the introduction waiting.
+  if not R.notReadySince or R.trip or R.pendingTeleport or R.notReadyAnchor ~= st.anchorId then R.notReadyAnchor, R.notReadySince = st.anchorId, now() end
+  if now() - R.notReadySince > L.GROUND_WAIT_S then w.ground = nil end
   local okR, roads = pcall(require, 'beamngEarth/roads')
   local rs = okR and roads.status and select(2, pcall(roads.status)) or nil
   local nRoads = type(rs) == 'table' and ((rs.queued or 0) + (rs.walksQueued or 0)) or 0
@@ -3738,22 +3968,77 @@ local function earthLoading()
   -- the tiles around the player all in, their buildings, decks and sidewalks made and solid (Earth's own test,
   -- roads.readyAround: the counts above were near zero while buildings still came in – the screen went too early
   -- after a trip, 2026-11-03)
+  local okA, ready
   if okR and roads.readyAround and st.anchorId and st.player and st.player.x then
-    local okA, ready = pcall(roads.readyAround, st.anchorId, st.player.x, st.player.y, 350)
-    if okA and not ready then w.buildings = true end
+    okA, ready = pcall(roads.readyAround, st.anchorId, st.player.x, st.player.y, 350)
   end
   local okT, trees = pcall(require, 'beamngEarth/trees')
   local ts = okT and trees.status and select(2, pcall(trees.status)) or nil
   local nTrees = type(ts) == 'table' and (ts.pending or 0) or 0
   if nTrees > 3 then w.trees = nTrees end
+  -- (2026-11-08) Earth's test can stay false for good at a place, or flicker while colliders still come in. So: once true for
+  -- this world it has been true; false it counts while something is still coming in (the queues or its collision rebuilds
+  -- move), and at most BUILDINGS_WAIT_S. The screen waits for the world – and still always ends.
+  if okA then
+    if ready then R.readySeen = st.anchorId end
+    local sig = nRoads .. ':' .. nTrees .. ':' .. tostring(roads.reloads and roads.reloads() or 0)
+    if sig ~= R.loadSig then R.loadSig, R.loadSigT = sig, now() end
+    local since = now() - R.notReadySince
+    local stalled = since > L.BUILDINGS_MIN_S and now() - R.loadSigT > L.STALL_S
+    if not ready and R.readySeen ~= st.anchorId and since < L.BUILDINGS_WAIT_S and not stalled then w.buildings = true end
+  end
   if next(w) then return w end
   return nil
 end
 
 -- the passage screen's poll: still on until the move is done and the world at the other end has loaded (at most
 -- TRIP_LOAD_MAX_S after the arrival): nobody sees the ground and the roads come in
-local TRIP_LOAD_MAX_S = 90
-local SETTLE_S = 2.5          -- (all in for this long before the screen goes: a tile made after a quiet moment)
+-- (2026-11-08: the loading screen gone and the HUD's apps up again: the day's card and the introduction are events of an
+-- app of the driving layout – sent while the screen was still on they were lost, and a new career had no introduction)
+function L.screenGone(t) return not R.tripPollAt or t - R.tripPollAt > 4 end
+-- (the day's card: the screen gone, the world standing – but at most TITLE_HOLD_S more, it must come; a screen left with Esc
+-- never got to clear R.worldLoad)
+L.TITLE_HOLD_S = 8
+function L.titleReady(t)
+  if R.boot or not L.screenGone(t) then R.titleHold = nil; return false end
+  R.worldLoad = nil
+  R.titleHold = R.titleHold or t
+  if L.worldStands() or t - R.titleHold > L.TITLE_HOLD_S then R.titleHold = nil; return true end
+  return false
+end
+-- (the introduction: sent until its app says it is open, every 3 s and at most 10 times – an event sent to an app that is
+-- not up is lost without a trace)
+function L.tutSend(t, n)
+  if not S or S.tutorialDone or n >= 10 then
+    if n >= 10 then log('W', logTag, 'introduction: no answer from the app') end
+    R.tutAckAt, R.tutAckN = nil, nil
+    return
+  end
+  if not L.screenGone(t) or cinematic.active() or R.sleep or R.officeOpen or R.stopOpen then R.tutAckAt, R.tutAckN = t + 1, n; return end
+  local _, loaner = activeDef()
+  guihooks.trigger('FernfahrerTutorial', { company = S.company and S.company.name or 'deine Spedition',
+    home = S.home and S.home.name or 'dein Hof', loaner = loaner, rules = S.settings.truckRules ~= false })
+  R.tutAckAt, R.tutAckN = t + 3, n + 1
+  log('I', logTag, 'introduction sent (' .. (n + 1) .. ')')
+end
+function M.tutorialShown()
+  if R.tutAckAt then log('I', logTag, 'introduction open') end
+  R.tutAckAt, R.tutAckN = nil, nil
+end
+L.BUILDINGS_WAIT_S, L.BUILDINGS_MIN_S, L.STALL_S, L.GROUND_WAIT_S = 70, 15, 9, 60
+L.ARRIVAL_MIN_S, L.TREES_MAX_S = 15, 60    -- (right after an arrival nothing is queued yet: that is no "all in"; trees: only so long)
+-- (the ground and the houses in: what the day's card waits for – Earth's trees can trickle in for minutes)
+function L.worldStands()
+  local w = earthLoading()
+  return not (w and (w.ground or w.buildings))
+end
+local TRIP_LOAD_MAX_S = 100   -- (the last resort: the screen always goes by itself)
+local SETTLE_S = 5            -- (all in for this long before the screen goes: a tile made after a quiet moment)
+L.NEW_CAREER_WAIT_S = 12
+-- (the loading screen left with Esc: a career without a yard still gets its setup screen)
+function M.uiTravelLeft()
+  if R.mode and S and not (S.company and S.home) then navigate('fernfahrerSetup') end
+end
 function M.uiTrip()
   R.screenAt = now()                             -- (the loading/travel screen asks while it is open: no mirrors over it)
   R.tripPollAt = R.screenAt
@@ -3766,15 +4051,29 @@ function M.uiTrip()
     if now() - R.calmSince < SETTLE_S then loading = { settling = true } end
   end
   if not moving and (not R.tripArrivedAt or now() - R.tripArrivedAt > TRIP_LOAD_MAX_S) then loading = nil end
+  -- (2026-11-08: a ferry's or a flight's screen went while the roads were still missing: a least time after every arrival,
+  -- and the trees alone hold it only so long)
+  if not moving and R.tripArrivedAt then
+    local since = now() - R.tripArrivedAt
+    if not loading and since < L.ARRIVAL_MIN_S then loading = { settling = true }
+    elseif loading and since > L.TREES_MAX_S and not (loading.ground or loading.buildings or loading.roads) then loading = nil end
+  end
   -- (2026-11-07) arrived at the home: the screen stays until the yard stands (its search waits for the world), at most
   -- YARD_WAIT_S – the card, the flight and the introduction then have their yard
-  if not moving and not loading and R.tripArrivedAt and S and S.home and not R.tripNext and now() - R.tripArrivedAt < 70
+  if not moving and not loading and R.tripArrivedAt and S and S.home and not R.tripNext and now() - R.tripArrivedAt < 110
      and not yard.built() and not (S.yard and S.yard.failed) and (dist(here(), S.home) or 1e9) < 400 then
     loading = { yard = true }
   end
   -- ("Zum Hof": the screen stays until the truck stands in front of the hall)
   if not moving and not loading and R.parkAtYard and now() < R.parkAtYard.untilT and not (S and S.yard and S.yard.failed) then
     loading = { yard = true }
+  end
+  -- (2026-11-08) a new career: the setup screen comes next and the first drive starts at the chosen yard, so the buildings
+  -- and trees of this spot are not waited for (they kept the screen up for its whole 90 s): only the ground, and not for long
+  if not moving and loading and R.tripNext == 'fernfahrerSetup'
+     and (not loading.ground or (R.tripArrivedAt and now() - R.tripArrivedAt > L.NEW_CAREER_WAIT_S)) then
+    if R.newWaitLog ~= R.slot then R.newWaitLog = R.slot; log('I', logTag, 'new career: on to the setup, the world still had ' .. jsonEncode(loading)) end
+    loading = nil
   end
   local active = moving or loading ~= nil
   -- (the loading screen once stayed up after the first load until Esc, 2026-11-04: the time it has been done is kept –
@@ -3816,14 +4115,14 @@ function M.travel(idx)
     if job then notify('Mit laufendem Auftrag kannst du nicht fliegen – Fähre nehmen oder erst abliefern.', 6); return end
     local f = travel.flightsFrom(hub.id)[tonumber(idx) or 0]
     if not f then return end
-    local total = f.price + travel.RENTAL.fee
-    if S.money < total then notify('Flug und Mietwagen kosten ' .. money(total) .. ' – nicht genug Geld.', 5); return end
-    L.pay('Reisen', -total, 'Flug ' .. tostring(hub.name) .. ' → ' .. tostring(f.to.name) .. ' + Mietwagen')
+    local total = f.price
+    if S.money < total then notify('Der Flug kostet ' .. money(total) .. ' – nicht genug Geld.', 5); return end
+    L.pay('Reisen', -total, 'Flug ' .. tostring(hub.name) .. ' → ' .. tostring(f.to.name))
     S.stats.travelCost = (S.stats.travelCost or 0) + total
     passTime(f.hours)
-    startTrip(f.to, 'fly', { rental = rentalFor(f.to),
+    startTrip(f.to, 'fly', { foot = true,
       view = { from = hub.name, to = f.to.name, fromCode = hub.iata, toCode = f.to.iata, hours = f.hours } })
-    message(string.format('Flug %s → %s (%s) gebucht, %s inkl. Mietwagen. Dein Fahrzeug bleibt hier – holen kannst du es später über den Fuhrpark (Überführung).',
+    message(string.format('Flug %s → %s (%s) gebucht, %s. Dein Fahrzeug bleibt hier – holen kannst du es später über den Fuhrpark (Überführung). Am Ziel holst du dir zu Fuß einen Mietwagen.',
       hub.iata or hub.name, f.to.name, f.to.iata or '', money(total)), 'Mira (Disposition)')
   end
 end
@@ -3833,15 +4132,15 @@ local function arrive()
   local trip = R.trip
   R.trip = nil
   R.tripArrivedAt = now()
-  if trip.rental then
-    S.rental = trip.rental
-    S.active = 'rental'
-    local def = trip.rental
+  if trip.foot then
+    S.rental, S.active = L.FOOT, 'rental'
+    S.rentalDesk = { id = trip.to.id or trip.to.name, name = trip.to.name, cc = trip.to.cc, lat = trip.to.lat, lon = trip.to.lon }
+    R.rentalHinted, R.rentalOffers = nil, nil
+    local def = L.FOOT
     if playerVeh() then core_vehicles.replaceVehicle(def.model, { config = def.config, autoEnterVehicle = true })
     else core_vehicles.spawnNewVehicle(def.model, { config = def.config, autoEnterVehicle = true }) end
     R.truckId, R.fuel = nil, nil
-    R.pendingAdopt = now() + 0.5
-    notify('Gelandet: ' .. trip.to.name .. ' · dein Mietwagen steht bereit.', 8)
+    notify('Gelandet: ' .. trip.to.name, 6)
   elseif trip.mode == 'road' then
     notify('Weiter geht’s – ' .. trip.to.name, 6)
     R.orient = { t = now() + 1.0, hdg = trip.hdg }       -- (facing the way it was driven, before the trailer comes)
@@ -4849,10 +5148,15 @@ function L.mirrorsTick(dt)
   -- (the mirrors are ImGui, drawn above every page of the UI: hidden whenever a screen is up – the loading screen at
   -- the start, a trip, the title card, the office, a stop's menu, the settlement – 2026-11-04)
   local t = now()
-  local screenUp = R.boot ~= nil or R.worldLoad or R.trip ~= nil or R.pendingTeleport ~= nil
-    or (R.screenAt and t - R.screenAt < 2) or (R.titleUntil and t < R.titleUntil) or (R.titleAt ~= nil)
-    or R.officeOpen or R.stopOpen or R.reportAt ~= nil or cinematic.active() or L.gamePaused()
+  -- (2026-11-08: a day's card that never came kept them hidden for good – "virtual mirrors on", and nothing there)
+  local screenUp = R.boot ~= nil or R.trip ~= nil or R.pendingTeleport ~= nil
+    or (R.screenAt and t - R.screenAt < 2) or (R.titleUntil and t < R.titleUntil) or (R.titleAt and t < R.titleAt + 20)
+    or R.officeOpen or R.stopOpen or R.reportAt ~= nil or cinematic.active() or L.cine.active() or L.gamePaused()
   local drivingTruck = v and truck and v:getID() == truck:getID() and not screenUp and activeKind() == 'truck'
+  if S.settings.mirrorsOn then
+    local st = drivingTruck and 'shown' or (screenUp and 'hidden: a screen is up' or 'hidden: not driving the truck')
+    if st ~= R.mirrorLog then R.mirrorLog = st; log('I', logTag, 'mirrors ' .. st) end
+  end
   mm.update(dt, { veh = drivingTruck and truck or nil, save = function(cfg) S.settings.mirrorCfg = cfg end })
 end
 function M.mirrorsToggle()
@@ -5148,6 +5452,39 @@ function M.autodriveToggle()
   local isOn = okA and now_ or false
   notify(isOn and '🤖 Autodrive an – der LKW fährt die Route selbst. Aus mit 🤖 oder Strg+Umschalt+A.' or '🤖 Autodrive aus – du fährst wieder selbst.', 5)
 end
+-- (2026-11-09) the cinematic mode: while the autodrive drives, shots from outside (drivecine.lua), the HUD out of the picture
+L.cine = require('fernfahrer/drivecine')
+function L.cineCef(on)
+  local vis = rawget(_G, 'ui_visibility')
+  if vis and vis.setCef then pcall(vis.setCef, on) end
+end
+function L.cineStop()
+  if L.cine.active() then
+    L.cine.stop()
+    if vices.override == L.cine.pose then vices.override = nil end
+  end
+  R.cineHideAt = nil
+  if R.cineHidden then R.cineHidden = nil; L.cineCef(true) end
+end
+function M.cineToggle()
+  if not R.mode or not S then return end
+  if L.cine.active() then L.cineStop(); notify('🎬 Cinematic aus.', 3); return end
+  if not L.autodriveOn() then notify('Den Cinematic-Modus gibt es im Autodrive (Strg+Umschalt+A).', 5); return end
+  if cinematic.active() then return end
+  vices.installCam()
+  L.cine.start(function() return careerVeh() or playerVeh() end, function() return R.trailerId ~= nil end)
+  vices.override = L.cine.pose
+  R.cineHideAt = now() + 2.5
+  notify('🎬 Cinematic an – Strg+Umschalt+C beendet ihn. Die Anzeigen verschwinden gleich.', 3)
+end
+function L.cineTick(t)
+  if not L.cine.active() then return end
+  if not L.autodriveOn() or L.gamePaused() or R.officeOpen or R.stopOpen or R.trip or R.pendingTeleport or R.sleep or R.cop then
+    L.cineStop()
+    return
+  end
+  if R.cineHideAt and t > R.cineHideAt then R.cineHideAt, R.cineHidden = nil, true; L.cineCef(false) end
+end
 function L.autodriveOn()
   local gps = earthModule('gps')
   local ok, on = pcall(function() return gps and gps.autodrive and gps.autodrive() end)
@@ -5181,6 +5518,7 @@ function M.primaryAction()
   end
   if job and L.needsSecure() and job.phase == 'toDelivery' and stopped and isCoupled() then return M.secureLoad() end
   if job and job.phase == 'atDelivery' and isCoupled() then return M.unhitchNow() end
+  if R.near and R.near.action == 'rental' and stops.inside() then navigate('fernfahrerRental'); return end
   if stops.inside() and stopped then navigate('fernfahrerStop'); return end
   local n = R.near
   if n and stopped then
@@ -5491,12 +5829,15 @@ local function hudPayload()
   h.radio = { on = S.settings.radioOn ~= false, vol = S.settings.radioVol or 0.7, helper = R.radioHelper or false,
     music = (R.radioLevel or 0) > 0.002 or nil, src = S.settings.radioSrc or 'radio', videoOn = L.videoActive() ~= nil or nil,
     station = (select(2, L.radioStation()) or {})[1], info = R.radioInfo,
-    eq = { b = S.settings.radioEqB or 0, m = S.settings.radioEqM or 0, t = S.settings.radioEqT or 0 } }
+    eq = { b = S.settings.radioEqB or 0, m = S.settings.radioEqM or 0, t = S.settings.radioEqT or 0 },
+    favs = type(S.settings.radioFavs) == 'table' and #S.settings.radioFavs or 0 }
+  h.where = R.where and { code = R.where.code, state = R.where.state, country = R.where.country, town = R.townIn } or nil
   h.accident = accidents.hud()
   h.home = S.home and { lat = S.home.lat, lon = S.home.lon } or nil
   h.event = roadEvents.hud(here())
   h.routeWarn = S.settings.routeWarn == true or nil        -- (the route advisor's warner: cameras, roadworks …)
   h.autodrive = L.autodriveOn() or nil                     -- (BeamNG.Earth's autodrive running)
+  h.cine = L.cine.active() or nil
   h.flash = roadEvents.flash()
   -- (the slower parts of the HUD are made once a second, the nearest fuel station every 3 s – the HUD goes 4× a
   -- second and both walk long lists: the tachograph's day, all known depots)
@@ -5709,6 +6050,7 @@ function M.onClientPostStartMission(levelPath)
 end
 
 function M.onClientEndMission()
+  pcall(L.cineStop)
   if R.mode then save(); stopClock() end
   pcall(roadEvents.reset)
   pcall(accidents.reset)
@@ -6180,10 +6522,12 @@ end
 
 -- (2026-11-08) a new HUD app in a layout saved before it existed: added once
 L.HUD_RIGHT = {
-  fernfahrerTacho = { bottom = '436px', right = '8px', width = '210px', height = '330px' },
-  fernfahrerKabine = { bottom = '770px', right = '8px', width = '210px', height = '84px' },
-  fernfahrerTempomat = { bottom = '436px', right = '224px', width = '182px', height = '108px' },
-  fernfahrerAntrieb = { bottom = '548px', right = '224px', width = '182px', height = '150px' },
+  -- (2026-11-09: tachograph and cab down beside the drive train; the Tempomat's and the drive train's frames follow the driver
+  -- assistance bought in the workshop: FernfahrerTempomat / FernfahrerAntrieb app.js)
+  fernfahrerTacho = { bottom = '436px', right = '8px', width = '210px', height = '215px' },
+  fernfahrerKabine = { bottom = '652px', right = '8px', width = '210px', height = '66px' },
+  fernfahrerTempomat = { bottom = '436px', right = '224px', width = '182px', height = '106px' },
+  fernfahrerAntrieb = { bottom = '520px', right = '224px', width = '182px', height = '230px' },
   fernfahrerRadio = { bottom = '8px', left = '5px', width = '300px', height = '190px' },
   navigation = { bottom = '200px', left = '5px', width = '300px', height = '300px' },
   damageApp = { bottom = '510px', left = '5px', width = '158px', height = '280px' },
@@ -6192,7 +6536,7 @@ L.HUD_RIGHT = {
   inputHints = { top = '120px', right = '420px', width = '450px', height = '500px' },
 }
 function L.layoutRight()
-  local flag = '/settings/fernfahrer/layout_right4.json'
+  local flag = '/settings/fernfahrer/layout_right6.json'
   local f = '/settings/ui_apps/layouts/default/fernfahrer.uilayout.json'
   if FS:fileExists(flag) or not FS:fileExists(f) then return end
   local d = jsonReadFile(f)
@@ -6953,6 +7297,9 @@ function L.serviceFrame(dt)
   local okV, errV = pcall(service.tick, dt)
   if not okV then log('E', logTag, 'service: ' .. tostring(errV)) end
   pcall(L.radioRegionTick, now())
+  pcall(L.whereTick, now())
+  pcall(L.rentalTick, now())
+  pcall(L.cineTick, now())
 end
 function L.accidentFrame(dt)
   if S.settings.accidents == false then return end
@@ -7084,12 +7431,11 @@ function M.onUpdate(dtReal, dtSim)
     do local okFx, errFx = pcall(L.fxDraw); if not okFx and not R.fxErr then R.fxErr = true; log('W', logTag, 'fx: ' .. tostring(errFx)) end end end
   L.mk('town/gap/tutorial/cond')
   -- the introduction (FernfahrerSzene 'FernfahrerTutorial'): once the flight is over and no menu is up
-  if R.tutorialAt and t > R.tutorialAt and not cinematic.active() and not R.sleep and not R.officeOpen and not R.stopOpen then
+  if R.tutorialAt and t > R.tutorialAt and L.screenGone(t) and not cinematic.active() and not R.sleep and not R.officeOpen and not R.stopOpen then
     R.tutorialAt = nil
-    local _, loaner = activeDef()
-    guihooks.trigger('FernfahrerTutorial', { company = S.company and S.company.name or 'deine Spedition',
-      home = S.home and S.home.name or 'dein Hof', loaner = loaner, rules = S.settings.truckRules ~= false })
+    L.tutSend(t, 0)
   end
+  if R.tutAckAt and t > R.tutAckAt then L.tutSend(t, R.tutAckN or 0) end
   if R.sleep then
     local okZ, errZ = pcall(L.sleepTick, t)
     if not okZ then log('E', logTag, 'sleep: ' .. tostring(errZ)); R.sleep = nil; guihooks.trigger('FernfahrerSleep', { on = false }) end
@@ -7107,7 +7453,7 @@ function M.onUpdate(dtReal, dtSim)
     R.titleWait = R.titleWait or t
     R.titleAt = t + 0.5
   end
-  if R.titleAt and t > R.titleAt and not R.trip and not R.pendingTeleport and not R.worldLoad and not earthLoading() then
+  if R.titleAt and t > R.titleAt and not R.trip and not R.pendingTeleport and L.titleReady(t) then
     R.titleAt, R.titleWait = nil, nil
     local place = R.near and R.near.action == 'home' and (S.home.name or 'Firmenhof') or nil
     if not place then
@@ -7134,7 +7480,7 @@ function M.onUpdate(dtReal, dtSim)
       company = S.company and S.company.name or nil, text = R.titleText })
     R.titleText = nil
   end
-  if vices.override and not cinematic.active() and not R.photoActive then vices.override = nil end    -- (the flight is over)
+  if vices.override and not cinematic.active() and not R.photoActive and not L.cine.active() then vices.override = nil end    -- (the flight is over)
   -- a delivery done: its note filed, the settlement card up (not over another screen)
   if R.reportAt and t > R.reportAt and not R.officeOpen and not R.stopOpen then
     R.reportAt = nil

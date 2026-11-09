@@ -26,6 +26,7 @@ Die Mod ist komplett auf Deutsch.
 **Dein Alltag als Fahrer**
 - Aufträge zwischen echten Firmen und Orten, mit Lieferfrist und Sternewertung am Ende
 - Auflieger ankuppeln, Ladung sichern, ADR-Gefahrgut, Milchtouren, Fernverkehr mit Fähre, Autozug und Flug
+- Nach dem Flug zu Fuß weiter oder mit dem Mietwagen deiner Wahl
 - Fahrtenschreiber mit echten Lenk- und Ruhezeiten, dazu Müdigkeit, die dir irgendwann die Augen zufallen lässt
 - Kabine mit Kaffee, Energydrink, Bier, Zigaretten und mehr, und mit Folgen bei der nächsten Polizeikontrolle
 - Deutsche Navi-Ansagen, Tempomat, kaufbare Assistenzsysteme, virtuelle Spiegel
@@ -46,7 +47,8 @@ Die Mod ist komplett auf Deutsch.
 - Finanzen und Kredite, Dokumente, Statistik mit entdeckten Orten und Fahrerwertung
 
 **Im Führerhaus**
-- Internetradio mit Regionalsender je Bundesland, Spotify-Steuerung, Equalizer und Videoplayer
+- Internetradio mit Regionalsender je Bundesland, Favoriten, Spotify-Steuerung, Equalizer und Videoplayer
+- Cinematic-Modus mit Außenkamera-Fahrten während Autodrive
 
 Ein Handbuch im Spiel erklärt beim ersten Start alles Schritt für Schritt.
 

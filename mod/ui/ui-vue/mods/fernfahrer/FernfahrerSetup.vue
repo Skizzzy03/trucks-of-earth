@@ -182,7 +182,8 @@ function found() {
                     lat: home.value.lat, lon: home.value.lon, difficulty: diff.value }, r => {
     busy.value = false
     // (the loading screen of the drive to the yard – it goes on to the road once the world is there)
-    if (r && r.ok) navigate(r.travel ? "fernfahrerTravel" : "play")
+    // (career.lua has opened it itself: a second navigate broke the router's transition, 2026-11-08)
+    if (r && r.ok) { if (!r.travel) navigate("play") }
     else error.value = (r && r.error) || "Das hat nicht geklappt."
   })
 }

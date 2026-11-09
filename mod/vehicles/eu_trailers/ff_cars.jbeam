@@ -1,7 +1,7 @@
-// Fernfahrer-Karriere: the car transporter's load on the EU flatbed semi trailer (tools/build_cars.js)
+// Trucks of Earth: the car transporter's load on the EU flatbed semi trailer (tools/build_cars.js)
 {
   "euTr_platform_load_ff_newcars": {
-    "information": { "authors": "Fernfahrer-Karriere", "name": "Drei Neuwagen", "value": 0 },
+    "information": { "authors": "Trucks of Earth", "name": "Drei Neuwagen", "value": 0 },
     "slotType": "euTr_platform_load",
     "flexbodies": [
       ["mesh", "[group]:", "nonFlexMaterials"],
@@ -188,7 +188,7 @@
     ],
   },
   "euTr_platform_load_ff_newcars2": {
-    "information": { "authors": "Fernfahrer-Karriere", "name": "Drei Neuwagen (b)", "value": 0 },
+    "information": { "authors": "Trucks of Earth", "name": "Drei Neuwagen (b)", "value": 0 },
     "slotType": "euTr_platform_load",
     "flexbodies": [
       ["mesh", "[group]:", "nonFlexMaterials"],
@@ -375,7 +375,7 @@
     ],
   },
   "euTr_platform_load_ff_wrecks": {
-    "information": { "authors": "Fernfahrer-Karriere", "name": "Drei Autowracks", "value": 0 },
+    "information": { "authors": "Trucks of Earth", "name": "Drei Autowracks", "value": 0 },
     "slotType": "euTr_platform_load",
     "flexbodies": [
       ["mesh", "[group]:", "nonFlexMaterials"],

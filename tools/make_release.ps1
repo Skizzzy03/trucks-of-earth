@@ -5,7 +5,9 @@
 param([string]$Mod)
 $root = Split-Path -Parent $PSScriptRoot
 $gh = Join-Path $root 'github'; $rel = Join-Path $root 'release'
-foreach ($d in $gh, $rel) { if (Test-Path $d) { Remove-Item $d -Recurse -Force }; New-Item -ItemType Directory $d | Out-Null }
+foreach ($d in $gh, $rel) {   # (the repository's .git stays)
+  if (Test-Path $d) { Get-ChildItem $d -Force | Where-Object { $_.Name -ne '.git' } | Remove-Item -Recurse -Force } else { New-Item -ItemType Directory $d | Out-Null }
+}
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 
 # the repository

@@ -43,7 +43,12 @@ angular.module('beamng.apps')
     '.ffb .mapctl a.on{background:#f5a623;color:#15100a}.ffb .mapctl a.sm{font-size:10px}' +
     // (heading-up / tilted: the map layer turns and tips around the player)
     '.ffb .mapview{position:absolute;left:0;top:0;width:100%;height:100%;transition:transform .35s linear;will-change:transform}' +
-    '.ffb .legend{position:absolute;left:6px;top:6px;z-index:6;background:rgba(15,18,23,.85);border-radius:3px;padding:3px 6px;font-size:10px;color:#cfd6de;line-height:1.5}' +
+    // where the truck is (2026-11-08): the country's letters, the town, the state
+    '.ffb .loc{position:absolute;left:6px;top:6px;z-index:6;display:flex;align-items:center;gap:6px;max-width:calc(100% - 42px);box-sizing:border-box;height:22px;padding:0 10px 0 3px;border-radius:11px;background:rgba(15,18,23,.88);font-size:11px;font-weight:700;color:#e9edf2;white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,.35)}' +
+    '.ffb .loc .fl{flex:none;width:24px;height:16px;border-radius:2px;box-shadow:0 0 0 1px rgba(255,255,255,.35);background-color:#555}' +
+    '.ffb .loc .cn{font-size:12px;font-weight:800;flex:none}' +
+    '.ffb .loc .st{color:#aeb7c3;font-weight:500;overflow:hidden;text-overflow:ellipsis}' +
+    '.ffb .legend{position:absolute;left:6px;top:32px;z-index:6;background:rgba(15,18,23,.85);border-radius:3px;padding:3px 6px;font-size:10px;color:#cfd6de;line-height:1.5}' +
     '.ffb .legend i{display:inline-block;width:8px;height:8px;border-radius:50%;margin:0 3px 0 6px}.ffb .legend i:first-child{margin-left:0}' +
     '.ffb .mapinfo{position:absolute;left:6px;bottom:6px;z-index:6;background:rgba(15,18,23,.88);border-radius:3px;padding:3px 8px;font-size:11px}' +
     '.ffb .t1{font-weight:700;font-size:13.5px;display:flex;gap:6px;align-items:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
@@ -102,6 +107,7 @@ angular.module('beamng.apps')
             '<div class="mk tg" ng-if="m.target" ng-style="{left: m.target.x + \'px\', top: m.target.y + \'px\', transform: mkT()}">Z</div>' +
             '</div>' +
             '<div class="me" ng-style="meStyle()"></div>' +
+            '<div class="loc" ng-if="h.where" title="{{ h.where.state ? h.where.state + \', \' : \'\' }}{{ h.where.country }}"><span class="fl" ng-style="flag(h.where.code)"></span><span class="cn">{{ h.where.country }}</span><span class="st" ng-if="h.where.state || h.where.town">{{ [h.where.state, h.where.town].filter(ok).join(\' · \') }}</span></div>' +
             '<div class="legend" ng-if="showLegend"><i style="background:#ff8f1f"></i>Fracht<i style="background:#f5a623"></i>Tank<i style="background:#7ac943"></i>Rast<i style="background:#ff7a45"></i>Werkstatt<i style="background:#3d8bfd"></i>Händler<i style="background:#2fbf71"></i>Kunde</div>' +
             '<div class="mapctl"><a ng-click="zoom(1)">+</a><a ng-click="zoom(-1)">−</a><a ng-click="showLegend = !showLegend">?</a>' +
               '<a ng-click="toggleSound()" title="Navi-Ansagen an/aus" ng-class="{off: !h.navSound}">{{ h.navSound ? \'🔊\' : \'🔇\' }}</a>' +
@@ -172,6 +178,7 @@ angular.module('beamng.apps')
           '<button class="btn pri" ng-click="lua(\'toggleOffice\')">Büro</button>' +
           // (BeamNG.Earth's autodrive along the route, on and off while driving – Strg+Umschalt+A)
           '<button class="btn" ng-class="{go: h.autodrive}" ng-click="lua(\'autodriveToggle\')" title="Autodrive: der LKW fährt die Navi-Route selbst (Strg+Umschalt+A)">🤖 {{ h.autodrive ? \'Autodrive an\' : \'Autodrive\' }}</button>' +
+          '<button class="btn" ng-if="h.autodrive" ng-class="{go: h.cine}" ng-click="lua(\'cineToggle\')" title="Kamerafahrten von außen, die Anzeigen werden ausgeblendet (Strg+Umschalt+C)">🎬 Cinematic</button>' +
           '<button class="btn go" ng-if="h.near && h.near.action===\'refuel\' && speed() < 3" ng-click="lua(\'refuel\')">Tanken</button>' +
           '<button class="btn go" ng-if="h.near && (h.near.action===\'repair\' || h.near.action===\'home\') && (h.damage||0) > .01" ng-click="lua(\'repair\')">Reparieren{{ h.near.repairCost ? \' \' + money(h.near.repairCost) : \'\' }}</button>' +
           '<button class="btn go" ng-if="h.near && (h.near.action===\'dealerTruck\' || h.near.action===\'dealerCar\')" ng-click="lua(\'toggleOffice\', \'dealer\')">Händler</button>' +
@@ -195,6 +202,34 @@ angular.module('beamng.apps')
       'use strict'
       scope.h = { mode: false }
       scope.tab = 'map'
+      // the flags of the country sign (2026-11-09): stripes as gradients, the rest as small pictures; emoji flags do not draw here
+      var stripes = function (dir, list) {
+        var w = 100 / list.length, s = list.map(function (c, i) { return c + ' ' + (i * w) + '% ' + ((i + 1) * w) + '%' }).join(',')
+        return { background: 'linear-gradient(' + dir + ',' + s + ')' }
+      }
+      var H = function () { return stripes('to bottom', [].slice.call(arguments)) }, V = function () { return stripes('to right', [].slice.call(arguments)) }
+      var svg = function (body) { return { background: 'center/cover no-repeat url("data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 16">' + body + '</svg>') + '")' } }
+      var nordic = function (bg, c, inner) { return svg('<rect width="24" height="16" fill="' + bg + '"/><path d="M0 8h24M9 0v16" stroke="' + c + '" stroke-width="' + (inner ? 5 : 3) + '"/>' + (inner ? '<path d="M0 8h24M9 0v16" stroke="' + inner + '" stroke-width="2.4"/>' : '')) }
+      var FLAGS = {
+        D: H('#000', '#d00', '#ffce00'), A: H('#ed2939', '#fff', '#ed2939'), NL: H('#ae1c28', '#fff', '#21468b'), B: V('#000', '#ffd90c', '#f31830'), L: H('#ea141d', '#fff', '#51adda'),
+        F: V('#002654', '#fff', '#ed2939'), I: V('#009246', '#fff', '#ce2b37'), IRL: V('#169b62', '#fff', '#ff883e'), RO: V('#002b7f', '#fcd116', '#ce1126'), MD: V('#0046ae', '#ffd200', '#cc092f'),
+        PL: H('#fff', '#dc143c'), FL: H('#002b7f', '#ce1126'), UA: H('#005bbb', '#ffd500'), H: H('#cd2a3e', '#fff', '#436f4d'), BG: H('#fff', '#00966e', '#d62612'), EST: H('#0072ce', '#000', '#fff'),
+        LT: H('#fdb913', '#006a44', '#c1272d'), SLO: H('#fff', '#005da4', '#ed1c24'), HR: H('#f00', '#fff', '#171796'), SK: H('#fff', '#0b4ea2', '#ee1c25'), SRB: H('#c6363c', '#0c4076', '#fff'),
+        E: H('#aa151b', '#f1bf00', '#f1bf00', '#aa151b'), LV: H('#9e3039', '#9e3039', '#fff', '#9e3039', '#9e3039'), BY: H('#c8313e', '#c8313e', '#4aa657'), P: V('#060', '#060', '#f00', '#f00', '#f00'),
+        DK: nordic('#c60c30', '#fff'), S: nordic('#006aa7', '#fecc00'), FIN: nordic('#fff', '#003580'), N: nordic('#ef2b2d', '#fff', '#002868'), IS: nordic('#02529c', '#fff', '#dc1e35'),
+        CH: svg('<rect width="24" height="16" fill="#d52b1e"/><path d="M12 3.5v9M7.5 8h9" stroke="#fff" stroke-width="3"/>'),
+        CZ: svg('<rect width="24" height="8" fill="#fff"/><rect y="8" width="24" height="8" fill="#d7141a"/><path d="M0 0l12 8L0 16z" fill="#11457e"/>'),
+        UK: svg('<rect width="24" height="16" fill="#012169"/><path d="M0 0l24 16M24 0L0 16" stroke="#fff" stroke-width="3"/><path d="M0 0l24 16M24 0L0 16" stroke="#c8102e" stroke-width="1.2"/><path d="M12 0v16M0 8h24" stroke="#fff" stroke-width="5"/><path d="M12 0v16M0 8h24" stroke="#c8102e" stroke-width="3"/>'),
+        GR: svg('<rect width="24" height="16" fill="#0d5eaf"/><path d="M0 2.7h24M0 6.2h24M0 9.8h24M0 13.3h24" stroke="#fff" stroke-width="1.8"/><rect width="9" height="8.9" fill="#0d5eaf"/><path d="M4.5 0v8.9M0 4.4h9" stroke="#fff" stroke-width="1.8"/>'),
+        BIH: svg('<rect width="24" height="16" fill="#002395"/><path d="M7 0h13v16z" fill="#fecb00"/>'),
+        MNE: svg('<rect width="24" height="16" fill="#d4af37"/><rect x="1.2" y="1.2" width="21.6" height="13.6" fill="#c40308"/>'),
+        AL: svg('<rect width="24" height="16" fill="#e41e20"/><path d="M12 3l3 3-1 5-2 2-2-2-1-5z" fill="#000"/>'),
+        NMK: svg('<rect width="24" height="16" fill="#d20000"/><circle cx="12" cy="8" r="3" fill="#ffe600"/><path d="M12 8L0 0M12 8L24 0M12 8L0 16M12 8l12 8M12 8H0M12 8h12M12 8V0M12 8v8" stroke="#ffe600" stroke-width="1.6"/>'),
+        RKS: svg('<rect width="24" height="16" fill="#244aa5"/><path d="M9 6l3-2 3 2-1 4h-4z" fill="#d0a650"/>'),
+        TR: svg('<rect width="24" height="16" fill="#e30a17"/><circle cx="9.5" cy="8" r="4" fill="#fff"/><circle cx="10.6" cy="8" r="3.2" fill="#e30a17"/><circle cx="15" cy="8" r="1.2" fill="#fff"/>')
+      }
+      scope.flag = function (code) { return FLAGS[code] || {} }
+      scope.ok = function (x) { return !!x }
       scope.showLegend = false
       scope.s = { speed: null, fuel: null }
       scope.m = { tiles: [], places: [], route: '', w: 400, h: 150, z: 14 }

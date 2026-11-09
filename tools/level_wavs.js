@@ -10,8 +10,11 @@ for (const f of fs.readdirSync(dir).filter(x => x.endsWith('.wav'))) {
   rate = b.readUInt32LE(24)
   let r = rmsOf(b, d)
   if (want !== undefined) {
-    const g = Math.min(Math.pow(10, Number(want) / 20) / r.rms, 0.97 / r.pk)
-    for (let i = d.at; i + 1 < d.at + d.n; i += 2) b.writeInt16LE(Math.round(Math.max(-1, Math.min(1, b.readInt16LE(i) / 32768 * g)) * 32767), i)
+    // (a fourth argument "limit": as loud as asked, the peaks rounded off instead of holding the gain back)
+    const limit = process.argv[4] === 'limit', T = 0.72
+    const g = limit ? Math.pow(10, Number(want) / 20) / r.rms : Math.min(Math.pow(10, Number(want) / 20) / r.rms, 0.97 / r.pk)
+    const shape = x => { const a = Math.abs(x); return a <= T ? x : Math.sign(x) * (T + (0.985 - T) * Math.tanh((a - T) / (0.985 - T))) }
+    for (let i = d.at; i + 1 < d.at + d.n; i += 2) b.writeInt16LE(Math.round(shape(b.readInt16LE(i) / 32768 * g) * 32767), i)
     fs.writeFileSync(file, b); r = rmsOf(b, d)
   }
   sum += 20 * Math.log10(r.rms); n++; maxPk = Math.max(maxPk, r.pk)

@@ -62,7 +62,7 @@
         <span v-else-if="trip && trip.arrival">{{ trip.arrival }} Uhr</span>
         <span v-if="trip && trip.arrival && kind !== 'road'">Ankunft {{ trip.arrival }} Uhr</span>
         <span v-if="trip && trip.trailer">mit Auflieger</span>
-        <span v-if="kind === 'fly'">Mietwagen am Ziel</span>
+        <span v-if="kind === 'fly'">Am Ziel zu Fuß zum Mietwagen</span>
       </div>
       <div class="status">{{ statusText }}</div>
       <div class="tip" v-if="kind === 'road'"><b>Tipp</b> {{ tip }}</div>
@@ -97,7 +97,7 @@ const statusText = computed(() => {
     if (parts.length) return parts.join(", ") + " werden geladen …"
     return trip.value && trip.value.world ? "Die Welt wird geladen …" : "Zurück zu deiner letzten Position …"
   }
-  if (arrived.value) return kind.value === "ferry" ? "Angelegt – du fährst von Bord" : "Gelandet – dein Mietwagen steht bereit"
+  if (arrived.value) return kind.value === "ferry" ? "Angelegt – du fährst von Bord" : "Gelandet – der Mietwagen-Schalter ist gleich in der Nähe"
   // (there, the world still loading behind this screen)
   if (!moving.value && loading.value) {
     const l = loading.value, parts = loadParts(l)
@@ -137,19 +137,24 @@ const hours = h => (h < 1 ? Math.round(h * 60) + " min" : (Math.round(h * 4) / 4
 let timer = null
 // (where to after the screen: the road – or, for a new career, its setup screen; career.lua uiTrip next)
 let next = "play"
+let leaving = false   // (false when the screen went by Esc: a new career still needs its setup screen, 2026-11-08)
 function poll() {
   elapsed.value = (Date.now() - t0) / 1000
   // (never stuck: the first load once needed Esc, 2026-11-04)
-  if (elapsed.value > 200 && timer) { clearInterval(timer); timer = null; navigate(next); return }
+  if (elapsed.value > 200 && timer) { clearInterval(timer); timer = null; leaving = true; navigate(next); return }
   call("uiTrip", r => {
     if (r && r.trip) trip.value = r.trip
     if (r) { loading.value = r.loading || null; moving.value = !!r.moving; next = r.next || "play" }
     if (r && !r.active) arrived.value = true
-    if (arrived.value && elapsed.value >= MIN_S) { clearInterval(timer); timer = null; sound("done"); setTimeout(() => navigate(next), 600) }
+    if (arrived.value && elapsed.value >= MIN_S) { clearInterval(timer); timer = null; leaving = true; sound("done"); setTimeout(() => navigate(next), 600) }
   })
 }
 onMounted(() => { call("loadMusic", true); poll(); timer = setInterval(poll, 400) })
-onUnmounted(() => { call("loadMusic", false); if (timer) clearInterval(timer) })
+onUnmounted(() => {
+  call("loadMusic", false)
+  if (timer) clearInterval(timer)
+  if (!leaving) setTimeout(() => call("uiTravelLeft"), 300)
+})
 </script>
 
 <style scoped>

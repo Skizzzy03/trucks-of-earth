@@ -147,6 +147,7 @@ angular.module('beamng.apps')
     '.ffz .twn .k{font-size:12px;font-weight:500;color:#aeb7c3;margin-top:3px}' +
     '.ffz .twn .bar{height:2px;margin:9px auto 0;width:0;background:currentColor;color:#9aa4b2;border-radius:2px}' +
     '.ffz .twn.new .bar{color:#5ee08f}.ffz .twn.on .bar{width:100%;transition:width 4.4s linear}' +
+    '.ffz .twn.reg .e{color:#f5a623}.ffz .twn.reg .bar{color:#f5a623}' +
     '@keyframes ffzHue{0%{background:#7fd17a}33%{background:#9a86e0}66%{background:#e0b26a}100%{background:#7fd17a}}'
   return {
     template: '<div class="ffz" style="background:transparent;box-shadow:none;"><style>' + css + '</style><div class="tint"></div><div class="vig"></div>' + SVG +
@@ -420,9 +421,28 @@ angular.module('beamng.apps')
         }, 4800)
       })
       // a town driven into: the banner (after the title card, if one is up)
-      var twn = q('.twn'), twnTimer = null
-      function showTown(d) {
+      var twn = q('.twn'), twnTimer = null, regUntil = 0
+      // a border crossed (2026-11-08): another state or country, the same banner in amber; a town's banner waits for it
+      function showRegion(d) {
         var wait = ttlUntil - Date.now()
+        if (wait > 0) { setTimeout(function () { showRegion(d) }, wait + 200); return }
+        regUntil = Date.now() + 5400
+        twn.className = 'twn reg'
+        twn.querySelector('.e').textContent = d.eyebrow || (d.kind === 'country' ? 'Willkommen in' : 'Du fährst jetzt durch')
+        twn.querySelector('.n').textContent = d.name || ''
+        twn.querySelector('.k').textContent = d.sub || ''
+        clearTimeout(twnTimer)
+        twn.style.display = ''
+        void twn.offsetWidth
+        twn.classList.add('on')
+        twnTimer = setTimeout(function () {
+          twn.classList.remove('on')
+          twnTimer = setTimeout(function () { twn.style.display = 'none' }, 700)
+        }, 4600)
+      }
+      scope.$on('FernfahrerRegion', function (ev, d) { if (d && d.name) { showRegion(d) } })
+      function showTown(d) {
+        var wait = Math.max(ttlUntil, regUntil) - Date.now()
         if (wait > 0) { setTimeout(function () { showTown(d) }, wait + 200); return }
         twn.className = 'twn' + (d.first ? ' new' : '')
         twn.querySelector('.e').textContent = d.first ? 'Neuer Ort entdeckt' : 'Willkommen zurück in'
@@ -728,7 +748,7 @@ angular.module('beamng.apps')
               ['🌿', '<b>Joint:</b> THC über 3,5 ng/ml ist strafbar und bleibt Stunden im Blut. Die Sicht wird träge, der Tempomat hält nicht.'], ['🚪', 'Joints gibt es nur <b>hinter manchen Tankstellen</b>. Der Typ dort will drei Treffer im grünen Feld sehen, sonst ist er eine Weile weg.']]) },
           { ch: 'Fahrer', ey: 'Das Radio', h: 'Musik im Führerhaus',
             b: '<p>Für den Ton muss die kleine <b>Fernfahrer-Radio</b>-App laufen. Sie ist ein eigener Download auf der GitHub-Seite der Mod. Die Lampe am Radio zeigt, ob sie läuft.</p>' +
-              tutRows([['🎛', 'Linker Knopf: Mausrad für Lautstärke, Klick für an/aus. Rechter Knopf: Sender wechseln.'], ['🔀', '<b>Quelle:</b> Internetradio, Spotify, Ton des Videoplayers oder Line.'], ['🎚', '<b>EQ</b> klappt Bässe, Mitten und Höhen aus.'], ['📍', '<b>Regionalsender:</b> Im neuen Bundesland wechselt das Radio mit kurzem Rauschen auf den Sender von dort. In den Einstellungen abschaltbar.']]) },
+              tutRows([['🎛', 'Linker Knopf: Mausrad für Lautstärke, Klick für an/aus. Rechter Knopf: Sender wechseln.'], ['🔀', '<b>Quelle:</b> Internetradio, Spotify, Ton des Videoplayers oder Line.'], ['🎚', '<b>EQ</b> klappt Bässe, Mitten und Höhen aus.'], ['☰', '<b>Senderliste:</b> Die Taste ☰ zeigt alle Sender. Mit dem Stern merkst du dir Favoriten, ab zwei springt der Knopf nur noch zwischen ihnen.'], ['📍', '<b>Regionalsender:</b> Im neuen Bundesland wechselt das Radio mit kurzem Rauschen auf den Sender von dort. In der Senderliste abschaltbar.']]) },
           // --- the road ---
           { ch: 'Unterwegs', ey: 'Regeln', h: 'Was auf der Straße gilt',
             b: tutRows((d.rules ? [['🚦', 'Als LKW gilt: <b>80 km/h</b> auf der Autobahn, <b>60</b> auf Landstraßen. Der Begrenzer regelt bei 90.']] : []).concat([['📸', 'Teuer wird es an <b>Blitzern</b> und bei Lasermessungen. Bußgelder gehen vom Firmenkonto ab.'], ['👮', 'Bei einer <b>Polizeikontrolle</b> redest du selbst: Ehrlich ist meist billiger, Ausreden können klappen oder teurer werden.'], ['🔥', 'Bergab <b>Motorbremse</b> nutzen. Zu heiße Bremsen lassen Reifen platzen.']])) },
@@ -777,6 +797,7 @@ angular.module('beamng.apps')
         el.querySelector('.skip').style.display = s.last ? 'none' : ''
       }
       function tutOpen(d) {
+        bngApi.engineLua('if fernfahrer_career and fernfahrer_career.tutorialShown then fernfahrer_career.tutorialShown() end')
         if (tut) { return }
         if (!document.getElementById('ffTutCss')) { var st = document.createElement('style'); st.id = 'ffTutCss'; st.textContent = TUT_CSS; document.head.appendChild(st) }
         var old = document.getElementById('ffTut'); if (old && old.parentNode) { old.parentNode.removeChild(old) }

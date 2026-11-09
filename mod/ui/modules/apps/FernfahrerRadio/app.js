@@ -62,7 +62,25 @@ angular.module('beamng.apps')
     '.ffr .eqp .row{position:absolute;left:0;right:0;top:12px;display:flex;justify-content:space-around;align-items:flex-start}' +
     '.ffr .eqp .kn{cursor:ns-resize}.ffr .eqp .lbl{bottom:-13px}' +
     '.ffr .eqp .db{position:absolute;left:0;right:0;bottom:-24px;text-align:center;font:700 8px Consolas,monospace;color:#8b939e}' +
-    '.ffr .eqp .dot.mid{background:#59606a}'
+    '.ffr .eqp .dot.mid{background:#59606a}' +
+    // the list of stations (2026-11-08): over the faceplate, tabs, a star for each
+    '.stlwrap{position:fixed;z-index:2147481000;pointer-events:none}' +
+    '.ffr .stl{position:relative;width:520px;pointer-events:auto;border-radius:9px;overflow:hidden;font:12px Arial,sans-serif;color:#d7dce2;' +
+      'background:linear-gradient(180deg,#2a2f36,#191d22);box-shadow:0 12px 30px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.1);border:1px solid #0c0e11}' +
+    '.ffr .stl .hd{display:flex;align-items:center;gap:2px;padding:7px 8px 0;border-bottom:1px solid #111418}' +
+    '.ffr .stl .hd a{padding:5px 10px 7px;font-weight:800;font-size:10.5px;letter-spacing:.6px;color:#8b939e;cursor:pointer;border-bottom:2px solid transparent}' +
+    '.ffr .stl .hd a:hover{color:#d7dce2}.ffr .stl .hd a.on{color:#fff;border-bottom-color:#f5a623}.ffr .stl .hd .x{margin-left:auto;font-size:13px;padding:2px 7px 6px}' +
+    '.ffr .stl .ls{overflow-y:auto;padding:3px 0;display:grid;grid-template-columns:1fr 1fr;align-content:start}' +
+    '.ffr .stl .ls::-webkit-scrollbar{width:6px}.ffr .stl .ls::-webkit-scrollbar-thumb{background:#3b414a;border-radius:3px}' +
+    '.ffr .stl .it{display:flex;align-items:center;gap:7px;padding:5px 10px 5px 6px;cursor:pointer;min-width:0}.ffr .stl .it:hover{background:#30363e}' +
+    '.ffr .stl .it.cur{box-shadow:inset 3px 0 0 #3ad38b;background:rgba(58,211,139,.08)}' +
+    '.ffr .stl .star{flex:none;width:20px;text-align:center;font-size:14px;line-height:16px;color:#59606a}.ffr .stl .star:hover{color:#ffd27a}.ffr .stl .star.on{color:#f5a623}' +
+    '.ffr .stl .nm{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ffr .stl .it.cur .nm{color:#fff}' +
+    '.ffr .stl small{margin-left:auto;padding-left:6px;flex:0 1 auto;min-width:0;font-size:10px;color:#8b939e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
+    '.ffr .stl .emp{grid-column:1/3;padding:18px 16px;text-align:center;color:#8b939e;line-height:1.5}' +
+    '.ffr .stl .ft{display:flex;align-items:center;gap:7px;padding:7px 10px;border-top:1px solid #111418;font-size:11px;color:#aab2bc}.ffr .stl .ft a{display:flex;align-items:center;gap:7px;cursor:pointer}.ffr .stl .ft a:hover{color:#fff}' +
+    '.ffr .stl .ft i{width:24px;height:13px;border-radius:7px;background:#3b414a;position:relative;transition:background .15s}.ffr .stl .ft i:after{content:"";position:absolute;left:2px;top:2px;width:9px;height:9px;border-radius:50%;background:#aab2bc;transition:left .15s}' +
+    '.ffr .stl .ft a.on i{background:#3ad38b}.ffr .stl .ft a.on i:after{left:13px;background:#fff}.ffr .stl .ft span{margin-left:auto;color:#6f7782}'
   // the volume arc: 11 dots from -135° to +135°
   var DOTS = []
   for (var i = 0; i <= 10; i++) { DOTS.push(-135 + i * 27) }
@@ -91,6 +109,7 @@ angular.module('beamng.apps')
               '<b>{{ s.l }}</b><small>{{ s.sub }}</small><em ng-if="s.k === \'video\' && r.videoOn">● läuft</em></a>' +
           '</div>' +
           '<div class="keys" ng-if="r.src !== \'spotify\'"><a ng-click="cmd(\'stprev\')" title="Sender zurück" ng-class="{off: r.src === \'video\'}">◂◂</a><a ng-click="cmd(\'stnext\')" title="Sender vor" ng-class="{off: r.src === \'video\'}">▸▸</a>' +
+            '<a class="eqk" ng-if="r.src === \'radio\'" ng-class="{on: listOpen}" ng-click="toggleList()" title="Senderliste und Favoriten">☰</a>' +
             '<a class="eqk" ng-class="{on: eqOpen}" ng-click="toggleEq()" title="Klangregelung: Tiefen, Mitten, Höhen">EQ</a></div>' +
           '<div class="keys" ng-if="r.src === \'spotify\'"><a ng-click="cmd(\'prev\')" title="Vorheriger Titel">⏮</a><a ng-click="cmd(\'play\')" title="Play / Pause">⏯</a><a ng-click="cmd(\'next\')" title="Nächster Titel">⏭</a>' +
             '<a class="eqk" ng-class="{on: eqOpen}" ng-click="toggleEq()" title="Klangregelung (bei Spotify ohne Wirkung: dort regelt der Helfer nur die Lautstärke)">EQ</a></div>' +
@@ -102,6 +121,17 @@ angular.module('beamng.apps')
             '<span class="ptr" ng-style="{transform: \'rotate(\' + tuneAngle + \'deg)\'}"><i style="background:#cfd6de;box-shadow:none;height:9px;top:5px"></i></span></span>' +
           '<span class="lbl" style="bottom:-15px">TUNE</span>' +
         '</div>' +
+        '<div class="ffr stlwrap" ng-style="listPos"><div class="stl" ng-if="listOpen && list && h.mode">' +
+          '<div class="hd"><a ng-repeat="t in LISTTABS" ng-class="{on: listTab === t.k}" ng-click="setListTab(t.k)">{{ t.l }}</a><a class="x" ng-click="toggleList()" title="Schließen">✕</a></div>' +
+          '<div class="ls" ng-style="{\'max-height\': lsMax + \'px\'}">' +
+            '<div class="it" ng-repeat="s in visibleStations() track by s.i" ng-class="{cur: s.i === list.cur}" ng-click="pickStation(s)">' +
+              '<span class="star" ng-class="{on: s.f}" ng-click="toggleFav(s, $event)" title="{{ s.f ? \'Aus den Favoriten nehmen\' : \'Als Favorit merken\' }}">{{ s.f ? \'★\' : \'☆\' }}</span>' +
+              '<span class="nm">{{ s.n }}</span><small>{{ s.r || \'\' }}</small></div>' +
+            '<div class="emp" ng-if="!visibleStations().length">Noch keine Favoriten.<br>Tipp auf den Stern neben einem Sender.</div>' +
+          '</div>' +
+          '<div class="ft"><a ng-class="{on: list.regional}" ng-click="toggleRegional()" title="Im neuen Bundesland automatisch auf den Sender von dort wechseln"><i></i>Regionalsender automatisch</a>' +
+            '<span ng-if="list.favs > 1">Knopf: nur Favoriten</span></div>' +
+        '</div></div>' +
       '</div>' +
       // the equalizer: three knobs, 0 at the top, ±12 dB to either side; wheel, drag, double-click = 0
       '<div class="eqp" ng-class="{open: eqOpen}"><div class="row">' +
@@ -163,7 +193,7 @@ angular.module('beamng.apps')
         var r = scope.r || {}, i = r.info || {}
         if (r.src === 'spotify') { return i.title ? '♪ ' + i.title : 'Spotify' }
         if (r.src === 'video') { return (i.live ? '● LIVE – ' : '📺 ') + (i.status || 'Ton des Videoplayers') }
-        return (r.station || 'Radio') + ' – Mausrad: Sender wechseln'
+        return (r.station || 'Radio') + (r.favs > 1 ? ' – Mausrad: nächster Favorit' : ' – Mausrad: Sender wechseln')
       }
       scope.power = function () { var on = !(scope.r && scope.r.on); scope.r.on = on; lua('fernfahrer_career.setOption("radioOn", ' + (on ? 'true' : 'false') + ')') }
       scope.source = function (k) { scope.r.src = k; scope.r.on = true; lua('fernfahrer_career.setOption("radioSrc", ' + JSON.stringify(k) + ')') }
@@ -171,6 +201,57 @@ angular.module('beamng.apps')
         if (c === 'stnext') { scope.tuneAngle += 24 } else if (c === 'stprev') { scope.tuneAngle -= 24 }
         lua('fernfahrer_career.radioCmd(' + JSON.stringify(c) + ')')
       }
+      // --- the list of stations and the favourites (2026-11-08) ---
+      scope.LISTTABS = [{ k: 'fav', l: 'FAVORITEN' }, { k: 'reg', l: 'REGIONAL' }, { k: 'all', l: 'ALLE' }]
+      scope.listOpen = false
+      scope.listTab = 'all'
+      scope.list = null
+      function listCall(expr, firstOpen) {
+        bngApi.engineLua('fernfahrer_career and fernfahrer_career.' + expr + ' or nil', function (d) {
+          scope.$evalAsync(function () {
+            if (!d) { return }
+            d.list = Array.isArray(d.list) ? d.list : Object.keys(d.list || {}).map(function (k) { return d.list[k] })
+            scope.list = d
+            if (firstOpen) { scope.listTab = d.favs > 0 ? 'fav' : 'all' }
+          })
+        })
+      }
+      scope.toggleList = function () {
+        scope.listOpen = !scope.listOpen
+        if (scope.listOpen) {
+          scope.eqOpen = false; scope.srcOpen = false
+          // (over the page, above the faceplate, as tall as the screen allows: inside the app's frame it was cut off)
+          var r = el[0].querySelector('.pl').getBoundingClientRect()
+          scope.listPos = { left: Math.max(8, r.left) + 'px', bottom: (window.innerHeight - r.top + 10) + 'px' }
+          scope.lsMax = Math.max(220, Math.min(620, r.top - 130))
+          listCall('radioList()', true)
+        }
+      }
+      scope.setListTab = function (k) { scope.listTab = k }
+      var visCache = [], visKey = ''
+      scope.visibleStations = function () {
+        var l = scope.list
+        if (!l) { return [] }
+        var key = scope.listTab + '|' + l.list.map(function (s) { return s.i + (s.f ? 'f' : '') }).join(',')
+        if (key === visKey) { return visCache }
+        var a = l.list.filter(function (s) { return scope.listTab === 'all' || (scope.listTab === 'fav' ? s.f : s.r) })
+        if (scope.listTab !== 'all') { a.sort(function (x, y) { return (x.r || x.n).localeCompare(y.r || y.n, 'de') }) }
+        visKey = key; visCache = a
+        return a
+      }
+      scope.pickStation = function (s) { scope.tuneAngle += 24; if (scope.list) { scope.list.cur = s.i } listCall('radioPick(' + s.i + ')') }
+      scope.toggleFav = function (s, e) { if (e) { e.stopPropagation() } s.f = !s.f; visKey = ''; listCall('radioFav(' + s.i + ')') }
+      scope.toggleRegional = function () {
+        var on = !(scope.list && scope.list.regional)
+        if (scope.list) { scope.list.regional = on }
+        lua('fernfahrer_career.setOption("radioRegional", ' + (on ? 'true' : 'false') + ')')
+      }
+      // (the list lives on the page itself: an app's frame cuts off what reaches out of it, and the other apps' frames take the mouse)
+      var listWrap = el[0].querySelector('.stlwrap')
+      document.body.appendChild(listWrap)
+      scope.$on('$destroy', function () { if (listWrap.parentNode) { listWrap.parentNode.removeChild(listWrap) } })
+      // (the wheel scrolls the list and does nothing else: the knobs, the camera)
+      listWrap.addEventListener('wheel', function (e) { e.stopPropagation() })
       function setVol(v) {
         v = Math.round(Math.max(0, Math.min(1, v)) * 100) / 100
         if (scope.r.vol === v) { return }
@@ -200,7 +281,7 @@ angular.module('beamng.apps')
       vol.addEventListener('click', function (e) { if (vol.dataset.dragged === '1') { e.stopPropagation(); e.preventDefault() } }, true)
       // --- the equalizer: bass, mid, treble in whole dB (−12..+12), sent as setOption radioEqB/M/T ---
       scope.eqOpen = false
-      scope.toggleEq = function () { scope.eqOpen = !scope.eqOpen }
+      scope.toggleEq = function () { scope.eqOpen = !scope.eqOpen; if (scope.eqOpen) { scope.listOpen = false } }
       scope.BANDS = [{ k: 'b', l: 'BASS' }, { k: 'm', l: 'MID' }, { k: 't', l: 'TREBLE' }]
       scope.EQDOTS = []
       for (var di = 0; di <= 12; di++) { scope.EQDOTS.push(-135 + di * 22.5) }

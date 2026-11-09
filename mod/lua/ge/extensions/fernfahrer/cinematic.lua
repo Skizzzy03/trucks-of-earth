@@ -25,7 +25,11 @@ function M.start(center, ey)
   return true
 end
 
-function M.active() return F ~= nil and not F.done end
+function M.active()
+  -- (F.done comes from the camera hook: without a hook running the flight must still end, the introduction waits for it)
+  if F and not F.done and os.clock() - F.t0 > M.DURATION + 3 then F.done = true end
+  return F ~= nil and not F.done
+end
 
 -- Enter: straight into the blend
 function M.skip()

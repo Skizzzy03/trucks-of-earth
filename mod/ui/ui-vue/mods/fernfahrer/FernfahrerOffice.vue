@@ -189,7 +189,7 @@
               <div class="bar"><b>{{ tr.hub.name }}</b><span class="muted">{{ tr.hub.kind === 'airport' ? "Flughafen" : (tr.hub.train ? "Autozug-Terminal" : "Fährhafen") }}</span></div>
               <div v-if="tr.hub.kind === 'ferry'" class="info">{{ tr.job ? "Der Auflieger fährt mit – er muss angekuppelt sein." : "Überfahrt mit deinem Fahrzeug." }}
                 Die Zeit an Bord läuft auf der Uhr; ab 6 Stunden zählt sie als Ruhezeit, sonst als Pause.</div>
-              <div v-else class="info">Du fliegst allein: Dein Fahrzeug bleibt hier, am Ziel wartet ein Mietwagen ({{ money(tr.rentalFee) }}).
+              <div v-else class="info">Du fliegst allein: Dein Fahrzeug bleibt hier. Am Ziel gehst du zu Fuß zum Mietwagen-Schalter und suchst dir dort ein Auto aus.
                 Eigene Fahrzeuge holst du später über den Fuhrpark (Überführung).</div>
               <div v-if="tr.hub.kind === 'airport' && tr.job" class="info warn">Mit laufendem Auftrag geht kein Flug.</div>
               <table class="tbl">
@@ -198,7 +198,7 @@
                   <td><b>{{ o.to }}</b> <span class="tag">{{ o.cc }}</span><span v-if="o.iata" class="tag blue">{{ o.iata }}</span></td>
                   <td class="muted">{{ o.operator || (o.km.toLocaleString("de-DE") + " km") }}</td>
                   <td class="r">{{ hours(o.hours) }}</td>
-                  <td class="r pay" :class="{ dim: st.money < o.price }">{{ money(o.price + (tr.hub.kind === 'airport' ? tr.rentalFee : 0)) }}</td>
+                  <td class="r pay" :class="{ dim: st.money < o.price }">{{ money(o.price) }}</td>
                   <td class="r"><button class="btn primary" :disabled="st.money < o.price || (tr.hub.kind === 'airport' && tr.job)" @click="act('travel', o.idx)">{{ tr.hub.kind === 'airport' ? "Fliegen" : "Buchen" }}</button></td>
                 </tr></tbody>
               </table>
