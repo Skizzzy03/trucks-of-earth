@@ -218,6 +218,7 @@ function M.fail(kind)
   if not v then return false end
   v:queueLuaCommand(string.format('extensions.load("fernfahrer_wear") if fernfahrer_wear then fernfahrer_wear.fail(%q) end', kind))
   st.fail = { kind = kind, t = now() }
+  if api.onFail then pcall(api.onFail, kind) end
   club().km = 0
   local f = M.FAIL[kind]
   api.notify(f.icon .. ' ' .. f.title .. '! ' .. f.text, 10)

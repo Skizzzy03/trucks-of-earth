@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1">
+<asset><contributor><authoring_tool>fernfahrer_karriere tools/build_accessories.js</authoring_tool></contributor><unit meter="1" name="meter"/><up_axis>Z_UP</up_axis></asset>
+<library_effects><effect id="ff_acc_foto-fx"><profile_COMMON><technique sid="common"><lambert><diffuse><color>0.8 0.8 0.8 1</color></diffuse></lambert></technique></profile_COMMON></effect></library_effects>
+<library_materials><material id="ff_acc_foto-mat" name="ff_acc_foto"><instance_effect url="#ff_acc_foto-fx"/></material></library_materials>
+<library_geometries><geometry id="ff_acc_bild2"><mesh>
+<source id="b-p"><float_array id="b-p-a" count="12">0.15 0.0065 -0.085 -0.15 0.0065 -0.085 -0.15 0.0065 0.085 0.15 0.0065 0.085</float_array><technique_common><accessor source="#b-p-a" count="4" stride="3"><param name="X" type="float"/><param name="Y" type="float"/><param name="Z" type="float"/></accessor></technique_common></source>
+<source id="b-n"><float_array id="b-n-a" count="12">0 1 0 0 1 0 0 1 0 0 1 0</float_array><technique_common><accessor source="#b-n-a" count="4" stride="3"><param name="X" type="float"/><param name="Y" type="float"/><param name="Z" type="float"/></accessor></technique_common></source>
+<source id="b-t"><float_array id="b-t-a" count="8">0 0 1 0 1 1 0 1</float_array><technique_common><accessor source="#b-t-a" count="4" stride="2"><param name="S" type="float"/><param name="T" type="float"/></accessor></technique_common></source>
+<vertices id="b-v"><input semantic="POSITION" source="#b-p"/></vertices>
+<triangles material="ff_acc_foto-mat" count="2"><input semantic="VERTEX" source="#b-v" offset="0"/><input semantic="NORMAL" source="#b-n" offset="0"/><input semantic="TEXCOORD" source="#b-t" offset="0" set="0"/><p>0 1 2 0 2 3</p></triangles>
+</mesh></geometry></library_geometries>
+<library_visual_scenes><visual_scene id="scene" name="scene"><node id="base00" name="base00"><node id="start01" name="start01"><node id="ff_acc_bild2" name="ff_acc_bild2"><instance_geometry url="#ff_acc_bild2"><bind_material><technique_common><instance_material symbol="ff_acc_foto-mat" target="#ff_acc_foto-mat"/></technique_common></bind_material></instance_geometry></node></node></node></visual_scene></library_visual_scenes>
+<scene><instance_visual_scene url="#scene"/></scene>
+</COLLADA>

@@ -37,6 +37,8 @@ const lit = v => v === null || v === undefined ? 'nil' : Array.isArray(v) ? '{' 
   : typeof v === 'string' ? JSON.stringify(v) : String(v)
 
 const prelude = `
+ONE_SIDED = ${process.env.ONE_SIDED ? "true" : "false"}
+package.preload['fernfahrer/accidents'] = function() return { behind = function() return nil end, zones = function() return nil end } end
 local V = {}
 V.__index = V
 function vec3(x, y, z) if type(x) == 'table' then return setmetatable({x=x.x,y=x.y,z=x.z or 0}, V) end return setmetatable({x=x or 0,y=y or 0,z=z or 0}, V) end
@@ -61,8 +63,8 @@ for name, n in pairs(G.nodes) do nodes[name] = { pos = vec3(n[1], n[2], n[3]), r
 for _, e in ipairs(G.edges) do
   local a, b = nodes[e[1]], nodes[e[2]]
   if a and b then
-    local link = { drivability = e[7], inRadius = e[8], outRadius = e[8], speedLimit = e[6] }
-    a.links[e[2]] = link; b.links[e[1]] = link
+    local link = { drivability = e[7], inRadius = e[8], outRadius = e[8], speedLimit = ${process.env.ROAD_MS || "e[6]"}, lanes = string.rep("-", e[5]) .. string.rep("+", e[4]), oneWay = e[3] == 1, inNode = e[1], outNode = e[2] }
+    a.links[e[2]] = link; if not ONE_SIDED then b.links[e[1]] = link end
   end
 end
 map = { objects = {} }
@@ -140,7 +142,7 @@ for step = 0, 120 do
   TAI.update(ctx, 0.5)
   if not at(carS + 30, 0) then break end
 end
-local out = {}
+local out = {'WATCH known=' .. TAI.watch.known .. ' looks=' .. TAI.watch.looks .. ' left=' .. TAI.watch.left}
 for _, l in ipairs(LOG) do out[#out+1] = 'LOG ' .. l end
 local seen = 0
 for _, s in ipairs(SENT) do if s:find('^3:') and seen < 8 then out[#out+1] = 'CMD ' .. s:gsub('%s+', ' '); seen = seen + 1 end end

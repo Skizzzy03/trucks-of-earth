@@ -824,6 +824,7 @@ angular.module('beamng.apps')
       scope.$on('FernfahrerPhotoUi', function (ev, d) {
         if (!d) { return }
         if (d.stopTab && window.ffStopPick) { window.ffStopPick(d.stopTab) }
+        if (d.shopCat && window.ffShopCat) { window.ffShopCat(d.shopCat) }
         if (!tut) { return }
         if (d.close) { var el = tut.el; tut = null; if (el.parentNode) { el.parentNode.removeChild(el) } return }
         if (typeof d.i === 'number') { tut.i = d.i; tutRender() }
@@ -895,26 +896,183 @@ angular.module('beamng.apps')
         '#ffCop{position:fixed;left:50%;bottom:9%;transform:translateX(-50%);z-index:2147481800;width:min(640px,92vw);font-family:FFWave,"Noto Sans",sans-serif;color:#eef1f5;pointer-events:auto;' +
           'background:linear-gradient(180deg,rgba(24,29,37,.97),rgba(14,17,22,.97));border:1px solid rgba(255,255,255,.12);border-top:3px solid #4d9bff;border-radius:14px;padding:15px 18px 14px;box-shadow:0 22px 60px rgba(0,0,0,.55)}' +
         '#ffCop.smuggle{border-top-color:#ff5b4d}' +
+        '#ffCop{display:flex;gap:14px;align-items:flex-start}#ffCop .pic{flex:none;width:128px;height:162px;border-radius:9px;border:2px solid #4d6b88;box-shadow:0 6px 18px rgba(0,0,0,.45)}#ffCop .tx{flex:1;min-width:0}#ffCop.smuggle .pic{border-color:#c6483b}#ffCop.npc{border-top-color:#f5a623}#ffCop.npc .pic{border-color:#8a6a33}#ffCop.npc .who{color:#f5b94a}#ffCop.nar .ln{font-style:italic;font-weight:500;color:#c9d3de}' +
         '#ffCop .who{display:flex;gap:9px;align-items:center;font-size:11px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:#7fb7f5}' +
         '#ffCop.smuggle .who{color:#ff8a7d}#ffCop .who span{font-size:22px;letter-spacing:0}' +
-        '#ffCop .ln{font-size:17px;line-height:1.4;font-weight:700;margin:7px 0 12px}' +
+        '#ffCop .ln{font-size:17px;line-height:1.4;font-weight:700;margin:7px 0 12px;min-height:48px}' +
         '#ffCop .ch{display:flex;flex-direction:column;gap:6px}' +
         '#ffCop button{all:unset;box-sizing:border-box;cursor:pointer;display:block;padding:9px 13px;border-radius:9px;background:#1f2630;border:1px solid #303846;font-size:14px;font-weight:700}' +
         '#ffCop button:hover{background:#2a3340;border-color:#4d9bff}#ffCop button small{display:block;font-size:11.5px;font-weight:500;color:#8b95a3;margin-top:1px}'
-      var cop = null, copId = null
+      // --- faces (2026-11-09): one drawn head for the officer and for everyone at a rest area. It lives frame by frame (blinks, looks about, talks while
+      // the line is written out) and its expression follows the mood the game sends (-4 grim ... +4 beaming), so the player can read it; a reaction
+      // ('shock', 'laugh', 'shake', 'nod', 'sneer', 'wink', 'think', 'threat', 'sad', 'nervous') plays over it for a moment ---
+      var SKINS = ['#d8a688', '#e7bd9f', '#c49170', '#94623f', '#f0cdb4']
+      var HAIRS = ['#4b3525', '#1f1a17', '#8a6236', '#b9b4ab', '#6b4a2c']
+      var LOOKS = {
+        cop: { bg: ['#5b7f9f', '#2b3a48'], top: '#142845', collar: '#0e1d33', band: '#e9c11d', tag: 1, hat: 'police' },
+        hoodie: { bg: ['#39424d', '#191d23'], top: '#23262b', hood: '#2e3238', hair: 0, stubble: 1, skin: 2, scar: 1 },
+        trucker: { bg: ['#6f8ba0', '#37454f'], top: '#7c2b25', check: '#4e1a16', hat: 'cap', hatC: '#22506e', beard: 'full', beardC: '#5d432b', skin: 0 },
+        old: { bg: ['#94886f', '#4c4436'], top: '#5a5340', hat: 'flat', hatC: '#6a5f4a', old: 1, beard: 'moustache', beardC: '#d6d2c8', skin: 4, brow: '#cfcabf' },
+        woman: { bg: ['#7da5a8', '#3b5557'], top: '#d8a51c', band: '#e7eaee', long: '#7a4c26', skin: 1, brow: '#6b4525', lips: 1 },
+        hitch: { bg: ['#b08a68', '#5a4433'], top: '#37706a', long: '#a8743a', beanie: '#b84c2e', skin: 4, brow: '#7a5128', lips: 1 },
+        shady: { bg: ['#4a4251', '#1f1b25'], top: '#3a3a44', collar: '#d9d5cc', hair: 1, slick: 1, beard: 'goatee', beardC: '#1f1a17', skin: 2, gold: 1, glasses: 'sun' },
+        stoned: { bg: ['#4f6a48', '#222e20'], top: '#3f6a3a', dread: '#3a2a1c', beanie: '#caa53a', skin: 3, stoned: 1, brow: '#2c1f15', stubble: 1 },
+        nerd: { bg: ['#7a7f92', '#393c49'], top: '#6d6a58', hair: 3, wild: 1, glasses: 'round', skin: 4, foil: 1 },
+      }
+      function shade(hex, f) { var n = parseInt(hex.slice(1), 16), c = [n >> 16, n >> 8 & 255, n & 255].map(function (v) { return Math.round(v * f) }); return 'rgb(' + c.join(',') + ')' }
+      // a cop is someone else each time: the seed picks skin, hair, moustache, glasses
+      function dress(kind, seed) {
+        var L = {}, base = LOOKS[kind] || LOOKS.hoodie, k
+        for (k in base) { L[k] = base[k] }
+        if (kind === 'cop') {
+          L.skin = seed % 4; L.hair = (seed >> 2) % 3
+          if ((seed >> 4) % 3 === 0) { L.long = HAIRS[L.hair]; L.lips = 1 } else if ((seed >> 4) % 3 === 1) { L.beard = 'moustache'; L.beardC = HAIRS[L.hair] }
+          if ((seed >> 6) % 4 === 0) { L.glasses = 'round' }
+        }
+        L.skinC = SKINS[L.skin || 0]; L.hairC = HAIRS[L.hair || 0]; L.browC = L.brow || (L.beardC && !L.old ? L.beardC : L.hairC)
+        return L
+      }
+      function faceMarkup(L) {
+        var sk = L.skinC, sk2 = shade(sk, 0.86), id = 'fg' + Math.floor(Math.random() * 1e6), m = ''
+        m += '<defs><linearGradient id="' + id + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + L.bg[0] + '"/><stop offset="1" stop-color="' + L.bg[1] + '"/></linearGradient></defs>'
+        m += '<rect width="150" height="190" fill="url(#' + id + ')"/><path d="M0 150h150v40H0z" fill="#000" opacity=".22"/>'
+        m += '<g class="fh">'
+        if (L.hood) { m += '<ellipse cx="75" cy="80" rx="48" ry="56" fill="' + L.hood + '"/>' }
+        if (L.long) { m += '<path d="M36 80c-5 34-7 54-3 66h84c4-12 2-32-3-66-3-30-75-30-78 0z" fill="' + L.long + '"/>' }
+        if (L.dread) { for (var i = 0; i < 9; i++) { var x = 36 + i * 9.8; m += '<rect x="' + x + '" y="70" width="6" height="' + (64 + (i * 7) % 15) + '" rx="3" fill="' + L.dread + '"/>' } }
+        m += '</g><g class="fb"><path d="M12 190c3-44 22-60 63-60s60 16 63 60z" fill="' + L.top + '"/>'
+        if (L.check) { m += '<path d="M30 145v45M52 134v56M98 134v56M120 145v45M14 170h122" stroke="' + L.check + '" stroke-width="5"/>' }
+        if (L.collar) { m += '<path d="M38 150l37 18 37-18 4 14-41 22-41-22z" fill="' + L.collar + '"/>' }
+        if (L.band) { m += '<rect x="24" y="168" width="102" height="9" fill="' + L.band + '"/>' }
+        if (L.tag) { m += '<rect x="87" y="148" width="28" height="9" rx="1.5" fill="#d8dde3"/>' }
+        if (L.hood) { m += '<path d="M46 134c10 16 48 16 58 0l6 12c-14 22-56 22-70 0z" fill="' + L.hood + '"/><path d="M66 150v26M84 150v26" stroke="#c9ccd2" stroke-width="2"/>' }
+        m += '</g><g class="fh">'
+        m += '<rect x="61" y="104" width="28" height="36" rx="8" fill="' + sk2 + '"/><ellipse cx="44.5" cy="86" rx="5" ry="9" fill="' + sk2 + '"/><ellipse cx="105.5" cy="86" rx="5" ry="9" fill="' + sk2 + '"/>'
+        m += '<ellipse cx="75" cy="83" rx="31" ry="37" fill="' + sk + '"/>'
+        m += '<path d="M75 46c-17 0-31 16-31 37 0 22 14 37 31 37 4 0-16-14-16-37s20-37 16-37z" fill="#000" opacity=".05"/>'
+        m += '<ellipse class="c1" cx="55" cy="98" rx="9" ry="6.5" fill="#d9403a" opacity="0"/><ellipse class="c2" cx="95" cy="98" rx="9" ry="6.5" fill="#d9403a" opacity="0"/>'
+        if (L.stubble) { m += '<path d="M46 96c2 16 14 25 29 25s27-9 29-25c-7 6-14 5-29 5s-22 1-29-5z" fill="#2a2420" opacity=".26"/>' }
+        if (L.beard === 'full') { m += '<path d="M44 90c0 24 12 40 31 40s31-16 31-40c-3 8-9 10-16 10-6-3-24-3-30 0-7 0-13-2-16-10z" fill="' + L.beardC + '"/>' }
+        if (L.beard === 'goatee') { m += '<path d="M66 113c1 9 5 15 9 15s8-6 9-15c-5 3-13 3-18 0z" fill="' + L.beardC + '"/>' }
+        if (L.old) { m += '<path d="M54 70q7-2 13 0M83 70q7-2 13 0M52 92q2 3 5 4M98 92q-2 3-5 4M60 104q-3 4-3 8M90 104q3 4 3 8" stroke="' + shade(sk, 0.68) + '" stroke-width="1.3" fill="none" stroke-linecap="round"/>' }
+        if (L.scar) { m += '<path d="M93 70l-7 18" stroke="' + shade(sk, 0.62) + '" stroke-width="1.8" stroke-linecap="round"/>' }
+        var white = L.stoned ? '#efa39a' : '#f7f4ee'
+        m += '<ellipse class="e1" cx="65" cy="84" rx="5.8" ry="4" fill="' + white + '"/><ellipse class="e2" cx="85" cy="84" rx="5.8" ry="4" fill="' + white + '"/>'
+        m += '<ellipse class="i1" cx="65" cy="84" rx="3" ry="3" fill="#22303c"/><ellipse class="i2" cx="85" cy="84" rx="3" ry="3" fill="#22303c"/>'
+        m += '<circle class="h1" cx="66" cy="83" r="1" fill="#fff"/><circle class="h2" cx="86" cy="83" r="1" fill="#fff"/>'
+        m += '<path class="l1" stroke="#31231a" stroke-width="1.7" fill="none" stroke-linecap="round"/><path class="l2" stroke="#31231a" stroke-width="1.7" fill="none" stroke-linecap="round"/>'
+        m += '<path class="b1" stroke="' + L.browC + '" stroke-width="2.9" fill="none" stroke-linecap="round"/><path class="b2" stroke="' + L.browC + '" stroke-width="2.9" fill="none" stroke-linecap="round"/>'
+        m += '<path d="M75 88l-3.5 11c2 1.8 5 1.8 7 0" stroke="' + shade(sk, 0.7) + '" stroke-width="2" fill="none" stroke-linejoin="round" stroke-linecap="round"/>'
+        m += '<path class="mo" fill="#4e211f"/><path class="te" fill="#f6f2ea" opacity="0"/>' + (L.gold ? '<rect class="gt" x="78" y="108" width="3.4" height="3.2" fill="#e6bb3b" opacity="0"/>' : '')
+        m += '<path class="li" stroke="' + (L.lips ? '#b14a4f' : '#7c4a3c') + '" stroke-width="' + (L.lips ? 3 : 2.5) + '" fill="none" stroke-linecap="round" stroke-linejoin="round"/>'
+        if (L.beard === 'moustache') { m += '<path d="M60 105c4-6 11-6 15-3 4-3 11-3 15 3-6 0-11 2-15 1-4 1-9-1-15-1z" fill="' + L.beardC + '"/>' }
+        if (L.beard === 'full') { m += '<path d="M60 105c4-6 11-6 15-3 4-3 11-3 15 3-6 1-11 2-15 1-4 1-9 0-15-1z" fill="' + shade('#5d432b', 0.85) + '"/>' }
+        if (L.hair !== undefined && !L.hat && !L.hood && !L.beanie) {
+          if (L.slick) { m += '<path d="M44 76c-3-34 16-42 32-42 18 0 33 10 30 42-4-14-10-24-32-24-14 0-26 8-30 24z" fill="' + L.hairC + '"/>' }
+          else if (L.wild) { m += '<path d="M42 74l-9-12 9-2-7-16 12 4-2-16 13 8 3-14 10 10 8-13 7 13 11-9 1 15 13-5-5 16 10 1-9 14c-4-16-16-24-33-24s-29 8-33 24z" fill="' + L.hairC + '"/>' }
+        }
+        if (L.long && !L.hat && !L.beanie) { m += '<path d="M43 80c-3-34 16-46 32-46s35 12 32 46c-5-16-15-28-32-28S48 64 43 80z" fill="' + L.long + '"/>' }
+        if (L.hood) { m += '<path d="M42 84c-4-34 14-50 33-50s37 16 33 50c-6-20-16-32-33-32S48 64 42 84z" fill="' + L.hood + '"/>' }
+        if (L.beanie) { m += '<path d="M43 66c0-26 16-38 32-38s32 12 32 38z" fill="' + L.beanie + '"/><rect x="41" y="58" width="68" height="12" rx="5" fill="' + shade(L.beanie, 0.8) + '"/>' }
+        if (L.hat === 'police') { m += '<g transform="translate(0 -6)"><path d="M36 56c0-28 19-38 39-38s39 10 39 38z" fill="#142845"/><rect x="39" y="50" width="72" height="11" fill="#e5e9ee"/><path d="M35 61h80c-5 11-25 13-40 13s-35-2-40-13z" fill="#0a111b"/><circle cx="75" cy="36" r="8" fill="#d7b34a"/><circle cx="75" cy="36" r="4" fill="#142845"/></g>' }
+        if (L.hat === 'cap') { m += '<g transform="translate(0 -4)"><path d="M42 60c0-26 16-36 33-36s33 10 33 36z" fill="' + L.hatC + '"/><path d="M41 60h68c8 2 14 7 16 12-20-7-64-7-84-12z" fill="' + shade(L.hatC, 0.72) + '"/><rect x="62" y="34" width="26" height="16" rx="2" fill="#f0ede4"/></g>' }
+        if (L.hat === 'flat') { m += '<g transform="translate(0 -5)"><path d="M41 60c-2-22 18-30 38-30s36 10 31 30z" fill="' + L.hatC + '"/><path d="M38 60h74c-3 7-20 10-37 10s-34-3-37-10z" fill="' + shade(L.hatC, 0.72) + '"/></g>' }
+        if (L.foil) { m += '<path d="M46 56L75 12l29 44c-18 7-40 7-58 0z" fill="#c9ced6"/><path d="M75 12l-10 44M75 12l14 43M58 38l32 8" stroke="#8f96a0" stroke-width="1.2" fill="none"/>' }
+        if (L.glasses === 'sun') { m += '<path d="M54 80h19c1 8-3 12-9 12s-11-4-10-12zM77 80h19c1 8-4 12-10 12s-10-4-9-12z" fill="#12151a"/><path d="M45 81h9M73 82h4M96 81h9" stroke="#12151a" stroke-width="2"/>' }
+        if (L.glasses === 'round') { m += '<circle cx="65" cy="84" r="9" fill="#fff" fill-opacity=".1" stroke="#262a30" stroke-width="1.8"/><circle cx="85" cy="84" r="9" fill="#fff" fill-opacity=".1" stroke="#262a30" stroke-width="1.8"/><path d="M74 83h2M46 82l10 1M94 83l10-1" stroke="#262a30" stroke-width="1.8"/>' }
+        m += '<path class="sw" d="M103 58c-3 5-4 7-4 9a4 4 0 0 0 8 0c0-2-1-4-4-9z" fill="#a9dcf5" opacity="0"/>'
+        m += '<path class="ve" d="M86 56l4-3 1 4 4-2M88 60l3-2" stroke="#b5332c" stroke-width="2" fill="none" stroke-linecap="round" opacity="0"/>'
+        m += '</g>'
+        return m
+      }
+      var REACT = {
+        shock: { bu: 1, br: -0.4, eo: 1.38, sm: -0.2, mo: 0.85 }, laugh: { br: -0.2, eo: 0.5, sm: 1, mo: 1, bob: 1 }, shake: { sa: 1 }, nod: { na: 1 },
+        sneer: { sq: 1, sm: 0.15, eo: 0.8, br: 0.4 }, wink: { wi: 1, sm: 0.85, mo: 0.1 }, think: { lx: 1, bu: 0.35, sq: 0.4, br: 0.1 }, threat: { br: 1.25, eo: 0.68, sm: -0.75, le: 1, red: 0.55 },
+        sad: { bu: 0.4, br: -0.75, sm: -0.65, eo: 0.9 }, nervous: { bu: 0.5, br: -0.45, eo: 1.14, sm: -0.3, sw: 1, lx: -0.8 },
+      }
+      function makeFace(svg, kind, seed) {
+        var L = dress(kind, seed || 1)
+        svg.innerHTML = faceMarkup(L)
+        var $ = function (c) { return svg.querySelector('.' + c) }, heads = svg.querySelectorAll('.fh'), body = $('fb')
+        var P = { br: 0, bu: 0, eo: 1, sm: 0, mo: 0, red: 0, sq: 0, lx: 0, le: 0, wi: 0, sw: 0 }, mood = 0, react = null, reactT = 0, talkTo = 0
+        var alive = true, last = performance.now() / 1000, nextBlink = last + 1.5, blinkT = -9, glance = 0, nextGlance = last + 3
+        var set = function (c, a, v) { var n = $(c); if (n) { n.setAttribute(a, v) } }
+        var f1 = function (v) { return v.toFixed(1) }
+        function frame() {
+          if (!alive) { return }
+          requestAnimationFrame(frame)
+          if (!svg.isConnected) { alive = false; return }
+          var now = performance.now() / 1000, dt = Math.min(0.1, now - last); last = now
+          var k = mood / 4, T = { br: k < 0 ? -k * 1.15 : -k * 0.25, bu: k > 0 ? k * 0.35 : 0, eo: 1 - Math.max(0, -k) * 0.32 - Math.max(0, k - 0.6) * 0.32, sm: k - 0.04, mo: Math.max(0, k - 0.55) * 0.7, red: Math.max(0, -k - 0.25) * 1.25, sq: 0, lx: glance, le: 0, wi: 0, sw: 0 }
+          if (L.stoned) { T.eo = Math.min(T.eo, 0.56); T.sm = Math.max(T.sm, 0.3) }
+          var R = react && REACT[react], rk = now - reactT, w = R ? (rk < 2.2 ? 1 : Math.max(0, 1 - (rk - 2.2) / 0.5)) : 0
+          if (R && w > 0) { for (var a in T) { if (R[a] !== undefined) { T[a] = T[a] + (R[a] - T[a]) * w } } }
+          if (R && w <= 0) { react = null }
+          var q = Math.min(1, dt * 10); for (var b in P) { P[b] += (T[b] - P[b]) * q }
+          // blinks, glances, the mouth while talking
+          if (now > nextBlink) { blinkT = now; nextBlink = now + 1.6 + Math.random() * 4.2 }
+          var bl = now - blinkT, open = bl < 0.07 ? 1 - bl / 0.07 : bl < 0.17 ? (bl - 0.07) / 0.1 : 1
+          if (now > nextGlance) { glance = Math.random() < 0.5 ? 0 : (Math.random() - 0.5) * 1.3; nextGlance = now + 1.2 + Math.random() * 3 }
+          var talking = now < talkTo, flap = talking ? 0.14 + 0.2 * (0.5 + 0.5 * Math.sin(now * 19)) * (0.6 + 0.4 * Math.sin(now * 7.3)) : 0
+          var mo = Math.min(1.1, P.mo + flap + (R && R.bob && w > 0 ? Math.abs(Math.sin(now * 13)) * 0.3 : 0))
+          // the brows
+          var yi = 76 + P.br * 3.5 - P.bu * 4.6, yo = 76 - P.br * 1.7 - P.bu * 3.5
+          set('b1', 'd', 'M58.5 ' + f1(yo) + 'Q65 ' + f1((yi + yo) / 2 - 2.3) + ' 71 ' + f1(yi))
+          var yi2 = yi - P.sq * 3.2, yo2 = yo - P.sq * 3.6
+          set('b2', 'd', 'M91.5 ' + f1(yo2) + 'Q85 ' + f1((yi2 + yo2) / 2 - 2.3) + ' 79 ' + f1(yi2))
+          // the eyes
+          var ry1 = Math.max(0.28, 4 * P.eo * open), ry2 = Math.max(0.28, 4 * P.eo * open * (1 - P.wi * 0.95)), ix = P.lx * 2
+          set('e1', 'ry', f1(ry1)); set('e2', 'ry', f1(ry2)); set('i1', 'ry', f1(Math.min(3, ry1))); set('i2', 'ry', f1(Math.min(3, ry2)))
+          set('i1', 'cx', f1(65 + ix)); set('i2', 'cx', f1(85 + ix)); set('h1', 'cx', f1(66 + ix)); set('h2', 'cx', f1(86 + ix))
+          set('h1', 'opacity', ry1 > 1.8 ? 1 : 0); set('h2', 'opacity', ry2 > 1.8 ? 1 : 0)
+          set('l1', 'd', 'M59 84.4Q65 ' + f1(84.4 - ry1 * 2.1) + ' 71 84.4'); set('l2', 'd', 'M79 84.4Q85 ' + f1(84.4 - ry2 * 2.1) + ' 91 84.4')
+          // the mouth
+          var w2 = 10.5 + P.sm * 2.6, yl = 108 - P.sm * 4.4, yr = yl - P.sq * 2.4, c = 108 + P.sm * 5.2, up = c - mo * 1.6, lo = c + mo * 14
+          var xl = 75 - w2, xr = 75 + w2
+          set('mo', 'd', 'M' + f1(xl) + ' ' + f1(yl) + 'Q75 ' + f1(up) + ' ' + f1(xr) + ' ' + f1(yr) + 'Q75 ' + f1(lo) + ' ' + f1(xl) + ' ' + f1(yl) + 'Z')
+          set('li', 'd', 'M' + f1(xl) + ' ' + f1(yl) + 'Q75 ' + f1(up) + ' ' + f1(xr) + ' ' + f1(yr) + 'Q75 ' + f1(lo) + ' ' + f1(xl) + ' ' + f1(yl))
+          var th = Math.min(6.5, mo * 9)
+          set('te', 'd', 'M' + f1(xl + 2) + ' ' + f1(yl + 0.5) + 'Q75 ' + f1(up + 0.5) + ' ' + f1(xr - 2) + ' ' + f1(yr + 0.5) + 'Q75 ' + f1(up + th + 1) + ' ' + f1(xl + 2) + ' ' + f1(yl + 0.5) + 'Z')
+          set('te', 'opacity', mo > 0.12 ? 1 : 0)
+          set('gt', 'opacity', mo > 0.2 ? 1 : 0); set('gt', 'y', f1(up / 2 + c / 2 + 0.2))
+          // colour, sweat, the vein on the forehead, the head as a whole
+          set('c1', 'opacity', (Math.min(0.65, P.red * 0.62) + (P.sm > 0.5 ? (P.sm - 0.5) * 0.3 : 0)).toFixed(2)); set('c2', 'opacity', (Math.min(0.65, P.red * 0.62) + (P.sm > 0.5 ? (P.sm - 0.5) * 0.3 : 0)).toFixed(2))
+          set('sw', 'opacity', P.sw.toFixed(2)); set('sw', 'transform', 'translate(0 ' + f1(P.sw * ((now * 8) % 16)) + ')')
+          set('ve', 'opacity', Math.min(1, Math.max(0, P.red - 0.62) * 3).toFixed(2))
+          var sa = (R && R.sa && w > 0) ? w : 0, na = (R && R.na && w > 0) ? w : 0, bo = (R && R.bob && w > 0) ? w : 0
+          var breath = Math.sin(now * 1.6) * 0.7, dx = Math.sin(now * 13) * 3.6 * sa, ro = Math.sin(now * 13) * 3 * sa + Math.sin(now * 0.7) * 0.8 + P.sq * 1.6
+          var dy = breath + Math.sin(now * 8.5) * 3 * na + Math.abs(Math.sin(now * 13)) * -2.4 * bo, s2 = 1 + P.le * 0.08
+          var tf = 'translate(' + f1(dx) + ' ' + f1(dy) + ') translate(75 130) rotate(' + ro.toFixed(2) + ') scale(' + s2.toFixed(3) + ') translate(-75 -130)'
+          for (var i = 0; i < heads.length; i++) { heads[i].setAttribute('transform', tf) }
+          body.setAttribute('transform', 'translate(0 ' + (breath * 0.5).toFixed(2) + ')')
+        }
+        requestAnimationFrame(frame)
+        return { mood: function (m) { mood = Math.max(-4, Math.min(4, m || 0)) }, react: function (r) { if (r) { react = r; reactT = performance.now() / 1000 } }, talk: function (s) { talkTo = performance.now() / 1000 + s }, instant: function () { var k = mood / 4; P.br = k < 0 ? -k * 1.15 : -k * 0.25; P.sm = k; P.eo = 1 - Math.max(0, -k) * 0.32; P.red = Math.max(0, -k - 0.25) * 1.25 } }
+      }
+      var cop = null, copId = null, copFace = null, copKey = null, copType = 0
       scope.$on('FernfahrerCop', function (ev, d) {
-        if (!d || d.off) { if (cop && cop.parentNode) { cop.parentNode.removeChild(cop) } cop = null; copId = null; return }
+        if (!d || d.off) { if (cop && cop.parentNode) { cop.parentNode.removeChild(cop) } cop = null; copId = null; copFace = null; copKey = null; cancelAnimationFrame(copType); return }
         if (!cop) {
           if (!document.getElementById('ffCopCss')) { var st = document.createElement('style'); st.id = 'ffCopCss'; st.textContent = COP_CSS; document.head.appendChild(st) }
           var old = document.getElementById('ffCop'); if (old && old.parentNode) { old.parentNode.removeChild(old) }
           cop = document.createElement('div'); cop.id = 'ffCop'
-          cop.innerHTML = '<div class="who"><span>👮</span>Polizei</div><div class="ln"></div><div class="ch"></div>'
+          cop.innerHTML = '<svg class="pic" viewBox="0 0 150 190" aria-hidden="true"></svg><div class="tx"><div class="who"></div><div class="ln"></div><div class="ch"></div></div>'
           document.body.appendChild(cop)
+          ;(function slide(t0) { var c = cop; (function step(now) { if (c !== cop) { return } var k = Math.min(1, (now - t0) / 320), e = 1 - (1 - k) * (1 - k); c.style.opacity = e.toFixed(2); c.style.transform = 'translate(-50%,' + ((1 - e) * 26).toFixed(1) + 'px)'; if (k < 1) { requestAnimationFrame(step) } })(t0) })(performance.now())
         }
+        var key = (d.face || 'cop') + ':' + (d.seed || 1)
+        if (key !== copKey) { copKey = key; copFace = makeFace(cop.querySelector('.pic'), d.face || 'cop', d.seed || 1); copFace.mood(d.mood); copFace.instant() }
+        copFace.mood(d.mood)
         if (d.id === copId) { return }
         copId = d.id
-        cop.className = d.tag === 'smuggle' ? 'smuggle' : ''
-        cop.querySelector('.ln').textContent = d.line || ''
+        copFace.react(d.react)
+        cop.className = (d.tag === 'smuggle' ? 'smuggle ' : '') + (d.face && d.face !== 'cop' ? 'npc ' : '') + (d.nar ? 'nar' : '')
+        cop.querySelector('.who').textContent = d.who || 'Polizei'
+        // (the line is written out while the mouth moves; a narrator's line has no mouth to it)
+        var line = d.line || '', ln = cop.querySelector('.ln'), rate = 60, t0 = performance.now(), mine = cop
+        if (!d.nar) { copFace.talk(line.length / rate) }
+        cancelAnimationFrame(copType)
+        ;(function write(now) { if (mine !== cop) { return } var n = Math.floor((now - t0) / 1000 * rate); ln.textContent = line.slice(0, n); if (n < line.length) { copType = requestAnimationFrame(write) } })(t0)
         var box = cop.querySelector('.ch'); box.innerHTML = ''
         ;(d.choices || []).forEach(function (c, i) {
           var b = document.createElement('button'); b.textContent = c.t
@@ -922,6 +1080,25 @@ angular.module('beamng.apps')
           b.onclick = function () { bngApi.engineLua('if fernfahrer_career then fernfahrer_career.copAnswer(' + (i + 1) + ') end') }
           box.appendChild(b)
         })
+      })
+      // --- the workshop at work (2026-11-09): career.lua 'FernfahrerWork' { title, sub, len } / { off }; a bar across the bottom, moved frame by frame, and a way to skip it ---
+      var work = null, workRaf = 0
+      scope.$on('FernfahrerWork', function (ev, d) {
+        cancelAnimationFrame(workRaf)
+        if (work && work.parentNode) { work.parentNode.removeChild(work) }
+        work = null
+        if (!d || d.off) { return }
+        var old = document.getElementById('ffWork'); if (old && old.parentNode) { old.parentNode.removeChild(old) }
+        var el = document.createElement('div'); el.id = 'ffWork'
+        el.style.cssText = 'position:fixed;left:50%;bottom:7%;transform:translateX(-50%);z-index:2147481700;width:min(560px,90vw);padding:14px 18px;box-sizing:border-box;border-radius:14px;background:linear-gradient(180deg,rgba(24,29,37,.95),rgba(14,17,22,.95));border:1px solid rgba(255,255,255,.1);border-top:3px solid #ffb12e;color:#eef1f5;font-family:FFWave,"Noto Sans",sans-serif;box-shadow:0 18px 50px rgba(0,0,0,.5);pointer-events:auto'
+        el.innerHTML = '<div style="display:flex;align-items:center;gap:12px"><span style="font-size:24px">🛠</span><div style="flex:1;min-width:0"><div class="t" style="font-size:17px;font-weight:800"></div><div class="s" style="font-size:12.5px;color:#9aa4b2"></div></div><a class="k" style="cursor:pointer;font-size:12.5px;font-weight:700;color:#9aa4b2">Überspringen</a></div><div style="height:5px;border-radius:3px;background:rgba(255,255,255,.14);margin-top:11px;overflow:hidden"><i style="display:block;height:100%;width:0;background:#ffb12e"></i></div>'
+        el.querySelector('.t').textContent = d.title || 'In Arbeit'
+        el.querySelector('.s').textContent = d.sub || ''
+        el.querySelector('.k').onclick = function () { bngApi.engineLua('if fernfahrer_career then fernfahrer_career.workSkip() end') }
+        document.body.appendChild(el)
+        work = el
+        var bar = el.querySelector('i'), t0 = performance.now(), len = (d.len || 10) * 1000
+        ;(function step(now) { if (work !== el) { return } bar.style.width = Math.min(100, (now - t0) / len * 100).toFixed(1) + '%'; workRaf = requestAnimationFrame(step) })(t0)
       })
       // --- tired at the wheel (2026-11-08): the eyes close for a moment (career.lua 'FernfahrerBlink' { dur }). Two dark
       // lids over the whole screen, moved frame by frame (the pane's CSS transitions stand still) ---

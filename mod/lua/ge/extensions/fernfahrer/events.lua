@@ -849,13 +849,18 @@ M.KINDS.siren = {
       table.insert(e.props, id)
       e.unit, e.unitAt, e.announced = id, now(), true
       e.kickAt = e.unitAt + 0.3
+      e.sirenMs = function()
+        local lim = ctx.roadLimit and ctx.roadLimit() or 80
+        return math.max(16, math.min(30, (lim or 80) / 3.6 * 1.25 + 2))
+      end
       e.kickFn = function()
-        -- (a point ahead of where the player is now)
+        -- (a point ahead of where the player is now; within the road graph, which ends some hundred metres on)
         local p2, d2 = ctx.playerPos and ctx.playerPos(), ctx.playerDir and ctx.playerDir()
         local node = aheadNode
-        if p2 and d2 then local n = accidents.nodeAlong(p2, d2, 700); if n then node = n end end
+        if p2 and d2 then local n = accidents.nodeAlong(p2, d2, 300); if n then node = n end end
+        -- (2026-11-09: no speed limit, aggression 0.85 and no lane: it went straight on into the first bend. Now fast, but on the road)
         return string.format('controller.setFreeze(0) electrics.set_lightbar_signal(2) ai.setMode("manual") ' ..
-          'ai.setTarget(%q) ai.setSpeedMode("off") ai.setAggression(0.85) ai.setAvoidCars("on") ai.driveInLane("off")', node)
+          'ai.setTarget(%q) ai.setSpeedMode("limit") ai.setSpeed(%.1f) ai.setAggression(0.5) ai.setAvoidCars("on") ai.driveInLane("on")', node, e.sirenMs())
       end
       ctx.notify(e.icon .. ' ' .. e.title .. ' von hinten – rechts halten!', 7)
       e.inZone = true
@@ -864,6 +869,21 @@ M.KINDS.siren = {
       kickTick(e, now())
       local v = getObjectByID(e.unit)
       local pp = ctx.playerPos and ctx.playerPos()
+      -- (2026-11-09) under way: always a stretch of road ahead of itself to drive to, in its lane; only close behind the truck, which has
+      -- moved over, down the middle of the road to get past
+      if v and not e.kickFn and now() >= (e.sirenAt or 0) then
+        e.sirenAt = now() + 3
+        local vp, vd = vec3(v:getPosition()), vec3(v:getDirectionVector())
+        vd.z = 0
+        if vd:length() > 0.1 then
+          vd = vd:normalized()
+          local node = accidents.nodeAlong(vp, vd, 300)
+          local pd = ctx.playerDir and ctx.playerDir()
+          local rel = pp and (pp - vp):dot(vd) or -1
+          local past = pp and pd and pd:dot(vd) > 0.5 and rel > -25 and rel < 80
+          if node then v:queueLuaCommand(string.format('ai.setTarget(%q) ai.setSpeed(%.1f) ai.driveInLane(%q)', node, e.sirenMs(), past and 'off' or 'on')) end
+        end
+      end
       -- (passed and gone ahead, or a minute up: over)
       if not v or now() - e.unitAt > 60 or (pp and (v:getPosition() - pp):length() > 450 and now() - e.unitAt > 15) then
         e.done, e.inZone = true, false

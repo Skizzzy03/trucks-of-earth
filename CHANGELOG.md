@@ -1,5 +1,41 @@
 # Änderungen
 
+## 1.0.2
+
+### Neu
+
+- **Ganz Europa:** rund 330.000 Orte in 39 Ländern, die Karte im Büro zeigt jetzt den ganzen Kontinent. Andere Teile der Welt werden noch nicht unterstützt.
+- **Underground:** dunkle Häfen, Waldlager und verlassene Fabriken auf der Karte, mit Fracht ohne Papiere in drei Risikostufen. An Tankstellen gibt es diese Aufträge nicht mehr.
+- **Polizeiverfolgung:** Wirst du mit heißer Ware erwischt oder haust du bei einer Kontrolle ab, kommen höchstens zwei Streifen gleichzeitig hinter dir her, bis zu drei rücken nach. Häng sie ab oder lass dich stellen.
+- **Begegnungen am Rastplatz:** Es klopft an der Tür. Zwölf Szenen, und nicht jeder meint es gut mit dir.
+- **Online-Shop:** über 50 Teile für die Kabine mit Warenkorb und Lieferung an den Hof, dazu Geräte mit echter Funktion wie Popcornmaschine, Lüfter, Radio-Display und Diskokugel.
+- **Kabine einrichten:** Teile verschieben und drehen, drei Kameraansichten, Bilderrahmen mit eigenem Foto aus der BeamNG-Galerie. Auch im Leih-Lkw lässt sich alles aufhängen, was hängt.
+- **Werkstatt:** Komplettreparatur oder einzelne Bauteile, mit Szene in der Werkhalle. Der Kilometerstand bleibt.
+- **Aussichtspunkte:** Hinweis unterwegs, Foto auf Knopfdruck, Fotomodus vor Ort.
+- **Fotomodus im Autodrive:** Serie von Kabine, Einbauten und Fahrt, von nah und von weit weg (in den Einstellungen).
+- **Fahrschule:** kurze Erklärfilme im Büro.
+- **Stimmungsmusik:** leise, selbst komponiert, passend zur Situation.
+- **Mimik:** Polizisten und Fremde zeigen, wie das Gespräch gerade läuft.
+- **Handbremse:** geht in den Menüs im Kreis von selbst rein und danach wieder raus.
+
+### Verbessert
+
+- Abstandsautomatik greift erst ein, wenn es nötig ist, bremst sanft und blinkt rot, statt zu piepen
+- Spurhalter lenkt ruhig, der Spurwarner piept leiser
+- Gegenverkehr bremst nicht mehr, nur weil du nah an der Mitte fährst
+- HUD rechts neu geordnet, auch mit vielen Achsen und Geräten wird nichts abgeschnitten
+- Händler zeigen ihre Preisklasse, mehr Auswahl und unterschiedlicher Bestand
+- Reparaturen kosten jetzt, was sie kosten: Die BeamNG-Reset- und Fahrzeugmenüs sind in der Karriere gesperrt, per Entwicklermodus in den Einstellungen wieder einschaltbar
+
+### Behoben
+
+- Schaden ist nach einem Teleport wieder genau derselbe
+- Figuren in der Kabine rutschen nicht mehr mit dem Kopf oder beim Bremsen, auch nach einem Unfall bleiben sie an ihrem Platz
+- Doppelbilder von Kabinenteilen in Kurven mit FSR und TAA
+- Neue Karriere: Ladebildschirm hing bis zu anderthalb Minuten, der Lkw stand neben dem Hof
+- Hinweis beim Teleport zum Hof, während er geladen wird
+- Absturz der Mod im Verkehr durch ein gelöschtes Fahrzeug
+
 ## 1.0.1
 
 ### Neu

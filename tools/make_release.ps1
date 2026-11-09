@@ -3,6 +3,7 @@
 #   release/  the two downloads: trucks_of_earth.zip (the mod) and Fernfahrer-Radio.zip (the radio app)
 # Usage: tools/make_release.ps1 <mod folder>
 param([string]$Mod)
+$ErrorActionPreference = "Stop"   # (a file that cannot be copied must stop the build: it would be missing from the zip)
 $root = Split-Path -Parent $PSScriptRoot
 $gh = Join-Path $root 'github'; $rel = Join-Path $root 'release'
 foreach ($d in $gh, $rel) {   # (the repository's .git stays)
@@ -14,7 +15,6 @@ Add-Type -AssemblyName System.IO.Compression.FileSystem
 Copy-Item (Join-Path $root 'github_src\*') $gh -Recurse
 $mg = Join-Path $gh 'mod'; New-Item -ItemType Directory $mg | Out-Null
 Get-ChildItem $Mod -Force | Where-Object { $_.Name -ne 'tools' } | ForEach-Object { Copy-Item $_.FullName $mg -Recurse }
-Remove-Item (Join-Path $mg 'lua\ge\extensions\fernfahrer\photos.lua') -Force -ErrorAction SilentlyContinue   # (only for the project page's pictures)
 Copy-Item (Join-Path $gh 'LICENSE'), (Join-Path $gh 'THIRD_PARTY.md') $mg   # (the notices travel with the download)
 $rh = Join-Path $gh 'radio-helper'; New-Item -ItemType Directory $rh | Out-Null
 Copy-Item (Join-Path $Mod 'tools\radio\FernfahrerRadio.cs'), (Join-Path $Mod 'tools\radio\LIESMICH.txt') $rh

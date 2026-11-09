@@ -591,7 +591,7 @@ local function buildCatalogs()
         local value = tonumber(cfg.Value) or 30000
         local entry = { model = key, config = 'vehicles/' .. key .. '/' .. cfg.key .. '.pc', brand = brand,
           modelName = modelName, configName = tr(cfg.Configuration, cfg.key), power = tonumber(cfg.Power),
-          drivetrain = cfg.Drivetrain, eu = eu, preview = cfg.preview, years = cfg.Years or info.Years }
+          drivetrain = cfg.Drivetrain, eu = eu, preview = cfg.preview, years = cfg.Years or info.Years, body = cfg['Body Style'] }
         if typ == 'truck' and isTractor(cfg) then
           entry.kind, entry.price = 'truck', round(clamp(value * 0.3, 25000, 400000), 500)
           table.insert(trucks, entry)
@@ -1231,6 +1231,10 @@ L.WHERE_S = 3
 function L.whereTick(t)
   if t - (R.whereT or 0) < L.WHERE_S or R.trip or R.sleep or R.pendingTeleport then return end
   R.whereT = t
+  -- (BeamNG.Earth 1.9's modding API: the name of the road, as its status bar has it; nil before that version or without online names)
+  local api = rawget(_G, 'beamngEarth_api')
+  local okP, place = pcall(function() return api and api.has and api.has('place') and api.place() end)
+  R.streetIn = okP and type(place) == 'table' and place.street or nil
   local p = here()
   local w = p and L.regions.where(p.lat, p.lon)
   if not w then return end
@@ -1328,7 +1332,7 @@ function L.camInCab(v)
 end
 function L.radioTick()
   local mode, dist = 'cab', 0
-  if S.settings.radioOn == false or R.loadAt then mode = 'off'
+  if S.settings.radioOn == false or R.loadAt or R.moodMute then mode = 'off'
   else
     local v, truck = playerVeh(), careerVeh()
     if v and truck and v:getID() == truck:getID() then
@@ -2540,6 +2544,13 @@ local function updateNear()
   for _, x in ipairs(travel.hubsNear(p, 6)) do
     table.insert(list, { lat = x.hub.lat, lon = x.hub.lon, t = x.hub.kind, f = true, n = x.hub.name, d = x.dist })
   end
+  -- (2026-11-09: Earth's own fuel stations round here on the HUD's map too)
+  for _, f in pairs(parked.fuelAll()) do
+    if math.abs(f.lat - p.lat) < 0.1 and math.abs(f.lon - p.lon) < 0.15 then
+      local df = haversine(p.lat, p.lon, f.lat, f.lon)
+      if df < 12000 then table.insert(list, { lat = f.lat, lon = f.lon, t = 'fuel', n = L.neutralName('fuel', f.name, nil, f.lat, f.lon), d = df }) end
+    end
+  end
   -- (companies with loads waiting: a marker of their own with the number of trailers)
   local jobs = {}
   for _, o in ipairs(S.job and {} or R.offers or {}) do
@@ -2652,12 +2663,20 @@ function M.onVehicleResetted(vid)
   -- (the limiter and the tank's size told again straight away: a reload of the vehicle starts its Lua anew, and the
   -- fuel put back must find the tank at its career size)
   R.limiterFor, R.wearSig = nil, nil
+  pcall(L.acc.forgetFrame)
   if v and L.speedRulesTick then pcall(L.speedRulesTick, now(), v) end
   L.restoreFuelOf(v, 0.4)
   if R.condRestoringUntil and now() < R.condRestoringUntil then return end
   -- (2026-11-07: a teleport is no repair – BeamNG.Earth's map, "Zum Hof", a trip reset the vehicle on the way and the
   -- damage was gone. A reset far from where the truck just was, or while a teleport of ours / Earth's is under way:
   -- the kept condition goes back on. Only a reset on the spot (Insert, the recovery) repairs, as before.)
+  -- (2026-11-09: only a repair that was paid for makes the truck whole. Every other reset, far away or on the spot, gives back what it was, to the point: the value read
+  -- just before. The parts put back do not add up to exactly that, so the books are squared afterwards. With the developer switch a reset on the spot repairs as in the game.)
+  if R.ownRepairUntil and now() < R.ownRepairUntil then
+    R.dmgBase = nil
+    L.clearCond()
+    return
+  end
   local jumped = false
   if v and R.truckLastPos then
     local p = v:getPosition()
@@ -2667,12 +2686,13 @@ function M.onVehicleResetted(vid)
   local st = c and c._state and c._state() or nil
   local teleporting = (R.keepCondUntil and now() < R.keepCondUntil) or R.pendingTeleport ~= nil or R.trip ~= nil
     or (st and (st.pending or st.rebasing)) or false
-  if jumped or teleporting then
-    R.condRestoreAt = now() + 0.6
+  if S.settings.devResets and not jumped and not teleporting then
+    R.dmgBase, R.dmgTarget, R.dmgLive = nil, nil, 0
+    L.clearCond()
     return
   end
-  R.dmgBase = nil
-  L.clearCond()
+  R.dmgTarget = { v = (R.dmgTarget and R.dmgTarget.v) or R.dmgLive or 0, at = now() + 3.2 }
+  R.condRestoreAt = now() + 0.6
 end
 -- (before a teleport of ours: the condition written fresh, and kept through the resets on the way)
 function L.keepCondForTeleport()
@@ -2696,16 +2716,29 @@ function L.requestCond()
 end
 function M.onConditions(id, c)
   if not S or id ~= R.truckId or type(c) ~= 'table' then return end
+  R.lastCond = c
   local dmg = damageOf(id)
   -- (a whole vehicle: nothing to keep – the file goes, a spawn stays new)
   if dmg < 50 then L.clearCond(); return end
   pcall(jsonWriteFile, L.condPath(), { active = S.active, dmg = dmg, cond = c }, false)
 end
 function L.condTick(t)
+  if R.near and (R.near.action == 'repair' or R.near.action == 'home') and t - (R.partReqT or 0) > 4 then R.partReqT = t; L.requestCond() end
   local cv = R.truckId and getObjectByID(R.truckId)
   if cv then
     -- (where the truck was: a reset far from it is a teleport, see onVehicleResetted)
     R.truckLastPos = cv:getPosition()
+    -- (2026-11-09: the damage as it stands, for a reset to give back; a reset's zero must not get in here, so it only ever rises until a repair or a new truck)
+    if R.dmgLiveId ~= R.truckId then R.dmgLiveId, R.dmgLive = R.truckId, 0 end
+    if not R.condRestoreAt and not R.dmgTarget then R.dmgLive = math.max(R.dmgLive or 0, damageOf(R.truckId)) end
+    if R.dmgTarget and not R.condRestoreAt and t > R.dmgTarget.at then
+      local raw = damageOf(R.truckId) - ((R.dmgBase and R.dmgBase.id == R.truckId and R.dmgBase.v) or 0)
+      local want = R.dmgTarget.v
+      R.dmgTarget = nil
+      R.dmgBase = { id = R.truckId, v = want - raw }
+      R.dmgLive, R.condDmgSaved, R.condT = want, want, t
+      L.requestCond()
+    end
     -- (put back after a teleport's reset)
     if R.condRestoreAt and t > R.condRestoreAt then R.condRestoreAt = nil; pcall(L.restoreCond, cv) end
   end
@@ -2882,10 +2915,54 @@ local function repairCost(veh)
 end
 
 -- (2026-11-08) what is left for the company to pay once the insurance has had its say
+-- (2026-11-09: "repair" was the accident only and cheap. It is the whole truck now, everything made good in one go, and that costs what it costs; the parts one by one stay below it)
+function L.partNeeded(own, g, H)
+  local h = H and H[g.key]
+  return h and (h.int < 0.995 or (g.key == 'karosserie' and h.vis < 0.95) or (g.key == 'motor' and (own.km or 0) >= 150000 and not (own.repaired and own.repaired.motor)))
+end
+function L.fullCost(veh, gross)
+  local own = L.ownTruck()
+  if not own or loanerActive() then return gross end
+  local H, sum, any = L.partHealth(), 0, false
+  for _, g in ipairs(L.PARTS) do
+    if L.partNeeded(own, g, H) then any = true; sum = sum + L.partCost(own, g.key, H[g.key]) end
+  end
+  if not any and damageOf(veh:getID()) <= 100 then return 0 end
+  local price = own.newPrice or own.price or 80000
+  return round(math.min(price * 0.7, math.max(price * 0.05, sum, gross * 2.5)), 50)
+end
 function L.repairPay(veh)
   local gross = repairCost(veh)
   local ok, q = pcall(service.quote, gross)
-  return ok and q.pay or gross
+  return math.max(0, L.fullCost(veh, gross) - (ok and (gross - q.pay) or 0))
+end
+-- (the conditions with the parts of these groups, or all of them, made good: kilometres stay)
+function L.condFixed(groups)
+  if type(R.lastCond) ~= 'table' then return nil end
+  local c = {}
+  for id, p in pairs(R.lastCond) do
+    local q = {}
+    if type(p) == 'table' then for k, x in pairs(p) do q[k] = x end end
+    local g = L.partGroup(id)
+    if not groups or groups[g] then
+      q.integrityValue, q.integrityState = 1, nil
+      if not groups or g == 'karosserie' then q.visualValue, q.visualState = 1, nil end
+    end
+    c[id] = q
+  end
+  return c
+end
+-- (the part of the accident's damage that sits in this group)
+function L.partShare(key)
+  local mine, all = 0, 0
+  for id, p in pairs(R.lastCond or {}) do
+    if type(p) == 'table' and tonumber(p.integrityValue) then
+      local bad = 1 - p.integrityValue
+      all = all + bad
+      if L.partGroup(id) == key then mine = mine + bad end
+    end
+  end
+  return all > 0 and mine / all or 0
 end
 -- repair in place at a workshop or the yard (the vehicle's reset), keeping its fuel
 function M.repair()
@@ -2896,19 +2973,34 @@ function M.repair()
   if vehSpeed(veh) > 1 then notify('Bitte anhalten.', 3); return end
   local gross = repairCost(veh)
   local q = service.quote(gross)
-  local cost = q.pay
+  local cost = L.repairPay(veh)
   if S.money < cost then notify('Nicht genug Geld für die Reparatur (' .. money(cost) .. ').', 5); return end
   core_vehicleBridge.requestValue(veh, function(ret)
+    local function finish()
     local tanks = ret and ret[1] or {}
     if cost > 0 then L.pay('Werkstatt', -cost, 'Reparatur') end
     service.commit(q)
     local rot = quatFromDir(vec3(veh:getDirectionVector()), vec3(veh:getDirectionVectorUp()))
+    R.ownRepairUntil, R.dmgTarget, R.dmgLive = now() + 3, nil, 0
     spawn.safeTeleport(veh, vehPos(veh), rot)
-    R.restoreFuel = { id = veh:getID(), tanks = tanks, t = now() + 1.0 }
+    R.restoreFuel = { id = veh:getID(), tanks = tanks, t = now() + 1.0, cond = L.condFixed(nil) }
+    do
+      local own = L.ownTruck()
+      if own then
+        own.repaired = own.repaired or {}
+        for _, g in ipairs(L.PARTS) do own.repaired[g.key] = true end
+        own.wear = own.wear or {}
+        own.wear.visual = 1
+        R.wearSig = nil
+      end
+    end
     notify('Repariert' .. (cost > 0 and (' · ' .. money(-cost)) or (gross > 0 and ' – bezahlt die Versicherung' or ' (Leih-LKW: kostenlos)'))
       .. ((q.covered > 0 and cost > 0) and (' · ' .. tostring(q.text)) or ''), 6)
     story('firstRepair')
+    message('Der Lkw ist komplett instand gesetzt. Nur der Kilometerstand ist geblieben.', 'Werkstatt')
     save()
+    end
+    if not L.workStart({ title = 'Komplettreparatur', sub = 'Karosserie, Motor, Antrieb und Fahrwerk', done = finish }) then finish() end
   end, 'energyStorage')
 end
 
@@ -3002,6 +3094,7 @@ local function visualFromKm(km, extra)
   return math.max(0.7, v - (extra or 0))
 end
 
+function L.dealerHas(id, brand) return L.hashStr(tostring(id) .. '|' .. tostring(brand)) % 100 < 62 end
 local function usedStock(dealerId)
   if not R.trucks or #R.trucks == 0 then return {} end
   local week = math.floor((S.stats.km or 0) / 1500) + math.floor(os.time() / (7 * 86400))   -- (changes as you play)
@@ -3015,10 +3108,16 @@ local function usedStock(dealerId)
     if not europe or t.eu or rnd() < 0.25 then pool[#pool + 1] = t end
   end
   if #pool == 0 then pool = R.trucks end
-  local list = {}
-  local n = 6 + math.floor(rnd() * 5)
+  -- (2026-11-09: not everything at every dealer: each one deals in its own brands)
+  local spec = {}
+  for _, t in ipairs(pool) do if L.dealerHas(dealerId, t.brand) then spec[#spec + 1] = t end end
+  if #spec >= 4 then pool = spec end
+  local list, seen = {}, {}
+  local n = 13 + math.floor(rnd() * 5)
   for k = 1, n do
-    local t = pool[1 + math.floor(rnd() * #pool)]
+    local t
+    for _ = 1, 6 do t = pool[1 + math.floor(rnd() * #pool)]; if (seen[t.config] or 0) < 2 then break end end
+    seen[t.config] = (seen[t.config] or 0) + 1
     local km = math.floor(rnd(60000, 1150000) / 1000) * 1000
     local age = math.floor(km / 120000 + rnd(0, 3))
     local marks = rnd() < 0.35                                   -- (a few dents and scratches)
@@ -3061,6 +3160,123 @@ function M.buyUsedTruck(usedId)
   end
 end
 
+-- (2026-11-09) the showrooms. Every dealer is a business of its own: its kind of stock (the same dealer stays what it is), a handful of
+-- vehicles that change with time, the same for that dealer that week. Sold is gone.
+L.CAR_STYLES = {
+  { key = 'budget', name = 'Gebrauchtwagenmarkt', tag = 'Günstig, ehrlich, mit Geschichte', price = 'Eher günstig', max = 26000, km = { 90000, 280000 } },
+  { key = 'family', name = 'Familien- und Alltagsautos', tag = 'Gepflegte Gebrauchte für jeden Tag', price = 'Mittlere Preise', powerMax = 240, km = { 25000, 150000 } },
+  { key = 'premium', name = 'Premium & Sportwagen', tag = 'Das Besondere, frisch aufbereitet', price = 'Eher teuer', min = 45000, km = { 5000, 70000 }, newShare = 0.3 },
+  { key = 'work', name = 'Gelände- und Nutzwagen', tag = 'Robust, kräftig, zum Arbeiten', price = 'Mittlere Preise', body = { suv = true, pickup = true, van = true, wagon = true }, km = { 40000, 210000 } },
+}
+L.TRUCK_STYLES = {
+  { key = 'exchange', name = 'Nutzfahrzeug-Börse', tag = 'Gebrauchte Zugmaschinen zum fairen Preis', price = 'Eher günstig', used = 12, new = 0 },
+  { key = 'center', name = 'Truck-Center', tag = 'Neue und junge Gebrauchte aus einer Hand', price = 'Mittel bis teuer', used = 7, new = 5 },
+  { key = 'long', name = 'Fernverkehr-Spezialist', tag = 'Starke Zugmaschinen für die lange Strecke', price = 'Eher teuer', used = 8, new = 4, powerMin = 400 },
+}
+function L.dealerStyle(id, kind)
+  local list = kind == 'truck' and L.TRUCK_STYLES or L.CAR_STYLES
+  return list[1 + L.hashStr(tostring(id)) % #list]
+end
+function L.carStock(id, style)
+  local week = math.floor((S.stats.km or 0) / 1500) + math.floor(os.time() / (7 * 86400))
+  local key = 'car:' .. tostring(id) .. ':' .. week
+  R.carCache = R.carCache or {}
+  if R.carCache[key] then return R.carCache[key] end
+  local rnd = L.lcg(L.hashStr(key))
+  local pool, all = {}, {}
+  for _, m in ipairs(R.cars or {}) do
+    for _, c in ipairs(m.configs or {}) do
+      local p = c.price or 0
+      all[#all + 1] = c
+      if (not style.max or p <= style.max) and (not style.min or p >= style.min) and (not style.powerMax or (c.power or 0) <= style.powerMax)
+         and (not style.body or style.body[tostring(c.body or ''):lower()]) then pool[#pool + 1] = c end
+    end
+  end
+  if #pool < 5 then pool = all end
+  local list, taken = {}, {}
+  for k = 1, 10 + math.floor(rnd() * 5) do
+    local c
+    for _ = 1, 12 do
+      c = pool[1 + math.floor(rnd() * #pool)]
+      if c and not taken[c.config] then break end
+    end
+    if c and not taken[c.config] then
+      taken[c.config] = true
+      local isNew = rnd() < (style.newShare or 0)
+      local km = isNew and 0 or math.floor(rnd(style.km[1], style.km[2]) / 500) * 500
+      local age = isNew and 0 or math.floor(km / 18000 + rnd(0, 2))
+      local marks = not isNew and rnd() < 0.3
+      local wear = not isNew and { visual = visualFromKm(km * 3, marks and 0.05 or 0), integrity = marks and rnd(0.9, 0.97) or 1 } or nil
+      local f = isNew and 1 or math.max(0.22, 0.86 - km / 320000 * 0.55 - age * 0.03 - (marks and 0.05 or 0))
+      local sid = key .. ':' .. k
+      if not (S.soldUsed and S.soldUsed[sid]) then
+        list[#list + 1] = { showId = sid, usedId = sid, used = not isNew or nil, kind = 'car', model = c.model, config = c.config, brand = c.brand,
+          modelName = c.modelName, configName = c.configName, power = c.power, drivetrain = c.drivetrain, eu = c.eu, preview = c.preview,
+          km = km, age = age, marks = marks or nil, wear = wear, newPrice = c.price, price = math.max(500, round(c.price * f, 100)),
+          condition = wear and math.floor(wear.visual * wear.integrity * 100 + 0.5) or 100 }
+      end
+    end
+  end
+  table.sort(list, function(a, b) return a.price < b.price end)
+  R.carCache[key] = list
+  return list
+end
+function L.showroom()
+  local near = R.near
+  if not near or (near.action ~= 'dealerTruck' and near.action ~= 'dealerCar') then return nil end
+  local kind = near.action == 'dealerTruck' and 'truck' or 'car'
+  local style = L.dealerStyle(near.id, kind)
+  local items = {}
+  if kind == 'car' then
+    items = L.carStock(near.id, style)
+  else
+    local used = usedStock(near.id)
+    for i = 1, math.min(style.used, #used) do items[#items + 1] = used[i] end
+    if style.new > 0 and R.trucks and #R.trucks > 0 then
+      local rnd = L.lcg(L.hashStr('new:' .. tostring(near.id)))
+      local taken = {}
+      for _ = 1, style.new * 12 do
+        local i = 1 + math.floor(rnd() * #R.trucks)
+        local t = R.trucks[i]
+        if not taken[i] and (not inEurope() or t.eu) and (not style.powerMin or (t.power or 0) >= style.powerMin) and L.dealerHas(near.id, t.brand) then
+          taken[i] = true
+          local e = {}
+          for k, v in pairs(t) do e[k] = v end
+          e.showId, e.idx = 'new:' .. i, i
+          items[#items + 1] = e
+          if #taken >= style.new then break end
+        end
+        local n = 0
+        for _ in pairs(taken) do n = n + 1 end
+        if n >= style.new then break end
+      end
+    end
+    for _, e in ipairs(items) do e.showId = e.showId or e.usedId end
+    table.sort(items, function(a, b) return a.price < b.price end)
+  end
+  return { dealer = { name = near.name, kind = kind, key = style.key, style = style.name, tag = style.tag .. ' · ' .. tostring(style.price) }, items = items }
+end
+function M.uiShowroom()
+  ensureCatalog()
+  return L.showroom() or {}
+end
+function M.buyShowroom(showId)
+  local room = L.showroom()
+  if not room then notify('Fahrzeuge gibt es nur beim Händler vor Ort.', 5); return end
+  for _, e in ipairs(room.items) do
+    if e.showId == showId then
+      if S.money < e.price then notify('Nicht genug Geld – vielleicht hilft die Bank?', 5); return end
+      if e.used or e.kind == 'car' then
+        S.soldUsed = S.soldUsed or {}
+        S.soldUsed[e.usedId or showId] = true
+        R.usedCache, R.carCache = nil, nil
+      end
+      buyVehicle(e, e.kind)
+      return
+    end
+  end
+end
+
 -- an owned vehicle as it comes out of the garage: its kilometres and its wear (BeamNG's part condition)
 function L.applyWear(v, def)
   if not v or not def or def.rental then return end
@@ -3074,6 +3290,7 @@ function L.applyWear(v, def)
   local visual = math.min(w.visual or 1, visualFromKm(km))
   v:queueLuaCommand(string.format('if partCondition and partCondition.initConditions then partCondition.initConditions(nil, %d, %.3f, %.3f) end',
     math.floor(km * 1000), w.integrity or 1, visual))
+  if def.repaired then v:queueLuaCommand(L.partsCmd(def.repaired)) end
 end
 
 function M.sellVehicle(idx)
@@ -3082,6 +3299,7 @@ function M.sellVehicle(idx)
   if t.seized or t.driver then notify(t.seized and 'Beschlagnahmte Fahrzeuge kann man nicht verkaufen.' or 'Erst den Fahrer abziehen.', 5); return end
   local value = round(t.price * math.max(0.4, 0.75 - (t.km or 0) / 20000), 100)
   L.pay('Fahrzeuge', value, 'Verkauf: ' .. tostring(t.brand or '') .. ' ' .. tostring(t.modelName or ''))
+  pcall(L.acc.strip, t)                          -- (its accessories go back on the shelf)
   table.remove(S.owned, idx)
   if S.active == idx then S.active = 'loaner'
   elseif type(S.active) == 'number' and S.active > idx then S.active = S.active - 1 end
@@ -3116,7 +3334,7 @@ function M.acceptOffer(id)
   S.job.special = o.special
   -- (2026-11-08) load securing, dangerous-goods papers, goods without papers (the tutorial's first job: straps spared)
   S.job.secure = (o.secure and not (S.tut and not S.tut.done)) or nil
-  S.job.adr, S.job.smuggle = o.adr, o.smuggle
+  S.job.adr, S.job.smuggle, S.job.heat = o.adr, o.smuggle, o.heat
   if o.adr then message('Gefahrgut: Pack im Büro beim laufenden Auftrag die ADR-Papiere ein. Ohne sie wird eine Kontrolle sehr teuer.') end
   for i, x in ipairs(R.offers) do if x == o then table.remove(R.offers, i) break end end
   resolveDestination(S.job)
@@ -3239,6 +3457,7 @@ function L.completeJob()
   S.job = nil
   R.report = rep
   rep.clock, rep.day = clockText(), S.dayNo
+  pcall(L.moodSting, (rep.rating or 3) >= 2.5 and 'ok_gut' or 'ok_mau')
   -- the card comes up a moment later (FernfahrerReport.vue); kept as a delivery note in the documents
   R.reportAt = now() + 1.2
   R.reportDoc = { kind = 'delivery', title = 'Lieferschein & Abrechnung', t = os.time(), clock = rep.clock,
@@ -3489,7 +3708,421 @@ end
 ------------------------------------------------------------------------------------------
 -- navigation targets the player picks (the route advisor, the office map)
 
+-- (2026-11-09) the accessories for the cab: the online shop, the workshop
+L.acc = require('fernfahrer/accessories')
+-- (2026-11-09) people at the rest area (encounters.lua): the truck has stood for a moment in the ring, someone knocks. Never in the first tour, not after every stop.
+-- (2026-11-09) "attempt to index a nil value" in the game's own traffic/vehicle.lua, checkCollisions: a vehicle just deleted (a service truck leaving) was still in map.objects for that frame.
+-- One failed check is nothing to bring a red error up for: the method is called through a guard.
+function L.trafficGuard(t)
+  if t - (R.tgT or 0) < 5 then return end
+  R.tgT = t
+  local gt = rawget(_G, 'gameplay_traffic')
+  if not gt or not gt.getTrafficData then return end
+  local _, tv = next(gt.getTrafficData() or {})
+  local cls = tv and getmetatable(tv)
+  if type(cls) ~= 'table' or type(cls.checkCollisions) ~= 'function' or cls.ffGuarded then return end
+  local orig = cls.checkCollisions
+  cls.ffGuarded = true
+  cls.checkCollisions = function(self, ...)
+    local ok, err = pcall(orig, self, ...)
+    if not ok then log('D', logTag, 'traffic check skipped for one frame: ' .. tostring(err)) end
+  end
+  log('I', logTag, 'traffic: collision check guarded')
+end
+-- (2026-11-09) "Zum Hof": the truck sank into the ground: it was set down the moment the yard's objects existed, before their collision was in. Now it is held still meanwhile, set down
+-- a moment after the yard stands, and looked at again; the loading screen stays until that is done (uiTrip waits for R.parkAtYard).
+function L.parkDone(v)
+  if v then v:queueLuaCommand('controller.setFreeze(0)') end
+  R.parkAtYard = nil
+end
+function L.parkTick(t)
+  local P, v = R.parkAtYard, careerVeh()
+  if v and P.frozen ~= v:getID() and not P.settleAt then P.frozen = v:getID(); v:queueLuaCommand('controller.setFreeze(1)') end
+  local sp = yard.parkSpot()
+  if P.settleAt then
+    if t < P.settleAt then return end
+    P.settleAt = nil
+    if v and sp and vehPos(v).z < sp.pos.z - 0.8 and (P.tries or 0) < 4 then
+      log('W', logTag, string.format('yard: the truck stood %.1f m low, set down again', sp.pos.z - 0.6 - vehPos(v).z))
+    else
+      return L.parkDone(v)
+    end
+  end
+  -- (2026-11-09: the ground has to be there; the houses around may take a minute, the truck stands on the yard's own slab and does not wait for them)
+  local w = earthLoading()
+  if sp and v and not (w and (w.ground or (w.buildings and yard.builtAge() < 10))) and yard.builtAge() >= 1.8 and vehPos(v):distance(sp.pos) < 800 then
+    log('I', logTag, string.format('yard: truck set down at the hall (it was %.0f m away)', vehPos(v):distance(sp.pos)))
+    pcall(spawn.safeTeleport, v, sp.pos, quatFromDir(sp.dir, vec3(0, 0, 1)))
+    v:queueLuaCommand('controller.setFreeze(0)')
+    P.tries, P.settleAt, P.frozen = (P.tries or 0) + 1, t + 1.8, v:getID()
+  elseif t > P.untilT then
+    L.parkDone(v)
+  end
+end
+-- (2026-11-09) the workshop by parts. BeamNG keeps the condition per part, so one group can be put right on its own: its parts' integrity back to 1, their odometer untouched.
+-- The kilometres stay: nothing is exchanged for a new engine. Applied in the vehicle's own Lua, again after each spawn (own.repaired).
+L.PARTS = {
+  { key = 'motor', icon = '🔩', verb = 'Motor instand setzen', pat = { 'engine', 'turbo', 'radiator', 'intake', 'exhaust', 'oilpan', 'fuel', 'ecu', 'injector', 'intercooler' } },
+  { key = 'antrieb', icon = '⚙', verb = 'Getriebe und Antrieb überholen', pat = { 'transmission', 'gearbox', 'clutch', 'transfer', 'differential', 'driveshaft', 'halfshaft', 'finaldrive' } },
+  { key = 'fahrwerk', icon = '🛞', verb = 'Fahrwerk und Bremsen überholen', pat = { 'suspension', 'axle', 'leaf', 'coilover', 'spring', 'shock', 'steering', 'wheel', 'tire', 'brake', 'hub', 'strut' } },
+  { key = 'karosserie', icon = '🎨', verb = 'Karosserie aufbereiten' },
+}
+function L.partGroup(id)
+  local s = tostring(id):lower()
+  for _, g in ipairs(L.PARTS) do for _, q in ipairs(g.pat or {}) do if s:find(q, 1, true) then return g.key end end end
+  return 'karosserie'
+end
+function L.partsCmd(groups)
+  local G = {}
+  for _, g in ipairs(L.PARTS) do if g.pat then G[#G + 1] = { g.key, g.pat } end end
+  return 'if partCondition and partCondition.getConditions then local G = ' .. serialize(G) .. ' local W = ' .. serialize(groups) .. ' local c = partCondition.getConditions() ' ..
+    'if c then for id, p in pairs(c) do local s, g = tostring(id):lower(), "karosserie" ' ..
+    'for _, e in ipairs(G) do for _, q in ipairs(e[2]) do if s:find(q, 1, true) then g = e[1] break end end if g ~= "karosserie" then break end end ' ..
+    'if W[g] then p.integrityValue = 1 p.integrityState = nil if g == "karosserie" then p.visualValue = 1 p.visualState = nil end end end ' ..
+    'partCondition.initConditions(c) if partCondition.setResetSnapshotKey then partCondition.setResetSnapshotKey(nil) end end end'
+end
+function L.partHealth()
+  if type(R.lastCond) ~= 'table' then return nil end
+  local H = {}
+  for id, p in pairs(R.lastCond) do
+    if type(p) == 'table' and tonumber(p.integrityValue) then
+      local k, h = L.partGroup(id), nil
+      h = H[k] or { int = 1, vis = 1 }
+      h.int, h.vis = math.min(h.int, p.integrityValue), math.min(h.vis, tonumber(p.visualValue) or 1)
+      H[k] = h
+    end
+  end
+  return H
+end
+function L.partCost(own, key, h)
+  local price = own.newPrice or own.price or 80000
+  local bad = 1 - math.min(h.int, key == 'karosserie' and h.vis or 1)
+  if key == 'motor' then return round(math.max(1200, price * 0.015) + (own.km or 0) * 0.003 + bad * price * 0.2, 50) end
+  return round(math.max(key == 'karosserie' and 400 or 700, bad * price * 0.2), 50)
+end
+function L.kmText(km) return (tostring(math.floor((km or 0) / 1000 + 0.5) * 1000):reverse():gsub('(%d%d%d)', '%1.'):reverse():gsub('^%.', '')) end
+function L.partActs(add)
+  local own = L.ownTruck()
+  local H = L.partHealth()
+  if not own or not H or L.activeKind() ~= 'truck' then return end
+  local done = own.repaired or {}
+  for _, g in ipairs(L.PARTS) do
+    local h = H[g.key]
+    if h and (h.int < 0.995 or (g.key == 'karosserie' and h.vis < 0.95) or (g.key == 'motor' and (own.km or 0) >= 150000 and not done.motor)) then
+      local c = L.partCost(own, g.key, h)
+      local text = g.key == 'motor' and ('Läuft nicht mehr rund. Die ' .. L.kmText(own.km) .. ' km bleiben') or (g.key == 'karosserie' and 'Lack, Dellen und Rost, die Technik bleibt, wie sie ist' or 'Nur diese Teile, der Rest bleibt, wie er ist')
+      add('part:' .. g.key, g.icon, g.verb, string.format('%s · %s', money(c), text), { disabled = S.money < c or nil })
+    end
+  end
+end
+-- (after the reset of an accident repair: the wear and the kilometres of every part back on, only the accident's damage gone)
+function L.condApply(v, cond, keepState)
+  local c = {}
+  for id, p in pairs(cond) do
+    local q = {}
+    for k, x in pairs(p) do q[k] = x end
+    if not keepState then q.integrityState, q.visualState = nil, nil end
+    c[id] = q
+  end
+  R.condRestoringUntil = now() + 3
+  v:queueLuaCommand('if partCondition and partCondition.initConditions then partCondition.initConditions(' .. serialize(c) .. ') if partCondition.setResetSnapshotKey then partCondition.setResetSnapshotKey(nil) end end')
+end
+function L.accCamHook()
+  if not S or not R.accDt then return end
+  R.accHookT = now()
+  L.acc.noLearn = vices.override ~= nil
+  local dt = R.accDt
+  R.accDt = nil
+  pcall(L.acc.render, careerVeh(), L.accTruck(), dt)
+end
+-- (2026-11-09) the work done, shown: the truck held still, the camera going round it in three shots, ratchets and an impact wrench; what was ordered happens at the end
+function L.workMsg(text) notify('🛠 ' .. text, 8); message(text, 'Werkstatt') end
+function L.workStart(o)
+  local v = careerVeh() or playerVeh()
+  if not v or R.workShow then return false end
+  local len = o.len or 10
+  R.workShow = { t0 = now(), len = len, done = o.done, id = v:getID() }
+  v:queueLuaCommand('controller.setFreeze(1)')
+  navigate('play')
+  vices.installCam()
+  vices.override = L.workCam
+  guihooks.trigger('FernfahrerWork', { title = o.title, sub = o.sub, len = len })
+  if Engine and Engine.Audio and Engine.Audio.playOnce then
+    local ok, res = pcall(Engine.Audio.playOnce, 'AudioGui', 'art/sound/fernfahrer/mood/gad_werkstatt.wav', { volume = 0.8 })
+    R.workShow.src = ok and type(res) == 'table' and res.sourceId or nil
+  end
+  R.navDuckUntil = now() + len
+  return true
+end
+function L.workCam(x, y, z, qx, qy, qz, qw, fov)
+  local W = R.workShow
+  local v = W and getObjectByID(W.id)
+  if not v then return x, y, z, qx, qy, qz, qw, fov end
+  local c, F = vehPos(v), vec3(v:getDirectionVector())
+  F.z = 0
+  F = F:normalized()
+  local side, up = vec3(F.y, -F.x, 0), vec3(0, 0, 1)
+  local k = math.min(0.999, (now() - W.t0) / W.len)
+  local shot, s = math.floor(k * 3) + 1, (k * 3) % 1
+  local pos, at
+  if shot == 2 then
+    pos, at = c + F * (4.4 - s * 0.9) + side * 3 + up * 0.5, c + F * 2.4 + up * 0.6
+  else
+    local a = shot == 1 and (0.7 + s * 0.9) or (3.7 + s * 0.8)
+    local r = shot == 1 and 8.2 or 7.2
+    pos, at = c + F * (math.cos(a) * r) + side * (math.sin(a) * r) + up * (shot == 1 and 2.1 or 3.1), c + up * 0.9
+  end
+  local q = quatFromDir((at - pos):normalized(), up)
+  return pos.x, pos.y, pos.z, q.x, q.y, q.z, q.w, 50
+end
+function L.workEnd()
+  local W = R.workShow
+  if not W then return end
+  R.workShow, R.stopOpen = nil, false
+  if vices.override == L.workCam then vices.override = nil end
+  local v = getObjectByID(W.id)
+  if v then v:queueLuaCommand('controller.setFreeze(0)') end
+  if W.src and scenetree and scenetree.findObjectById then local o = scenetree.findObjectById(W.src); if o and o.stop then pcall(o.stop, o, 0.4, 1) end end
+  guihooks.trigger('FernfahrerWork', { off = true })
+  if W.done then pcall(W.done) end
+end
+function L.workTick()
+  local W = R.workShow
+  if not W then return end
+  R.stopOpen = true                                 -- (no mirrors, no HUD over it, nobody knocking)
+  if now() - W.t0 >= W.len then L.workEnd() end
+end
+function M.workSkip() if R.workShow then R.workShow.len = 0 end end
+L.enc = require('fernfahrer/encounters')
+-- (2026-11-09) quiet music under the moments (mood.lua). The radio goes silent only for the rest area and a talk at the window, and comes back; "Nur ohne Radio" leaves it alone.
+L.mood = require('fernfahrer/mood')
+L.MOOD_LEVEL = { low = 0.6, mid = 1, high = 1.4 }
+function L.moodRadio() return S.settings.radioOn ~= false and R.radioHelper == true end
+function L.moodTick(force)
+  local t = now()
+  if not force and t - (R.moodT or 0) < 1 then return end
+  local dtc = math.min(2, t - (R.moodT or t))
+  R.moodT = t
+  local set = S and S.settings and S.settings.mood or 'all'
+  if not S or not R.mode or set == 'off' or R.workShow or R.loadAt or R.trip or R.pendingTeleport or R.sleep or R.officeOpen or R.boot ~= nil or cinematic.active() or L.gamePaused() then
+    R.moodMute = nil
+    L.mood.want(nil, t)
+    return
+  end
+  L.mood.setLevel(L.MOOD_LEVEL[S.settings.moodVol or 'mid'] or 1)
+  local v = careerVeh()
+  local spd = v and vehSpeed(v) or 0
+  local talk, want, drive = R.cop ~= nil or L.enc.active(), nil, false
+  if R.cop then want = 'polizei'
+  elseif talk then want = R.moodBed or nil
+  else
+    local n = R.near
+    local atRest = v ~= nil and n ~= nil and (n.type == 'rest' or n.parking) and stops.inside() ~= nil
+    if atRest and spd < 0.6 then R.moodStill = (R.moodStill or 0) + dtc elseif spd > 3 or not atRest then R.moodStill = 0 end
+    if (R.moodStill or 0) >= 4 then want = 'rast'
+    else
+      -- (on the road, now and then, when nothing else is playing)
+      R.moodDriveAt = R.moodDriveAt or (t + 300 + math.random() * 400)
+      if R.moodDriveUntil and t >= R.moodDriveUntil then R.moodDriveUntil = nil end
+      if not R.moodDriveUntil and t >= R.moodDriveAt and spd > 12 then
+        R.moodDriveUntil, R.moodDriveAt = t + 52, t + 700 + math.random() * 800
+        local h = S.clockHours or 12
+        R.moodDriveCue = (h >= 21 or h < 5) and 'fahrt_nacht' or 'fahrt_tag'
+      end
+      if R.moodDriveUntil then want, drive = R.moodDriveCue, true end
+    end
+  end
+  local radio = L.moodRadio()
+  R.moodMute = (radio and set == 'all' and (talk or (want ~= nil and not drive))) or nil
+  if radio and (drive or set == 'noradio') then want = nil end
+  L.mood.want(want, t)
+end
+function L.moodSting(name)
+  if not S or not S.settings or S.settings.mood == 'off' or R.loadAt then return end
+  local radio = L.moodRadio()
+  if radio and S.settings.mood == 'noradio' then return end
+  L.mood.setLevel(L.MOOD_LEVEL[S.settings.moodVol or 'mid'] or 1)
+  local len = L.mood.sting(name, now())
+  if len and radio then R.navDuckUntil = now() + len end
+end
+function L.encDiesel(liters)
+  local veh = playerVeh()
+  if not veh or not core_vehicleBridge then return end
+  core_vehicleBridge.requestValue(veh, function(ret)
+    local left = liters
+    for _, tank in ipairs((ret and ret[1]) or {}) do
+      local f = FUEL[tank.energyType]
+      if f and tank.maxEnergy and tank.currentEnergy and left > 0 then
+        local add = math.min(left, math.max(0, (tank.maxEnergy - tank.currentEnergy) / 1e6 / f.mj))
+        if add > 0.05 then core_vehicleBridge.executeAction(veh, 'setEnergyStorageEnergy', tank.name, tank.currentEnergy + add * f.mj * 1e6); left = left - add end
+      end
+    end
+    R.fuelT = 0
+  end, 'energyStorage')
+end
+function L.encCtx()
+  return {
+    money = function() return S.money end, fmt = money, pay = function(c, a, l) L.pay(c, a, l) end, xp = function(n) addXp(n) end,
+    notify = notify, message = message, save = function() save() end, fine = function(a, w) M.fine(a, w) end,
+    km = function() return S.stats.odoKm or 0 end, job = function() return S.job end, hasTrailer = function() return R.trailerId ~= nil end,
+    trigger = function(n, d) guihooks.trigger(n, d) end,
+    give = function(id) S.acc = S.acc or {}; S.acc.inv = S.acc.inv or {}; S.acc.inv[id] = (S.acc.inv[id] or 0) + 1 end,
+    cab = function(k, n) local i = L.inv(); i[k] = (i[k] or 0) + n end,
+    tired = function(d) S.fatigue = math.max(0, math.min(1, (S.fatigue or 0) + d)) end,
+    diesel = function(l) pcall(L.encDiesel, l) end, fail = function(k) pcall(service.forceFail, k) end,
+    freight = function(f) if S.job then S.job.freight = round(S.job.freight * f, 10) end end,
+    look = function(on) if on then vices.installCam(); vices.setLook(-66, -5) else vices.setLook(0, 0) end end,
+    stage = function(shape) local v = careerVeh(); if v then pcall(L.restCheckStage, v, shape) end end,
+    clean = function() L.restCheckClean() end,
+    bed = function(b) R.moodBed = b or false; pcall(L.moodTick, true) end,
+    knock = function(k) L.mood.knock(k) end,
+  }
+end
+function L.encAttach()
+  if R.encFor == S then return end
+  L.enc.reset()
+  S.enc = S.enc or {}
+  L.enc.attach(S.enc, L.encCtx())
+  R.encFor = S
+end
+function L.encForce()
+  L.encAttach()
+  R.encTest = L.enc.nextForTest()
+  R.encStill = 0
+  notify('Halte an und bleib kurz stehen: Gleich klopft jemand an die Tür.', 6)
+end
+function L.encTick(t)
+  if not S or not R.mode or t - (R.encT or 0) < (L.enc.active() and 0.12 or 1) then return end
+  local dtc = math.min(2, t - (R.encT or t))
+  R.encT = t
+  L.encAttach()
+  L.enc.kmTick(S.stats.odoKm or 0)
+  local v = careerVeh()
+  if L.enc.active() then L.enc.tick(v ~= nil and vehSpeed(v) > 3); return end
+  if not v or vehSpeed(v) > 0.6 or R.cop or R.rcScene or R.restCheck or R.trip or R.pendingTeleport or R.sleep or R.officeOpen or R.stopOpen
+    or cinematic.active() or L.gamePaused() then R.encStill = 0; return end
+  if R.encTest then
+    R.encStill = (R.encStill or 0) + dtc
+    if R.encStill >= 2 then local k = R.encTest; R.encTest = nil; L.enc.start(k) end
+    return
+  end
+  local n = R.near
+  if not (n and (n.type == 'rest' or n.parking) and stops.inside()) then R.encVisit, R.encStill = nil, 0; return end
+  if R.encVisit == n.id or (S.tut and not S.tut.done) then return end
+  R.encStill = (R.encStill or 0) + dtc
+  R.encWait = R.encWait or (3 + math.random() * 6)
+  if R.encStill < R.encWait then return end
+  R.encVisit, R.encWait = n.id, nil
+  local km, nxt = S.stats.odoKm or 0, L.enc.nextKm()
+  if nxt and (km < nxt or math.random() > L.enc.CHANCE) then return end         -- (the first time: always)
+  if L.enc.start(L.enc.pick()) then L.enc.setNext(km) end
+end
+function L.accTruck()
+  local def, loaner = activeDef()
+  if not def or def.rental or def.kind == 'car' then return nil end
+  if loaner then
+    -- (2026-11-09: the hired truck has a little of its own: what can be hung up)
+    S.loanerFit = S.loanerFit or { loaner = true }
+    local t = S.loanerFit
+    t.model, t.brand, t.modelName = def.model, 'Leih-Lkw', def.modelName or ''
+    return t
+  end
+  return def
+end
+function L.accTick(t)
+  if not S then return end
+  if R.accFor ~= S then S.acc = S.acc or {}; L.acc.attach(S.acc); R.accFor = S
+    L.acc.setCtx({ notify = notify, tired = function(d) S.fatigue = math.max(0, math.min(1, (S.fatigue or 0) + d)) end,
+      cab = function(k, n) local i = L.inv(); i[k] = (i[k] or 0) + n end, clock = function() return clockText() end,
+      play = function(f, vol) if Engine and Engine.Audio and Engine.Audio.playOnce then pcall(Engine.Audio.playOnce, 'AudioGui', 'art/sound/fernfahrer/mood/' .. f .. '.wav', { volume = vol }) end end,
+      radioLine = function()
+        if S.settings.radioOn == false or not R.radioHelper then return 'Radio aus' end
+        local i = R.radioInfo
+        return (i and (i.title ~= '' and i.title or i.status)) or 'Radio'
+      end })
+  end
+  if t - (R.accT or 0) < 2 then return end
+  R.accT = t
+  local got = L.acc.tick()
+  if got then notify('📦 Dein Paket ist am Hof: ' .. got .. '. Einbauen in der Werkstatt am Hof.', 8); save() end
+  if t - (R.fuelSaveT or 0) > 60 then R.fuelSaveT = t; pcall(parked.fuelSave) end
+end
+function M.uiShop()
+  if R.accFor ~= S then L.accTick(now()) end
+  local v = L.acc.shopView(L.accTruck())
+  v.money = S.money
+  return v
+end
+function M.shopOrder(id)
+  local it = L.acc.BY[id]
+  if not it then return M.uiShop() end
+  if S.money < it.price then notify('Nicht genug Geld für ' .. it.name .. '.', 4); return M.uiShop() end
+  L.pay('Einkauf', -it.price, 'Online-Shop: ' .. it.name)
+  L.acc.order(id)
+  notify('📦 Bestellt: ' .. it.name .. '. Wird an deinen Hof geliefert.', 5)
+  save()
+  return M.uiShop()
+end
+function M.uiGarage()
+  if R.accFor ~= S then L.accTick(now()) end
+  local t = L.accTruck()
+  if not t then return { error = 'In diesem Fahrzeug kann nichts eingebaut werden.' } end
+  return L.acc.garageView(t)
+end
+function M.garageFit(id) if L.acc.fit(L.accTruck(), id) then save() end; return M.uiGarage() end
+function M.garageRemove(id) if L.acc.unfit(L.accTruck(), id) then save() end; return M.uiGarage() end
+function M.garageNudge(id, axis, d) L.acc.nudge(L.accTruck(), id, axis, d); save(); return M.uiGarage() end
+function L.garageCam(x, y, z, qx, qy, qz, qw, fov)
+  local c = L.acc.garageCam(R.garageView or 'fahrer')
+  if not c then return x, y, z, qx, qy, qz, qw, fov end
+  local q = quatFromDir(c.dir, c.up)
+  return c.pos.x, c.pos.y, c.pos.z, q.x, q.y, q.z, q.w, c.fov
+end
+function M.garageView(mode) R.garageView = mode end
+function M.garageSelect(id) L.acc.sel = id end
+function M.garageAlign(id) L.acc.alignDash(L.accTruck(), id); save(); return M.uiGarage() end
+function M.garagePhotos() return L.acc.photos() end
+function M.garagePhoto(file) L.acc.choosePhoto(L.accTruck(), file); save(); return M.uiGarage() end
+function M.garageFace(id) L.acc.face(L.accTruck(), id); save(); return M.uiGarage() end
+function M.garageOpen()
+  R.stopOpen, R.brakeOffAt = true, nil
+  L.autoBrake()
+  local ok, name = pcall(core_camera.getActiveCamName, 0)
+  R.garageCam = ok and name or nil
+  pcall(core_camera.setByName, 0, 'onboard.driver')
+  vices.setLook(0, 0)
+  vices.installCam()
+  R.garageOn, R.garageView = true, 'fahrer'
+  L.acc.inGarage = true
+  vices.override = L.garageCam
+  return true
+end
+function M.garageClose()
+  R.stopOpen, R.brakeOffAt = false, now() + 0.8
+  R.garageOn = nil
+  L.acc.inGarage = false
+  L.acc.sel = nil
+  if vices.override == L.garageCam then vices.override = nil end
+  vices.setLook(0, 0)
+  if R.garageCam and R.garageCam ~= 'onboard.driver' then pcall(core_camera.setByName, 0, R.garageCam) end
+  R.garageCam = nil
+  save()
+end
+
 function M.navToPlace(id)
+  -- (a fuel station of Earth's: not in the depots)
+  if type(id) == 'string' and id:sub(1, 10) == 'earthfuel:' then
+    local f = parked.fuelAll()[id:sub(11)]
+    if not f then for k, x in pairs(parked.fuelAll()) do if tostring(k) == id:sub(11) then f = x; break end end end
+    if f then local n = L.neutralName('fuel', f.name, nil, f.lat, f.lon); navTo({ lat = f.lat, lon = f.lon, name = n }, n); notify('Route: ' .. n, 4) end
+    return
+  end
+  if type(id) == 'string' and id:sub(1, 4) == 'far:' then
+    local la, lo, ty = id:match('^far:([%d%.%-]+):([%d%.%-]+):(%w+)$')
+    local t = ty and DEPOT_BY_KEY[ty]
+    if t and tonumber(la) and tonumber(lo) then navTo({ lat = tonumber(la), lon = tonumber(lo), name = t.name }, t.name); notify('Route: ' .. t.name, 4) end
+    return
+  end
   for _, d in ipairs(S.depots) do
     if d.id == id then navTo(d, d.name); notify('Route: ' .. d.name, 4); return end
   end
@@ -3751,6 +4384,7 @@ end
 
 function M.goHome(withVehicle)
   if not S or not S.home then return end
+  if L.pursuit.active() then notify('Nicht, solange die Polizei hinter dir her ist.', 4); return end
   -- (on foot at an airport: home in the own truck or the loaner – and no way of being stranded without money)
   if L.onFoot() then
     S.rental, S.rentalDesk, S.active = nil, nil, 'loaner'
@@ -4014,13 +4648,44 @@ function L.tutSend(t, n)
     R.tutAckAt, R.tutAckN = nil, nil
     return
   end
-  if not L.screenGone(t) or cinematic.active() or R.sleep or R.officeOpen or R.stopOpen then R.tutAckAt, R.tutAckN = t + 1, n; return end
+  if not L.screenGone(t) or cinematic.active() or R.sleep or R.officeOpen or R.stopOpen or L.welcomePending() then R.tutAckAt, R.tutAckN = t + 1, n; return end
   local _, loaner = activeDef()
   guihooks.trigger('FernfahrerTutorial', { company = S.company and S.company.name or 'deine Spedition',
     home = S.home and S.home.name or 'dein Hof', loaner = loaner, rules = S.settings.truckRules ~= false })
   R.tutAckAt, R.tutAckN = t + 3, n + 1
   log('I', logTag, 'introduction sent (' .. (n + 1) .. ')')
 end
+-- (2026-11-09, BeamNG.Earth 1.9) Earth asks every player about its statistics on a page of its own, 2 s after the level starts:
+-- in a career that took over the loading screen or the setup. The page and the choice stay Earth's (it sends nothing until then);
+-- it only comes a little later here, when the player has arrived and nothing else is on the screen, and before the introduction.
+L.WELCOME_ROUTE, L.WELCOME_CALM_S = 'beamngEarthWelcome', 6.5
+function L.welcomeHold()
+  local st = rawget(_G, 'beamngEarth_settings')
+  if st and st.privacyNeeded and st.privacyNeeded() then st.welcomeSuppressed = true end
+end
+function L.welcomePending()
+  return R.mode and (not R.welcomeDone or R.uiRoute == L.WELCOME_ROUTE) or false
+end
+function L.welcomeTick(t)
+  if R.welcomeDone or not R.mode then return end
+  local st = rawget(_G, 'beamngEarth_settings')
+  if not (st and st.privacyNeeded and st.showWelcome) or not st.privacyNeeded() then
+    if st then st.welcomeSuppressed = nil end
+    R.welcomeDone = true
+    return
+  end
+  st.welcomeSuppressed = true
+  local calm = S and S.company and S.home and L.screenGone(t) and not (R.trip or R.pendingTeleport or R.sleep or R.officeOpen or R.stopOpen
+    or R.cop or cinematic.active() or L.cine.active()) and (R.uiRoute == nil or R.uiRoute == 'play')
+  if not calm then R.welcomeCalm = nil; return end
+  R.welcomeCalm = R.welcomeCalm or t
+  if t - R.welcomeCalm < L.WELCOME_CALM_S then return end
+  st.welcomeSuppressed = nil
+  R.welcomeDone = true
+  pcall(st.showWelcome)
+  log('I', logTag, 'BeamNG.Earth welcome page shown')
+end
+function M.onUiChangedState(toState) R.uiRoute = toState end
 function M.tutorialShown()
   if R.tutAckAt then log('I', logTag, 'introduction open') end
   R.tutAckAt, R.tutAckN = nil, nil
@@ -4065,9 +4730,12 @@ function M.uiTrip()
     loading = { yard = true }
   end
   -- ("Zum Hof": the screen stays until the truck stands in front of the hall)
-  if not moving and not loading and R.parkAtYard and now() < R.parkAtYard.untilT and not (S and S.yard and S.yard.failed) then
-    loading = { yard = true }
+  if not moving and R.parkAtYard and now() < R.parkAtYard.untilT and not (S and S.yard and S.yard.failed) then
+    loading = loading or {}
+    loading.yard = true
   end
+  -- (2026-11-09: at the yard, the truck parked: the houses and trees further off are no reason to keep the screen up for a minute and a half)
+  if not moving and loading and not loading.yard and not loading.ground and yard.built() and R.tripView and R.tripView.world and R.tripArrivedAt and now() - R.tripArrivedAt > 8 and (dist(here(), S and S.home) or 1e9) < 900 then loading = nil end
   -- (2026-11-08) a new career: the setup screen comes next and the first drive starts at the chosen yard, so the buildings
   -- and trees of this spot are not waited for (they kept the screen up for its whole 90 s): only the ground, and not for long
   if not moving and loading and R.tripNext == 'fernfahrerSetup'
@@ -4210,10 +4878,19 @@ function M.repayLoan(amount)
 end
 
 function M.setOption(key, value)
+  if key == 'eventTest' and value == 'npc' then L.encForce(); return end
   if key == 'eventTest' and type(value) == 'string' and value:sub(1, 5) == 'fail:' then service.forceFail(value:sub(6)); return end
   if key == 'loadMusic' then S.settings.loadMusic = value and true or false; pcall(L.loadMusicTick) end
   if key == 'breakdowns' then S.settings.breakdowns = value and true or false end
+  if key == 'autoPhotos' then
+    S.settings.autoPhotos = value and true or false
+    if value and not R.photos then R.photoWanted, R.photoLook = true, 0 elseif not value and R.photos then R.photos.stop() end
+  end
+  if key == 'photoSeries' then S.settings.photoSeries = value and true or false; if not value and L.shots.active() then L.shotsStop() end end
+  if key == 'devResets' then S.settings.devResets = value and true or false; pcall(L.resetGuard) end
   if key == 'radioRegional' then S.settings.radioRegional = value and true or false end
+  if key == 'mood' and (value == 'all' or value == 'noradio' or value == 'off') then S.settings.mood = value end
+  if key == 'moodVol' and L.MOOD_LEVEL[value] then S.settings.moodVol = value end
   if key == 'hitch' and (value == 'auto' or value == 'manual') then S.settings.hitch = value end
   if key == 'speedWarn' then S.settings.speedWarn = value and true or false end
   -- (the truck's rules: its own limits, the 90 km/h limiter, fines for driving too fast – each can be switched off)
@@ -4637,6 +5314,7 @@ local WEEKDAYS = { 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'S
 local function weekday() return WEEKDAYS[((S.dayNo or 1) - 1) % 7 + 1] end
 function M.sleepFor(hours)
   if not S then return end
+  if L.pursuit.active() then notify('Nicht, solange die Polizei hinter dir her ist.', 4); return end
   hours = tonumber(hours) or M.SLEEP_H
   if hours >= 6 and not canRest() then notify('Schlafen geht an Rastplätzen, Autohöfen/Tankstellen, am Hof und an Logistik-Stützpunkten.', 6); return end
   if vehSpeed(playerVeh()) > 1 then notify('Bitte anhalten.', 3); return end
@@ -4738,7 +5416,7 @@ L.TUT = {
   drive = { n = 4, title = 'Zum Kunden fahren', text = 'Gut gekuppelt! Jetzt zum Kunden. Als LKW gelten <b>80 km/h</b> auf der Autobahn und <b>60</b> auf Landstraßen. Fahr sanft – Schäden an der Ladung kosten Lohn. Der Fahrtenschreiber zählt deine Lenkzeit.' },
   drop = { n = 5, title = 'Abstellen beim Kunden', text = 'Beim Kunden ist eine <b>blaue Fläche</b> markiert. Stell den Auflieger hinein – sie wird <b>grün</b>, wenn er richtig steht.' },
   unhitch = { n = 6, title = 'Abkuppeln und entladen', text = 'Jetzt <b>abkuppeln</b>: Taste <b>L</b> oder unten <b>„Abkuppeln“</b>. Danach wird entladen – kurz stehen bleiben.', keys = 'L' },
-  done = { n = 7, title = 'Erster Auftrag geschafft!', text = 'Der Lohn ist auf deinem Konto, der Lieferschein liegt im Büro. Ab jetzt fährst du auf eigene Faust – mehr Aufträge gibt es in der Frachtbörse. Gute Fahrt!', last = true },
+  done = { n = 7, title = 'Erster Auftrag geschafft!', text = 'Der Lohn ist auf deinem Konto, der Lieferschein liegt im Büro. Ab jetzt fährst du auf eigene Faust – mehr Aufträge gibt es in der Frachtbörse. Kurze Erklärfilme zum Fahren findest du im Büro unter <b>Fahrschule</b>. Gute Fahrt!', last = true },
 }
 function L.tutTick(t)
   local tut = S.tut
@@ -4787,7 +5465,7 @@ local REST_OPTIONS = {
   { h = 45, label = 'Wochenruhe 45 h', sub = 'reguläre wöchentliche Ruhezeit' },
 }
 function M.uiStop()
-  local p = stops.inside() or R.near
+  local p = R.photoNear or stops.inside() or R.near
   if not S or not p then return { none = true } end
   local v = { place = { name = p.name, icon = p.icon, typeName = p.typeName, action = p.action, color = stops.COLOR[p.action] },
     clock = clockText(), weekday = weekday(), money = S.money, moneyText = money(S.money), actions = {}, rest = {}, tacho = tacho.view(S.tacho),
@@ -4813,7 +5491,6 @@ function M.uiStop()
       add('buy:' .. it.id, it.icon, it.label .. ' – ' .. it.priceText, (it.why or it.sub) .. (it.have and (' · dabei: ' .. tostring(it.have)) or ''),
         { disabled = it.disabled, warn = it.back, shop = { name = it.label, sub = it.sub, why = it.why, price = it.priceText, kind = it.kind, have = it.have, back = it.back } })
     end
-    if sv.back and sv.back.open then pcall(L.smuggleAt, p) end
     if sv.back and not sv.back.open then
       add('back:try', '🚶', 'Um die Ecke gehen …', sv.back.gone and 'Der Typ ist gerade weg – später wieder' or 'Am Hinterausgang lungert jemand herum',
         { disabled = sv.back.gone, warn = true, game = true })
@@ -4821,7 +5498,9 @@ function M.uiStop()
   end
   if a == 'repair' or a == 'home' then
     local dmg = veh and damageOf(veh:getID()) or 0
-    add('repair', '🔧', 'Reparieren', dmg > 100 and ('Kosten ' .. money(L.repairPay(veh))) or 'Keine Schäden', { disabled = dmg <= 100 or nil })
+    local fullC = veh and L.repairPay(veh) or 0
+    local fullAny = dmg > 100 or fullC > 0
+    add('repair', '🔧', 'Komplett reparieren', fullAny and ('Kosten ' .. money(fullC)) or 'Keine Schäden', { disabled = not fullAny or S.money < fullC or nil })
   end
   -- the speed limiter out (or back in), in a truck of one's own, at a workshop or the yard
   if (a == 'repair' or a == 'home') and S.settings.truckRules ~= false and L.activeKind() == 'truck' then
@@ -4859,6 +5538,7 @@ function M.uiStop()
     end
   end
   if a == 'dealerTruck' or a == 'dealerCar' then add('dealer', '🚛', 'Zum Händler', 'Neue und gebrauchte Fahrzeuge') end
+  if a == 'home' or a == 'workshop' then add('garage', '🎨', 'Kabine einrichten', 'Zubehör einbauen und verschieben') end
   -- the loads waiting at this company (ETS2: taken at the yard); the trailer is set out here once taken
   if a == 'freight' then
     pcall(L.offersAt, p)
@@ -4887,8 +5567,8 @@ function M.uiStop()
     add('milktour', '🥛', 'Milchtour fahren', string.format('Mit dem Sammelwagen der Molkerei die Höfe im Umkreis von %d km abfahren', math.ceil(L.MILK_KM)),
       { disabled = (S.job ~= nil or R.trailerId ~= nil) or nil })
   end
-  -- (2026-11-08) goods without papers: behind a fuel station whose back door is open, at some rest areas
-  if a == 'sleep' and not p.parking and L.contactAt(p) then pcall(L.smuggleAt, p) end
+  -- (2026-11-09) goods without papers: only at the places for it, on the map
+  if a == 'underground' then pcall(L.smuggleAt, p) end
   do
     local _, loaner = activeDef()
     for _, o in ipairs(R.offers or {}) do
@@ -4901,6 +5581,7 @@ function M.uiStop()
       end
     end
   end
+  if a == 'repair' or a == 'home' then pcall(L.partActs, add) end
   -- (2026-11-08) what a used truck is hiding: the workshop's check finds it, then it can be put right
   if (a == 'repair' or a == 'home') and L.activeKind() == 'truck' then
     local own = L.ownTruck()
@@ -4972,15 +5653,48 @@ function M.stopDo(id, arg)
     save()
     return
   end
+  local pg = tostring(id):match('^part:(%w+)$')
+  if pg then
+    local own, veh, H = L.ownTruck(), playerVeh(), L.partHealth()
+    if not own or not veh or not H or not H[pg] then return end
+    local c = L.partCost(own, pg, H[pg])
+    if S.money < c then return end
+    if damageOf(veh:getID()) > 100 and R.trailerId and isCoupled() then notify('Bitte erst den Auflieger abkuppeln.', 5); return end
+    L.pay('Werkstatt', -c, 'Werkstatt: ' .. pg)
+    local title = ({ motor = 'Motor wird instand gesetzt', antrieb = 'Getriebe und Antrieb werden überholt', fahrwerk = 'Fahrwerk und Bremsen werden überholt', karosserie = 'Karosserie wird aufbereitet' })[pg]
+    local function finish()
+      own.repaired = own.repaired or {}
+      own.repaired[pg] = true
+      if pg == 'karosserie' then own.wear = own.wear or {}; own.wear.visual = 1 end
+      local dmgNow = damageOf(veh:getID())
+      if dmgNow > 100 then
+        -- (dents only go with a reset: this group whole, everything else put back as it was, the damage less this group's share)
+        local cond = L.condFixed({ [pg] = true })
+        R.ownRepairUntil, R.dmgTarget, R.dmgLive = now() + 3, { v = dmgNow * (1 - L.partShare(pg)), at = now() + 3.2 }, dmgNow
+        spawn.safeTeleport(veh, vehPos(veh), quatFromDir(vec3(veh:getDirectionVector()), vec3(veh:getDirectionVectorUp())))
+        R.restoreFuel = { id = veh:getID(), tanks = {}, t = now() + 1.0, cond = cond, keep = true }
+      else
+      veh:queueLuaCommand(L.partsCmd({ [pg] = true }))
+      end
+      R.wearSig, R.partReqT, R.condT = nil, 0, 0
+      L.workMsg(({ motor = 'Der Motor läuft wieder rund. Der Tacho steht weiter bei ' .. L.kmText(own.km) .. ' km.', antrieb = 'Getriebe und Antrieb sind überholt.', fahrwerk = 'Fahrwerk und Bremsen sind überholt.', karosserie = 'Die Karosserie ist aufbereitet. Sieht wieder gut aus.' })[pg])
+      save()
+    end
+    if not L.workStart({ title = title, sub = 'Kilometerstand bleibt erhalten', done = finish }) then finish() end
+    return
+  end
   local fix = tostring(id):match('^fix:(%w+)$')
   if fix then
     local own, d = L.ownTruck(), L.DEFECT[fix]
     if not own or not d or not (own.defects and own.defects[fix]) or S.money < d.fix then return end
     L.pay('Werkstatt', -d.fix, d.name .. ' behoben')
-    own.defects[fix] = nil
-    R.wearSig = nil
-    notify('🛠 ' .. d.name .. ' behoben.', 6)
-    save()
+    local function finish()
+      own.defects[fix] = nil
+      R.wearSig = nil
+      L.workMsg(d.done or (d.name .. ' behoben.'))
+      save()
+    end
+    if not L.workStart({ title = d.name .. ' wird behoben', sub = d.text, done = finish }) then finish() end
     return
   end
   local asg = tostring(id):match('^assist:(%w+)$')
@@ -5013,12 +5727,17 @@ function M.stopDo(id, arg)
     return
   end
   if id == 'dealer' then return M.toggleOffice('dealer') end
+  if id == 'garage' then navigate('fernfahrerGarage'); return end
   if id == 'travel' then return M.toggleOffice('travel') end
   if id == 'office' then return M.toggleOffice('market') end
   if id == 'fleet' then return M.toggleOffice('fleet') end
 end
 
-function M.uiStopOpen(on) R.stopOpen = on and true or false end
+function M.uiStopOpen(on)
+  -- (2026-11-09: from the ring's menu into the cab workshop the brake has to stay on: it only comes off a moment after the last menu has closed)
+  if on then R.stopOpen, R.brakeOffAt = true, nil; L.autoBrake()
+  else R.stopOpen, R.brakeOffAt = R.garageOn and true or false, now() + 0.8 end
+end
 
 -- mirrors and seat (HUD FernfahrerCockpit → cab.lua)
 function M.uiCab()
@@ -5468,6 +6187,8 @@ function L.cineStop()
 end
 function M.cineToggle()
   if not R.mode or not S then return end
+  if L.shots.active() then L.shotsStop(); return end
+  if R.photos then R.photos.stop(); return end
   if L.cine.active() then L.cineStop(); notify('🎬 Cinematic aus.', 3); return end
   if not L.autodriveOn() then notify('Den Cinematic-Modus gibt es im Autodrive (Strg+Umschalt+A).', 5); return end
   if cinematic.active() then return end
@@ -5523,7 +6244,7 @@ function M.primaryAction()
   local n = R.near
   if n and stopped then
     if n.action == 'refuel' and (not R.fuel or R.fuel.ratio < 0.97) then return M.refuel() end
-    if (n.action == 'repair' or n.action == 'home') and v and damageOf(v:getID()) > 100 then return M.repair() end
+    if (n.action == 'repair' or n.action == 'home') and v and damageOf(v:getID()) > 100 then navigate('fernfahrerStop'); return end
     if n.action == 'dealerTruck' or n.action == 'dealerCar' then return M.toggleOffice('dealer') end
     if n.action == 'ferry' or n.action == 'fly' then return M.toggleOffice('travel') end
   end
@@ -5715,6 +6436,7 @@ local accidentCtx = {
   onReport = function(doc) service.onReport(doc) end,
 }
 service.attach({
+  onFail = function() pcall(L.moodSting, 'panne') end,
   S = function() return S end, actx = accidentCtx,
   notify = function(t, ttl) notify(t, ttl) end, message = function(t, from) message(t, from) end,
   pay = function(c, a, l) L.pay(c, a, l) end, save = function() save() end,
@@ -5823,7 +6545,12 @@ local function hudPayload()
   h.vices = vices.hud()
   h.inv = L.inv()                                          -- (what is in the cab: the cabin app's counts)
   h.assist = L.assistView()                                 -- (the cruise control app's switches)
+  h.accBusy = R.accBusy
+  h.photoSet, h.photoRun = S.settings.photoSeries and true or nil, L.shots.active() or nil
+  if R.viewHint then h.viewHint = { id = R.viewHint.id, name = R.viewHint.name, km = R.viewHint.km, where = R.viewHint.where, canGo = S.job == nil or nil } end
   do local okS, sv = pcall(service.hud); if okS and sv then h.breakdown, h.service = sv.breakdown, sv.service end end
+  do local ph = L.pursuit.hud(); if ph then h.service = ph end end
+  do local okG, g = pcall(function() return L.acc.hudGadgets(L.accTruck()) end); h.gadgets = okG and g or nil end
   h.fatigue = L.fatigueView()                           -- (tiredness: the tachograph app)
   h.stop = stops.hud()
   h.radio = { on = S.settings.radioOn ~= false, vol = S.settings.radioVol or 0.7, helper = R.radioHelper or false,
@@ -5831,7 +6558,7 @@ local function hudPayload()
     station = (select(2, L.radioStation()) or {})[1], info = R.radioInfo,
     eq = { b = S.settings.radioEqB or 0, m = S.settings.radioEqM or 0, t = S.settings.radioEqT or 0 },
     favs = type(S.settings.radioFavs) == 'table' and #S.settings.radioFavs or 0 }
-  h.where = R.where and { code = R.where.code, state = R.where.state, country = R.where.country, town = R.townIn } or nil
+  h.where = R.where and { code = R.where.code, state = R.where.state, country = R.where.country, town = R.townIn, street = R.streetIn } or nil
   h.accident = accidents.hud()
   h.home = S.home and { lat = S.home.lat, lon = S.home.lon } or nil
   h.event = roadEvents.hud(here())
@@ -5910,10 +6637,23 @@ function M.uiState(withPlaces, withLedger)
   -- (2026-11-07: with the wide network thousands – sent when the office opens (withPlaces nil) and when they changed,
   -- else the page keeps what it has)
   if withPlaces ~= false then
-    local sig = #S.depots
+    local sig = #S.depots + (parked.fuelCount or 0) * 100000
     if withPlaces == nil or sig ~= R.placesSig or now() - (R.placesSentAt or 0) > 30 then
       places = {}
       for _, d in ipairs(S.depots) do table.insert(places, placeView(d)) end
+      pcall(L.farAdd, places)
+      -- (2026-11-09: the fuel stations Earth itself builds, unless one of ours stands within about 150 m)
+      local cell, grid = 0.002, {}
+      for _, d in ipairs(S.depots) do if d.type == 'fuel' then grid[math.floor(d.lat / cell) .. ':' .. math.floor(d.lon / (cell * 1.6))] = true end end
+      local tf = DEPOT_BY_KEY.fuel
+      for fid, f in pairs(parked.fuelAll()) do
+        local cx, cy, known = math.floor(f.lat / cell), math.floor(f.lon / (cell * 1.6)), false
+        for dx = -1, 1 do for dy = -1, 1 do if grid[(cx + dx) .. ':' .. (cy + dy)] then known = true end end end
+        if not known then
+          places[#places + 1] = { id = 'earthfuel:' .. tostring(fid), name = L.neutralName('fuel', f.name, nil, f.lat, f.lon), detail = 'aus BeamNG.Earth', lat = f.lat, lon = f.lon,
+            type = 'fuel', typeName = tf and tf.name or 'Tankstelle', icon = tf and tf.icon or '⛽', facility = true }
+        end
+      end
       R.placesSig, R.placesSentAt = sig, now()
     end
   end
@@ -5940,7 +6680,7 @@ function M.uiState(withPlaces, withLedger)
   end
   return {
     mode = R.mode, inEarth = inEarth(), connected = st ~= nil and st.player ~= nil, player = here(),
-    company = S.company, home = S.home, places = places, types = typeList, discover = R.discover,
+    company = S.company, home = S.home, places = places, types = L.withUg(typeList), discover = R.discover,
     money = S.money, level = S.level, xp = S.xp, xpTo = xpFor(S.level + 1), loan = S.loan, loanLimit = loanLimit(),
     yardUp = L.yardUpView(),
     loanRate = C.LOAN_RATE, companyShare = C.COMPANY_SHARE, fuelPrices = { diesel = FUEL.diesel.price, gasoline = FUEL.gasoline.price },
@@ -6016,6 +6756,8 @@ function M.onClientPostStartMission(levelPath)
   if R.modeRequested and earth then
     R.mode = true
     R.boot = now()
+    R.welcomeDone, R.welcomeCalm = nil, nil
+    pcall(L.welcomeHold)
     parked.anchor = function() return earthAnchor() end
     pcall(parked.install)                         -- (before Earth's first road tiles: their kerbside spots are sorted)
     parked.enabled = true
@@ -6074,6 +6816,13 @@ end
 
 -- the cab's scene (vices.lua) at the camera of this frame
 function M.onPreRender(dt)
+  if R.mode and S and L.acc and R.accFor == S then
+    R.accDt = dt
+    vices.camHook = L.accCamHook
+    local okA, errA = true, nil
+    if now() - (R.accHookT or 0) > 0.25 then okA, errA = pcall(L.acc.render, careerVeh(), L.accTruck(), dt) end
+    if not okA then log('E', logTag, 'accessories: ' .. tostring(errA)); pcall(L.acc.reset) end
+  end
   if R.mode and vices.busy() then
     local ok, err = pcall(vices.render, dt)
     if not ok then log('E', logTag, 'cab scene: ' .. tostring(err)); pcall(vices.reset) end
@@ -6362,6 +7111,102 @@ function L.realWeather()
   local w = rawget(_G, 'beamngEarth_weather')
   if w and w.getMode and w.setMode and w.getMode() ~= 'real' then pcall(w.setMode, 'real') end
 end
+-- (2026-11-09) a check at a rest area: the police wave the truck off to the next one. There the officer stands at the driver's door (on the road
+-- he comes to the door on the right); ignored, it costs. The talk itself is the same as on the road (L.cop*).
+L.RCHK = { EVERY_KM = { 45, 95 }, FIRST_KM = 20, RETRY_KM = 6, NEAR_M = { 1200, 7000 }, GIVE_UP_S = 480, PAST_M = 1400, STOP_S = 2.5 }
+L.RCHK.SHAPE = '/levels/beamng_earth/art/shapes/fernfahrer/props/ff_officer.dae'
+function L.restCheckClean()
+  local sc = R.rcScene
+  R.rcScene = nil
+  if not sc then return end
+  if sc.officer then pcall(function() local o = scenetree.findObjectById(sc.officer); if o then o:delete() end end) end
+  if sc.car then pcall(pool.give, sc.car) end
+end
+function L.restCheckStage(v, shape)
+  local p, d = vehPos(v), vec3(v:getDirectionVector())
+  d.z = 0
+  d = d:length() > 0.1 and d:normalized() or vec3(0, 1, 0)
+  local left = vec3(-d.y, d.x, 0)
+  local function onGround(q)
+    local top = vec3(q.x, q.y, q.z + 3)
+    local hit = castRayStatic(top, vec3(0, 0, -1), 10)
+    return (hit and hit < 10) and vec3(q.x, q.y, top.z - hit) or vec3(q.x, q.y, q.z - 1)
+  end
+  local sc = {}
+  local o = createObject('TSStatic')
+  if o then
+    o:setField('shapeName', 0, shape or L.RCHK.SHAPE)
+    o:setField('collisionType', 0, 'None')
+    o:setField('decalType', 0, 'None')
+    o.canSave = false
+    o:registerObject('ff_rest_officer')
+    local g = onGround(p + d * 0.6 + left * 2.35)
+    local rot = quatFromDir(-left, vec3(0, 0, 1))        -- (looking at the door)
+    o:setPosRot(g.x, g.y, g.z, rot.x, rot.y, rot.z, rot.w)
+    sc.officer = o:getID()
+  end
+  local g2 = onGround(p + d * 15 + left * 0.6)
+  local id = (not shape) and pool.take('police', g2 + vec3(0, 0, 0.4), -d) or nil
+  if id then
+    sc.car = id
+    local pv = getObjectByID(id)
+    if pv then pv:queueLuaCommand('controller.setFreeze(1) electrics.set_lightbar_signal(1)') end
+  end
+  R.rcScene = sc
+end
+function L.restCheckTick(t)
+  if R.rcScene and not R.cop and not L.enc.active() then L.restCheckClean() end
+  if t - (R.rcT or 0) < 1 then return end
+  local dtc = t - (R.rcT or t)
+  R.rcT = t
+  if not S or not R.mode or R.cop or R.trip or R.pendingTeleport or R.sleep or L.enc.active() then return end
+  local p, v = here(), careerVeh()
+  if not p or not v then return end
+  local rc = R.restCheck
+  if not rc then
+    if not S.job or vehSpeed(v) < 12 then return end
+    local km = S.stats.odoKm or 0
+    S.rcNextKm = S.rcNextKm or (km + L.RCHK.FIRST_KM)
+    if km < S.rcNextKm then return end
+    local d = vec3(v:getDirectionVector())
+    local best, bestD
+    for _, q in ipairs(S.depots) do
+      if q.type == 'rest' and math.abs(q.lat - p.lat) < 0.08 and math.abs(q.lon - p.lon) < 0.12 then
+        local dd = haversine(p.lat, p.lon, q.lat, q.lon)
+        if dd > L.RCHK.NEAR_M[1] and dd < L.RCHK.NEAR_M[2] and (not bestD or dd < bestD) then
+          -- (ahead: the bearing against the truck's heading, Earth's x east, y north)
+          local ex, ey = (q.lon - p.lon) * math.cos(math.rad(p.lat)), q.lat - p.lat
+          local l = math.sqrt(ex * ex + ey * ey)
+          if l > 0 and (ex * d.x + ey * d.y) / l / math.max(0.01, math.sqrt(d.x * d.x + d.y * d.y)) > 0.75 then best, bestD = q, dd end
+        end
+      end
+    end
+    if not best then S.rcNextKm = km + L.RCHK.RETRY_KM; return end
+    S.rcNextKm = km + L.RCHK.EVERY_KM[1] + math.random() * (L.RCHK.EVERY_KM[2] - L.RCHK.EVERY_KM[1])
+    R.restCheck = { id = best.id, name = best.name, lat = best.lat, lon = best.lon, t0 = t, best = bestD }
+    notify(string.format('🚓 Polizei: Fahren Sie zur Kontrolle auf den %s (%.1f km) und halten Sie dort an!', best.name, bestD / 1000):gsub('%.(%d km)', ',%1'), 12)
+    guihooks.trigger('FernfahrerRegion', { kind = 'police', code = 'D', eyebrow = 'Anweisung der Polizei', name = 'Polizeikontrolle', sub = 'Nächster Rastplatz: ' .. best.name })
+    return
+  end
+  local dd = haversine(p.lat, p.lon, rc.lat, rc.lon)
+  rc.best = math.min(rc.best, dd)
+  if dd > rc.best + L.RCHK.PAST_M or t - rc.t0 > L.RCHK.GIVE_UP_S then
+    R.restCheck = nil
+    M.fine(180, 'Aufforderung zur Kontrolle auf dem Rastplatz nicht befolgt')
+    return
+  end
+  if R.near and R.near.id == rc.id and stops.inside() and vehSpeed(v) < 1.2 then
+    rc.still = (rc.still or 0) + dtc
+    if rc.still >= L.RCHK.STOP_S then
+      R.restCheck = nil
+      pcall(L.restCheckStage, v)
+      L.copStart(controlCheck())
+    end
+  else
+    rc.still = 0
+  end
+end
+
 function L.weatherTick(t)
   if t - (R.weatherT or 0) < 30 then return end
   R.weatherT = t
@@ -6381,7 +7226,7 @@ end
 function L.fatigueTick(hours)
   if not S or not hours or hours <= 0 then return end
   local resting = S.tacho and S.tacho.act == 'rest' and not S.privateDrive
-  if resting then L.fatigueRest(hours) else S.fatigue = math.min(1, (S.fatigue or 0.1) + hours / L.FATIGUE_AWAKE_H) end
+  if resting then L.fatigueRest(hours) else S.fatigue = math.min(1, (S.fatigue or 0.1) + hours / L.FATIGUE_AWAKE_H * (L.acc.fanOn() and 0.85 or 1)) end
   local f, lv = S.fatigue, L.fatigueLevel(S.fatigue)
   -- (one word when it gets worse: in the messages; only the last stage on the screen)
   if lv > (S.fatigueSaid or 1) then
@@ -6433,6 +7278,23 @@ function L.assistView()
   return out
 end
 function M.onLaneBeep() guihooks.trigger('FernfahrerSound', { name = 'lane' }) end
+function M.onAccState(on) R.accBusy = on and true or nil end
+function M.onAccOff() R.accBusy = nil; notify('Tempomat aus: Für die Abstandsautomatik bist du jetzt zu langsam.', 4) end
+-- (2026-11-09) the radial menu open at a standstill: the handbrake on, so the truck does not roll off; off again when it closes, if it was us who put it on
+function L.autoBrake()
+  if not R.mode then return end
+  local v = careerVeh() or playerVeh()
+  if v then v:queueLuaCommand('if (electrics.values.wheelspeed or 0) < 2.5 and (electrics.values.parkingbrake or 0) < 0.5 then input.event("parkingbrake", 1, 1) obj:queueGameEngineLua("if fernfahrer_career then fernfahrer_career.onRadialBrake() end") end') end
+end
+function L.autoBrakeOff()
+  if not R.radialBrake then return end
+  R.radialBrake = nil
+  local v = careerVeh() or playerVeh()
+  if v then v:queueLuaCommand('input.event("parkingbrake", 0, 1)') end
+end
+function M.onQuickAccessOpened() L.autoBrake() end
+function M.onRadialBrake() R.radialBrake = true end
+function M.onHideRadialMenu() if not R.stopOpen then L.autoBrakeOff() end end
 function L.assistTick(t)
   if t - (R.assistT or 0) < 0.2 then return end
   R.assistT = t
@@ -6446,6 +7308,7 @@ function L.assistTick(t)
   f = f:normalized()
   local right = vec3(f.y, -f.x, 0)
   local steer, beep, gap, lead = 0, false, nil, nil
+  local lkaRaw = 0
   -- the lane: on the game's road graph
   if (lka or ldw) and map and map.findClosestRoad and map.getMap then
     local front = pos + f * 3
@@ -6473,11 +7336,17 @@ function L.assistTick(t)
         local err = target - off
         if math.abs(err) < 3 then
           if ldw and math.abs(err) > math.max(0.7, laneW / 2 - 0.7) then beep = true end
-          if lka then steer = math.max(-0.08, math.min(0.08, err * 0.035 - f:dot(rr) * 0.5)) end
+          if lka then
+            local e2 = math.abs(err) > 0.35 and (err - 0.35 * (err > 0 and 1 or -1)) or 0
+            lkaRaw = math.max(-0.05, math.min(0.05, e2 * 0.03 - f:dot(rr) * 0.35))
+          end
         end
       end
     end
   end
+  -- (2026-11-09: from one bit of road to the next the numbers jump; what goes to the steering is their smooth course)
+  R.lkaS = (R.lkaS or 0) + (lkaRaw - (R.lkaS or 0)) * 0.25
+  if lka then steer = R.lkaS end
   -- the distance: whatever is ahead in the lane
   if acc then
     local objs = map and map.getTrackedObjects and map.getTrackedObjects() or {}
@@ -6485,8 +7354,10 @@ function L.assistTick(t)
       if id ~= R.truckId and id ~= R.trailerId and o.pos then
         local rel = vec3(o.pos.x - pos.x, o.pos.y - pos.y, 0)
         local along, lat = rel:dot(f), rel:dot(right)
-        if along > 6 and along < 140 and math.abs(lat) < 1.9 + along * 0.008 and (not gap or along < gap) then
-          gap, lead = along - 5, o.vel and vec3(o.vel):dot(f) or 0
+        local ospeed = o.vel and vec3(o.vel):dot(f) or 0
+        -- (further ahead, so that it can start early; what comes towards the truck is no one to follow)
+        if along > 6 and along < 250 and math.abs(lat) < 1.9 + along * 0.005 and ospeed > -1.5 and (not gap or along < gap) then
+          gap, lead = along - 5, ospeed
         end
       end
     end
@@ -6524,10 +7395,11 @@ end
 L.HUD_RIGHT = {
   -- (2026-11-09: tachograph and cab down beside the drive train; the Tempomat's and the drive train's frames follow the driver
   -- assistance bought in the workshop: FernfahrerTempomat / FernfahrerAntrieb app.js)
-  fernfahrerTacho = { bottom = '436px', right = '8px', width = '210px', height = '215px' },
-  fernfahrerKabine = { bottom = '652px', right = '8px', width = '210px', height = '66px' },
-  fernfahrerTempomat = { bottom = '436px', right = '224px', width = '182px', height = '106px' },
-  fernfahrerAntrieb = { bottom = '520px', right = '224px', width = '182px', height = '230px' },
+  -- (2026-11-09: the frames are high enough for anything now and let the mouse through; tachograph and Tempomat stand on the same line, cab and drive train measure what is below them)
+  fernfahrerTacho = { bottom = '436px', right = '8px', width = '210px', height = '300px', pe = 'none' },
+  fernfahrerKabine = { bottom = '436px', right = '8px', width = '210px', height = '470px', pe = 'none' },
+  fernfahrerTempomat = { bottom = '436px', right = '224px', width = '182px', height = '130px', pe = 'none' },
+  fernfahrerAntrieb = { bottom = '436px', right = '224px', width = '182px', height = '470px', pe = 'none' },
   fernfahrerRadio = { bottom = '8px', left = '5px', width = '300px', height = '190px' },
   navigation = { bottom = '200px', left = '5px', width = '300px', height = '300px' },
   damageApp = { bottom = '510px', left = '5px', width = '158px', height = '280px' },
@@ -6536,14 +7408,14 @@ L.HUD_RIGHT = {
   inputHints = { top = '120px', right = '420px', width = '450px', height = '500px' },
 }
 function L.layoutRight()
-  local flag = '/settings/fernfahrer/layout_right6.json'
+  local flag = '/settings/fernfahrer/layout_right7.json'
   local f = '/settings/ui_apps/layouts/default/fernfahrer.uilayout.json'
   if FS:fileExists(flag) or not FS:fileExists(f) then return end
   local d = jsonReadFile(f)
   if type(d) ~= 'table' or type(d.apps) ~= 'table' then return end
   for _, x in ipairs(d.apps) do
     local p = L.HUD_RIGHT[x.appName]
-    if p then x.placement = { position = 'absolute', top = p.top, bottom = p.bottom, left = p.left, right = p.right, width = p.width, height = p.height } end
+    if p then x.placement = { position = 'absolute', top = p.top, bottom = p.bottom, left = p.left, right = p.right, width = p.width, height = p.height, ['pointer-events'] = p.pe } end
   end
   jsonWriteFile(f, d, true)
   jsonWriteFile(flag, { done = true })
@@ -6556,7 +7428,7 @@ function L.layoutAdd()
   local d = jsonReadFile(f)
   if type(d) ~= 'table' or type(d.apps) ~= 'table' then return end
   for _, x in ipairs(d.apps) do if x.appName == 'fernfahrerTempomat' then jsonWriteFile(flag, { done = true }); return end end
-  table.insert(d.apps, { appName = 'fernfahrerTempomat', placement = { position = 'absolute', bottom = '436px', right = '224px', width = '182px', height = '108px' } })
+  table.insert(d.apps, { appName = 'fernfahrerTempomat', placement = { position = 'absolute', bottom = '436px', right = '224px', width = '182px', height = '130px', ['pointer-events'] = 'none' } })
   jsonWriteFile(f, d, true)
   jsonWriteFile(flag, { done = true })
 end
@@ -6564,8 +7436,21 @@ end
 -- (2026-11-08) the game world behind the office and the stop menus goes soft: the game's own screen blur (the same as in
 -- its menus; a blur in the page could only ever blur the page), faded in and out
 L.MENU_BLUR_S = 0.32
+-- (2026-11-09) in the career the game's own ways to a whole truck are shut: reset, recovery, reload, home, the vehicle and parts menus (the keys and the radial menu's entries, which ask
+-- the same filter). The settings have a developer switch for those who want them back.
+function L.resetGuard()
+  local block = (R.mode and S and S.settings and not S.settings.devResets) and true or false
+  if block == (R.resetBlocked or false) then return end
+  local af = rawget(_G, 'core_input_actionFilter')
+  if not af then extensions.load('core_input_actionFilter'); af = rawget(_G, 'core_input_actionFilter') end
+  if not af then return end
+  R.resetBlocked = block
+  af.setGroup('ffCareerResets', af.createActionTemplate({ 'vehicleTeleporting', 'vehicleMenues', 'resetPhysics' }))
+  af.addAction(0, 'ffCareerResets', block)
+end
 function L.menuBlurTick(dt)
-  local want = (R.officeOpen or R.stopOpen) and 1 or 0
+  pcall(L.resetGuard)
+  local want = ((R.officeOpen or R.stopOpen) and not R.garageOn) and 1 or 0
   local b = R.menuBlur or 0
   if b == want and (b == 0 or R.menuBlurSet == b) then return end
   local step = (dt or 0.016) / L.MENU_BLUR_S
@@ -6634,6 +7519,7 @@ function L.failLost()
   navClear()
   S.job = nil
   R.lostAt = nil
+  pcall(L.moodSting, 'ok_mau')
   R.report, R.reportAt = rep, now() + 1.2
   R.reportDoc = { kind = 'delivery', title = 'Schadensmeldung: Ladung verloren', t = os.time(), clock = rep.clock, cargoName = rep.cargoName, from = rep.from, to = rep.to,
     km = rep.km, lines = rep.lines, total = rep.total, stars = rep.stars, rating = 1, town = rep.to }
@@ -6707,8 +7593,8 @@ end
 
 -- (2026-11-08) what the vehicle's own Lua is to do (wear.lua): defects of a used truck, the beer in the steering, the
 -- joint and the cruise control, overloaded tyres. And hot brakes reported back.
-L.DEFECT = { axle = { name = 'Verzogene Achse', text = 'der LKW zieht nach links', fix = 2400 },
-  turbo = { name = 'Verschlissener Turbo', text = 'raucht unter Last, weniger Leistung', fix = 4800 } }
+L.DEFECT = { axle = { name = 'Verzogene Achse', text = 'der LKW zieht nach links', fix = 2400, done = 'Die Achse ist gerichtet. Der Lkw fährt wieder geradeaus.' },
+  turbo = { name = 'Verschlissener Turbo', text = 'raucht unter Last, weniger Leistung', fix = 4800, done = 'Der Turbo ist erneuert. Volle Leistung und kein Rauch mehr.' } }
 function L.wearTick(t)
   if t - (R.wearT or 0) < 1 then return end
   R.wearT = t
@@ -6721,7 +7607,7 @@ function L.wearTick(t)
   local over = (job and (job.tons or 0) >= 22) and 1.35 or 1
   local drift = rd.bac >= 0.3 and math.min(0.1, rd.bac * 0.08) or 0
   local high = rd.thc >= 3
-  local sig = string.format('{ pull = %s, drift = %.3f, noCruise = %s, turbo = %s, overload = %.2f }', d.axle and '-0.022' or '0', drift, tostring(high), tostring(d.turbo and true or false), over)
+  local sig = string.format('{ pull = %s, drift = %.3f, noCruise = %s, turbo = %s, overload = %.2f, smooth = %s }', d.axle and '-0.022' or '0', drift, tostring(high), tostring(d.turbo and true or false), over, tostring(type(def) == 'table' and def.repaired and def.repaired.motor and true or false))
   if sig ~= R.wearSig or R.wearFor ~= v:getID() then
     R.wearSig, R.wearFor = sig, v:getID()
     v:queueLuaCommand('extensions.load("fernfahrer_wear") if fernfahrer_wear then fernfahrer_wear.set(' .. sig .. ') end')
@@ -6771,15 +7657,17 @@ L.COP = {
   load = { 0.6, 'Die Gurte habe ich vor zehn Minuten noch nachgezogen.', 'Das gefällt mir nicht: ' },
   limiter = { 0.4, 'Das muss ein Fehler im Steuergerät sein.', 'Wir haben das Steuergerät ausgelesen: ' },
   adr = { 0.45, 'Die Papiere liegen im Büro, mein Disponent schickt sie sofort aufs Handy.', 'Bei Gefahrgut brauche ich die Papiere: ' },
+  pack = { 0.3, 'Das Päckchen? Das muss jemand vergessen haben.', 'Was haben wir denn hier? ' },
 }
 function L.copOut() local c = R.cop; if c then c.id = (c.id or 0) + 1; L.copSend() end end
 function L.copSend()
   local c = R.cop
-  if c then guihooks.trigger('FernfahrerCop', { id = c.id, line = c.line, choices = c.choices, tag = c.tag }) end
+  if c then guihooks.trigger('FernfahrerCop', { id = c.id, line = c.line, choices = c.choices, tag = c.tag, face = 'cop', seed = c.seed, mood = c.mood, react = c.react }) end
 end
-function L.copSay(stage, line, choices, tag)
+function L.copSay(stage, line, choices, tag, react)
   local c = R.cop
-  c.stage, c.line, c.choices, c.tag = stage, line, choices, tag
+  c.stage, c.line, c.choices, c.tag, c.react = stage, line, choices, tag, react
+  c.mood = math.max(-4, math.min(4, c.mood))
   L.copOut()
 end
 -- (2026-11-08) one question per kind of offence: the tachograph hands over every single violation, the officer asked the
@@ -6797,13 +7685,17 @@ function L.copMerge(found)
 end
 function L.copStart(found)
   local job = S.job
-  R.cop = { found = L.copMerge(found), i = 0, mood = 0, out = {}, id = 0, sends = now() }
+  L.encAttach()
+  L.enc.contraband(found)
+  -- (2026-11-09: the mood of the day shows on the face, and it counts: a friendly officer lets more go)
+  R.cop = { found = L.copMerge(found), i = 0, mood = math.random(-2, 2), out = {}, id = 0, sends = now(), seed = math.random(1, 4000) }
   -- (the head turns to the officer at the window)
   vices.installCam()
-  vices.setLook(66, -5)
+  vices.setLook(R.rcScene and -66 or 66, -5)     -- (at a rest area he stands at the driver's door, on the left)
   local ask = (job and job.adr) and ' und die ADR-Papiere.' or '.'
-  L.copSay('intro', 'Guten Tag, Verkehrskontrolle. Fahrzeugpapiere und Fahrerkarte bitte' .. ask,
-    { { t = 'Guten Tag. Bitte sehr.' }, { t = 'Worum geht es denn?' }, { t = 'Ich hab es eilig, machen wir es kurz.' } })
+  local m = R.cop.mood
+  L.copSay('intro', (m <= -1 and 'Verkehrskontrolle. Motor aus, Fahrzeugpapiere und Fahrerkarte' or (m >= 1 and 'Schönen guten Tag! Nur eine kleine Verkehrskontrolle. Fahrzeugpapiere und Fahrerkarte bitte' or 'Guten Tag, Verkehrskontrolle. Fahrzeugpapiere und Fahrerkarte bitte')) .. ask,
+    { { t = 'Guten Tag. Bitte sehr.' }, { t = 'Worum geht es denn?' }, { t = 'Ich hab es eilig, machen wir es kurz.' } }, nil, m <= -1 and 'sneer' or nil)
 end
 function L.copNext()
   local c, job = R.cop, S.job
@@ -6823,18 +7715,19 @@ function L.copNext()
     { t = '„Können wir das nicht unter uns regeln?“', sub = 'Schmiergeld: riskant' },
   })
 end
-function L.copReply(line) L.copSay('reply', line, { { t = 'Weiter' } }) end
+function L.copReply(line, react) L.copSay('reply', line, { { t = 'Weiter' } }, nil, react) end
 function L.copEnd()
   local c = R.cop
   local sum = 0
   for _, x in ipairs(c.out) do sum = sum + x.amount end
   if c.seized then
-    return L.copSay('bye', string.format('Das Fahrzeug ist beschlagnahmt. Dazu %s. Sie hören von uns.', money(sum)), { { t = 'Aussteigen' } })
+    return L.copSay('bye', string.format('Das Fahrzeug ist beschlagnahmt. Dazu %s. Sie hören von uns.', money(sum)), { { t = 'Aussteigen' } }, nil, 'threat')
   end
   if sum > 0 then
-    L.copSay('bye', string.format('Macht zusammen %s. Ich schreibe das auf. Gute Fahrt – und fahren Sie vernünftig.', money(sum)), { { t = 'Auf Wiedersehen' } })
+    L.copSay('bye', string.format('Macht zusammen %s. Ich schreibe das auf. Gute Fahrt – und fahren Sie vernünftig.', money(sum)), { { t = 'Auf Wiedersehen' } }, nil, 'nod')
   else
-    L.copSay('bye', 'Dann ist alles in Ordnung. Gute Fahrt!', { { t = 'Danke, schönen Tag noch' } })
+    c.mood = c.mood + 2
+    L.copSay('bye', 'Dann ist alles in Ordnung. Gute Fahrt!', { { t = 'Danke, schönen Tag noch' } }, nil, 'nod')
   end
 end
 function L.copFinish()
@@ -6876,14 +7769,16 @@ function M.redeemTruck(i)
   notify('Dein LKW ist wieder frei.', 5)
   save()
 end
+function M.useGadget(id) if S then L.acc.use(L.accTruck(), id) end end
 function M.copAnswer(i)
+  if L.enc.active() then return L.enc.answer(i) end
   local c = R.cop
   if not c then return end
   i = tonumber(i) or 1
   local stage = c.stage
   if stage == 'intro' then
-    c.mood = i == 1 and 1 or (i == 2 and 0 or -1)
-    return L.copReply(i == 3 and 'Immer mit der Ruhe. Das dauert so lange, wie es dauert.' or 'Einen Moment, ich schaue mir das an.')
+    c.mood = c.mood + (i == 1 and 1 or (i == 2 and 0 or -2))
+    return L.copReply(i == 3 and 'Immer mit der Ruhe. Das dauert so lange, wie es dauert.' or 'Einen Moment, ich schaue mir das an.', i == 3 and 'shake' or 'think')
   elseif stage == 'reply' then
     return L.copNext()
   elseif stage == 'bye' then
@@ -6894,35 +7789,43 @@ function M.copAnswer(i)
     if i == 1 then
       c.out[#c.out + 1] = { amount = round(f.amount * 0.75, 10), reason = tostring(f.reason) }
       c.mood = c.mood + 1
-      return L.copReply('Immerhin ehrlich. Ich drücke ein Auge zu und mache es etwas günstiger.')
+      return L.copReply('Immerhin ehrlich. Ich drücke ein Auge zu und mache es etwas günstiger.', 'nod')
     elseif i == 2 then
-      if math.random() < def[1] + c.mood * 0.08 then
-        return L.copReply('Na gut. Diesmal belasse ich es bei einer Verwarnung.')
+      if math.random() < def[1] + c.mood * 0.11 then
+        return L.copReply('Na gut. Diesmal belasse ich es bei einer Verwarnung.', 'sneer')
       end
       c.out[#c.out + 1] = { amount = round(f.amount * 1.25, 10), reason = tostring(f.reason) .. ' (uneinsichtig)' }
       c.mood = c.mood - 1
-      return L.copReply('Das glauben Sie doch selbst nicht. Das wird jetzt teurer.')
+      return L.copReply('Das glauben Sie doch selbst nicht. Das wird jetzt teurer.', 'shake')
     else
       local bribe = math.max(150, round(f.amount * 0.3, 10))
-      if math.random() < 0.22 + c.mood * 0.05 then
+      if math.random() < 0.22 + c.mood * 0.08 then
         L.pay('Bußgelder', -bribe, 'Barzahlung an der Straße')
-        return L.copReply(string.format('… %s. Ich habe nichts gesehen. Fahren Sie weiter.', money(bribe)))
+        return L.copReply(string.format('… %s. Ich habe nichts gesehen. Fahren Sie weiter.', money(bribe)), 'wink')
       end
       c.out[#c.out + 1] = { amount = f.amount + 1500, reason = tostring(f.reason) .. ' und Bestechungsversuch' }
       c.mood = c.mood - 2
-      return L.copReply('Das habe ich jetzt nicht gehört. Bestechungsversuch – das kostet Sie extra.')
+      return L.copReply('Das habe ich jetzt nicht gehört. Bestechungsversuch – das kostet Sie extra.', 'shock')
     end
   elseif stage == 'cargo' then
     local p = ({ 0.62, 0.42, 0.55 })[i] or 0.5
     if math.random() < p + c.mood * 0.06 then
-      return L.copReply(i == 3 and 'Passt schon, ich habe heute keine Lust auf den Papierkram.' or 'Sieht in Ordnung aus.')
+      return L.copReply(i == 3 and 'Passt schon, ich habe heute keine Lust auf den Papierkram.' or 'Sieht in Ordnung aus.', 'nod')
     end
     return L.copSay('caught', 'Moment. Im Auflieger ist etwas ganz anderes als auf dem Papier. Das ist unverzollte Ware.', {
       { t = '„Davon wusste ich nichts, ich bin nur der Fahrer.“', sub = 'rausreden' },
       { t = '„Vielleicht regeln wir das unter uns? 2.000 € bar.“', sub = 'Schmiergeld' },
       { t = '„Ich sage nichts ohne meinen Anwalt.“', sub = 'teuer, aber der LKW bleibt' },
-    }, 'smuggle')
+      { t = 'Gas geben', sub = 'abhauen: Die Polizei wird dich verfolgen' },
+    }, 'smuggle', 'threat')
   elseif stage == 'caught' then
+    if i == 4 then
+      R.cop = nil
+      vices.setLook(0, 0)
+      guihooks.trigger('FernfahrerCop', { off = true })
+      L.pursuitStart('Du bist bei der Kontrolle abgehauen. Die Polizei ist hinter dir her!')
+      return
+    end
     if i == 3 then
       c.out[#c.out + 1] = { amount = 12000, reason = 'Steuerhehlerei: unverzollte Ware' }
       c.lostCargo = true
@@ -6951,6 +7854,7 @@ function L.copTick(t)
     R.cop = nil
     vices.setLook(0, 0)
     guihooks.trigger('FernfahrerCop', { off = true })
+    if S.job and S.job.smuggle and not S.job.chased then L.pursuitStart('Du bist bei der Kontrolle abgehauen. Die Polizei ist hinter dir her!'); return end
     M.fine(1500, 'Polizeikontrolle einfach verlassen')
   end
 end
@@ -7052,7 +7956,177 @@ end
 
 -- (2026-11-08) goods without papers: at back doors and at some rest areas someone asks. Very well paid; caught, it
 -- gets very expensive or the truck is gone.
-L.SMUGGLE = { { 'Unverzollte Zigaretten', '🚬', 12 }, { 'Unversteuerter Alkohol', '🍾', 16 }, { 'Markenfälschungen', '👜', 9 }, { 'Ware ohne Papiere', '📦', 14 } }
+-- (2026-11-09: name, icon, tonnes, how hot: 0 they look the other way more easily, 2 they want it badly. Pays more the hotter it is.)
+L.SMUGGLE = { { 'Unverzollte Zigaretten', '🚬', 12, 0 }, { 'Unversteuerter Alkohol', '🍾', 16, 0 }, { 'Markenfälschungen', '👜', 9, 0 }, { 'Ware ohne Papiere', '📦', 14, 0 }, { 'Unverzollter Tabak', '🍂', 13, 0 },
+  { 'Gefälschte Ersatzteile', '⚙', 11, 1 }, { 'Gestohlene Elektronik', '📺', 8, 1 }, { 'Hehlerware aus dem Lager', '🧳', 10, 1 }, { 'Feuerwerk ohne Zulassung', '🎆', 7, 1 }, { 'Gestohlene Autoteile', '🚗', 15, 1 },
+  { 'Gefälschte Medikamente', '💊', 6, 2 }, { 'Illegal entsorgter Giftmüll', '☣', 18, 2 }, { 'Beschlagnahmte Ware, die weg muss', '🚨', 9, 2 }, { 'Geschützte Tropenhölzer', '🪵', 20, 2 } }
+-- (the places for it: some of the ports, timber yards, scrap yards and a few industrial estates have a dark corner. On the map, a ring like any other place.)
+DEPOT_BY_KEY.underground = { key = 'underground', name = 'Underground', icon = '🕶️', facility = true, radius = 75, action = 'underground', queries = {} }
+L.UG_KIND = {
+  port = { 60, { 'Dunkles Hafengebiet', 'Alte Hafenbrache', 'Verlassener Kai' } },
+  timber = { 30, { 'Dunkles Waldlager', 'Verlassenes Holzlager', 'Lichtung im Forst' } },
+  scrap = { 30, { 'Schrottplatz am Waldrand', 'Hinter der Schrottpresse' } },
+  industry = { 4, { 'Verlassenes Werksgelände', 'Stillgelegte Fabrik', 'Alte Halle' } },
+  logistics = { 2, { 'Leere Lagerhalle', 'Hinterhof-Lager' } },
+}
+function L.ugSync(t)
+  if t - (R.ugT or 0) < 10 then return end
+  R.ugT = t
+  if #S.depots == R.ugN then return end
+  local have = {}
+  for _, d in ipairs(S.depots) do if d.type == 'underground' then have[d.base] = true end end
+  local add = {}
+  for _, d in ipairs(S.depots) do
+    local u = L.UG_KIND[d.type]
+    if u and not have[d.id] then
+      local h = L.hashStr('ug:' .. tostring(d.id) .. ':' .. tostring(d.lat))
+      if h % 100 < u[1] then
+        -- (a little way off the firm itself, so that its ring stays its own)
+        add[#add + 1] = { id = 'ug' .. tostring(d.id), base = d.id, type = 'underground', name = u[2][1 + math.floor(h / 100) % #u[2]], detail = d.detail, lat = d.lat + 0.001, lon = d.lon + 0.0008 }
+      end
+    end
+  end
+  for _, d in ipairs(add) do table.insert(S.depots, d) end
+  R.ugN = #S.depots
+end
+function L.withUg(list)
+  local n = 0
+  for _, d in ipairs(S.depots) do if d.type == 'underground' then n = n + 1 end end
+  local t = DEPOT_BY_KEY.underground
+  table.insert(list, { key = t.key, name = t.name, icon = t.icon, facility = true, count = n })
+  return list
+end
+-- (2026-11-09) caught with it: the police come after the truck (pursuit.lua)
+L.pursuit = require('fernfahrer/pursuit')
+L.BUST_FINE = { 12000, 18000, 26000 }
+function L.pursuitEndFx() accidents.muted = false end
+function L.pursuitStart(text)
+  local j = S and S.job
+  if not j or not j.smuggle or L.pursuit.active() then return end
+  j.chased = true
+  accidents.muted = true
+  L.pursuit.start({ veh = function() return careerVeh() end, protect = function(id) roadEvents.protect(id) end,
+    note = function(why) notify(({ wreck = '💥 Eine Streife ist aus dem Spiel.', lost = '🚓 Eine Streife hat dich verloren.', duty = '🚓 Eine Streife bricht die Verfolgung ab.' })[why], 4) end,
+    busted = L.pursuitBusted, escaped = L.pursuitEscaped, gone = L.pursuitEndFx })
+  notify('🚨 ' .. tostring(text) .. ' Halt nicht an, wenn du es drauf ankommen lassen willst.', 9)
+  message(tostring(text), 'Polizei')
+end
+function L.pursuitBusted()
+  L.pursuitEndFx()
+  local j, fine = S.job, L.BUST_FINE[((S.job and S.job.heat) or 0) + 1] or 18000
+  M.fine(fine, 'Schmuggel und Flucht vor der Polizei')
+  message('Sie haben dich gestellt. Die Ware ist beschlagnahmt, der Auftrag ist weg.', 'Polizei')
+  notify('🚔 Gestellt. Die Ware ist weg.', 8)
+  if L.ownTruck() and math.random() < 0.3 then L.seizeTruck()
+  elseif j then deleteTrailer(); navClear(); S.job = nil end
+  save()
+end
+function L.pursuitEscaped()
+  L.pursuitEndFx()
+  addXp(500)
+  notify('😮‍💨 Abgehängt! Keine Streife mehr hinter dir. Bring die Ware ans Ziel.', 9)
+  message('Du bist ihnen entkommen. Die Ware ist noch an Bord.', 'Funk')
+  save()
+end
+-- a chance on the road, the hotter the load the more
+function L.heatTick(t)
+  if t - (R.heatT or 0) < 20 then return end
+  R.heatT = t
+  local j = S.job
+  if not j or not j.smuggle or j.chased or L.pursuit.active() or R.cop or R.trip or R.sleep or R.boot ~= nil or R.officeOpen or R.stopOpen or not R.trailerId or not isCoupled() then return end
+  local v = careerVeh()
+  if not v or vehSpeed(v) < 8 then return end
+  if math.random() < (({ 0.006, 0.012, 0.02 })[(j.heat or 0) + 1] or 0.012) then L.pursuitStart('Eine Zivilstreife hat deine Ladung bemerkt und ruft Verstärkung!') end
+end
+-- (2026-11-09) a viewpoint near the road: a word about it, once, and not all the time
+L.shots = require('fernfahrer/cabphotos')
+function L.viewTick(t)
+  if R.viewHint and t > R.viewHint.till then R.viewHint = nil end
+  if R.viewHint or t - (R.viewT or 0) < 4 or t - (R.viewLast or -999) < 180 then return end
+  R.viewT = t
+  local v, p = careerVeh(), here()
+  if not v or not p or vehSpeed(v) < 5 or R.officeOpen or R.stopOpen or R.trip or R.boot ~= nil then return end
+  R.viewSeen = R.viewSeen or {}
+  local f = vec3(v:getDirectionVector())
+  local best, bd, bdot, bcross
+  for _, d in ipairs(S.depots) do
+    if d.type == 'viewpoint' and math.abs(d.lat - p.lat) < 0.016 and math.abs(d.lon - p.lon) < 0.03 and not R.viewSeen[d.id] then
+      local dd = haversine(p.lat, p.lon, d.lat, d.lon)
+      if dd < 1500 and dd > 150 and (not bd or dd < bd) then
+        local e, n = (d.lon - p.lon) * 111320 * math.cos(math.rad(p.lat)), (d.lat - p.lat) * 111320
+        local l = math.max(1, math.sqrt(e * e + n * n))
+        local dot, cross = (e * f.x + n * f.y) / l, (e * f.y - n * f.x) / l
+        if dot > -0.3 then best, bd, bdot, bcross = d, dd, dot, cross end
+      end
+    end
+  end
+  if not best then return end
+  R.viewSeen[best.id] = true
+  R.viewLast = t
+  local where = bdot > 0.7 and 'voraus' or (bcross > 0 and 'rechts' or 'links')
+  local name = (best.name and best.name ~= '') and best.name or 'Aussichtspunkt'
+  R.viewHint = { id = best.id, name = name, km = string.format('%.1f km', bd / 1000):gsub('%.', ','), where = where, till = t + 30 }
+  notify(string.format('🔭 %s, %s %s. Lust auf einen Abstecher und ein Foto?', name, R.viewHint.km, where), 8)
+end
+-- the pictures
+function L.shotFrame()
+  local tr = L.accTruck()
+  if tr and tr.acc and next(tr.acc) and L.acc.last and now() - (R.accHookT or 0) < 0.3 then return L.acc.last end
+  local v = careerVeh() or playerVeh()
+  if not v then return nil end
+  local F, U = vec3(v:getDirectionVector()), vec3(v:getDirectionVectorUp())
+  local Rt = F:cross(U):normalized()
+  U = Rt:cross(F):normalized()
+  return { eye = vec3(v:getPosition()) + U * 1.6 + F * 1.2 - Rt * 0.55, F = F, R = Rt, U = U, flip = 1 }
+end
+function L.shotsApi()
+  vices.installCam()
+  R.photoActive = true
+  return { last = L.shotFrame, spots = function() return L.acc.spots() end, spot = function(id) return L.acc.spotOf(id) end, setCef = L.cineCef, setOverride = function(fn) vices.override = fn end,
+    onceDone = function() R.photoActive = nil; notify('📷 Foto gespeichert. Du findest es in der BeamNG-Galerie und beim Bilderrahmen.', 6) end }
+end
+function L.shotsStop()
+  local n = L.shots.stop()
+  R.photoActive = nil
+  if n then notify(string.format('📷 Fotoserie beendet: %d Bilder im Ordner screenshots/trucks_of_earth.', n), 7) end
+end
+function M.photoSeriesToggle()
+  if not R.mode or not S then return end
+  if L.shots.active() then L.shotsStop(); return end
+  if not S.settings.photoSeries then notify('Die Fotoserie schaltest du in den Einstellungen ein.', 5); return end
+  if not L.autodriveOn() then notify('Die Fotoserie gibt es im Autodrive (Strg+Umschalt+A).', 5); return end
+  if cinematic.active() then return end
+  L.cineStop()
+  L.shots.start(L.shotsApi())
+  notify('📷 Fotoserie läuft. Strg+Umschalt+C beendet sie.', 3)
+end
+function M.viewPhoto()
+  if not R.mode or not S or L.shots.active() or L.cine.active() or cinematic.active() then return end
+  L.shots.once(L.shotsApi())
+end
+function M.photoMode() guihooks.trigger('MenuOpenModule', 'pause.photomode') end
+function L.shotsTick(t)
+  if not L.shots.active() then return end
+  if not L.shots.isOnce() and (not L.autodriveOn() or L.gamePaused() or R.officeOpen or R.stopOpen or R.trip or R.pendingTeleport or R.sleep or R.cop) then L.shotsStop(); return end
+  L.shots.tick(t)
+end
+-- (2026-11-09) the map of the office shows Europe: a thin layer of the shipped places beyond the network around the home; what is near comes in by itself on the way there
+function L.farAdd(out)
+  if not R.farList then local ok, d = pcall(jsonReadFile, '/fernfahrer/places_far.json'); R.farList = (ok and type(d) == 'table') and d or {} end
+  local h = S.home
+  if not h then return end
+  for _, p in ipairs(R.farList) do
+    local t = DEPOT_BY_KEY[p[1]]
+    if t and t.enabled ~= false and haversine(h.lat, h.lon, p[2], p[3]) > 600000 then
+      out[#out + 1] = { id = 'far:' .. p[2] .. ':' .. p[3] .. ':' .. p[1], name = t.name, detail = p[4] ~= '' and p[4] or nil, lat = p[2], lon = p[3], type = p[1], typeName = t.name, icon = t.icon, facility = t.facility or false }
+    end
+  end
+end
+function L.extraTick(t)
+  if not S or not R.mode then return end
+  if R.brakeOffAt and t > R.brakeOffAt then R.brakeOffAt = nil; if not R.stopOpen and not R.garageOn then L.autoBrakeOff() end end
+  pcall(L.ugSync, t); pcall(L.viewTick, t); pcall(L.heatTick, t); pcall(L.pursuit.tick, t); pcall(L.shotsTick, t)
+end
 function L.contactAt(p)
   local s, h = 'c' .. tostring(p and p.id or ''), 11
   for i = 1, #s do h = (h * 37 + s:byte(i)) % 1000003 end
@@ -7064,18 +8138,18 @@ function L.smuggleAt(p)
   local n = 0
   for _, o in ipairs(R.offers) do if o.smuggle and o.from and o.from.id == p.id then n = n + 1 end end
   R.smuggleT = R.smuggleT or {}
-  if n >= 2 or (R.smuggleT[p.id] and now() - R.smuggleT[p.id] < 600) then return end
+  if n >= 3 or (R.smuggleT[p.id] and now() - R.smuggleT[p.id] < 600) then return end
   R.smuggleT[p.id] = now()
   local from
   for _, d in ipairs(S.depots) do if d.id == p.id then from = d; break end end
   if not from then return end
-  for _ = 1, 2 - n do
-    local to = pickDepot({ 'logistics', 'industry', 'port' }, from, 180000, from)
+  for _ = 1, 3 - n do
+    local to = pickDepot({ 'underground', 'logistics', 'industry', 'port' }, from, 180000, from)
     if not to then return end
     local g = L.SMUGGLE[math.random(#L.SMUGGLE)]
-    local cargo = { key = 'smuggle', name = g[1], icon = g[2], t = g[3], mult = 3.6, trailers = { { 'eu_trailers', 'box3a' }, { 'dryvan', '53ft' } } }
+    local cargo = { key = 'smuggle', name = g[1], icon = g[2], t = g[3], mult = ({ 3.2, 3.8, 4.6 })[g[4] + 1], trailers = { { 'eu_trailers', 'box3a' }, { 'dryvan', '53ft' } } }
     local o = makeOffer(cargo, from, to, here() or from)
-    o.smuggle, o.urgent = true, false
+    o.smuggle, o.urgent, o.heat = true, false, g[4]
     table.insert(R.offers, o)
   end
 end
@@ -7262,10 +8336,12 @@ end
 -- (the photo series for the project page, photos.lua: only with its file there and its flag set; not in the released mod)
 L.PHOTO_FLAG = '/settings/fernfahrer/fotoserie.json'
 function L.photoTick()
+  if R.photoGoAt and now() > R.photoGoAt then R.photoGoAt = nil; if not L.autodriveOn() then M.autodriveToggle() end end
   if R.photos then return R.photos.tick() end
   if now() - (R.photoLook or 0) < 5 or R.boot or R.trip then return end
   R.photoLook = now()
-  if not FS:fileExists(L.PHOTO_FLAG) then return end
+  if not R.photoWanted and not FS:fileExists(L.PHOTO_FLAG) then return end
+  R.photoWanted = nil
   local ok, ph = pcall(require, 'fernfahrer/photos')
   if not ok or type(ph) ~= 'table' then return end
   R.photos = ph
@@ -7277,8 +8353,55 @@ function L.photoTick()
     busy = function() return R.cop ~= nil or R.sleep ~= nil or R.trip ~= nil or R.pendingTeleport ~= nil end,
     notify = function(t, ttl) notify(t, ttl) end,
     setOverride = function(f) vices.override = f end,
+    cab = function() return L.shotFrame() end,
     office = function(tab) R.officeTab = tab; navigate('fernfahrerOffice') end,
-    closeUi = function() navigate('play') end,
+    closeUi = function() R.photoNear = nil; navigate('play') end,
+    shopCat = function(c) guihooks.trigger('FernfahrerPhotoUi', { shopCat = c }) end,
+    stopAt = function(kind)
+      local d = nearestOf(kind)
+      local t = d and DEPOT_BY_KEY[kind]
+      if not t then return false end
+      R.photoNear = { id = d.id, type = d.type, name = d.name, icon = t.icon, typeName = t.name, action = t.action, dist = 0, lat = d.lat, lon = d.lon }
+      navigate('fernfahrerStop')
+      return true
+    end,
+    garage = function() if not L.accTruck() then return false end; navigate('fernfahrerGarage'); return true end,
+    encStart = function() L.encForce() end,
+    encActive = function() return L.enc.active() end,
+    encEnd = function() R.encTest = nil; if L.enc.active() then pcall(L.enc.finish) end end,
+    vice = function(kind)
+      local inv = L.inv()
+      if L.INV_MAX[kind] and (inv[kind] or 0) < 1 then inv[kind] = 1 end
+      M.vice(kind)
+    end,
+    viceBusy = function() local okB, rd = pcall(vices.readings); return okB and rd and rd.busy ~= nil and rd.busy ~= false end,
+    driverCam = function() local okC, name = pcall(core_camera.getActiveCamName, 0); R.photoCam = okC and name or nil; pcall(core_camera.setByName, 0, 'onboard.driver') end,
+    restoreCam = function() if R.photoCam then pcall(core_camera.setByName, 0, R.photoCam); R.photoCam = nil end end,
+    driveStart = function()
+      if L.autodriveOn() then return false end
+      local gps = earthModule('gps')
+      if not (gps and gps.setAutodrive) then return false end
+      local r = gps.route and gps.route()
+      if not (r and r.points and #r.points > 1) then
+        local p, best, bd = here(), nil, nil
+        for _, d in ipairs(S.depots) do
+          if p and (d.type == 'fuel' or d.type == 'logistics') then
+            local dd = haversine(p.lat, p.lon, d.lat, d.lon)
+            if dd > 6000 and dd < 40000 and (not bd or dd > bd) then best, bd = d, dd end
+          end
+        end
+        if not best then return false end
+        navTo(best, best.name)
+        R.photoRoute = true
+        R.photoGoAt = now() + 8
+      else R.photoGoAt = now() + 0.5 end
+      return true
+    end,
+    driveEnd = function()
+      if L.autodriveOn() then M.autodriveToggle() end
+      if R.photoRoute and not S.job then navClear() end
+      R.photoRoute = nil
+    end,
     handbook = function(d)
       if d.open then guihooks.trigger('FernfahrerTutorial', { company = S.company and S.company.name, home = S.home and S.home.name, loaner = false, rules = true })
       else guihooks.trigger('FernfahrerPhotoUi', d) end
@@ -7287,7 +8410,8 @@ function L.photoTick()
     stopMenu = function() navigate('fernfahrerStop') end,
     stopTab = function(tab) guihooks.trigger('FernfahrerPhotoUi', { stopTab = tab }) end,
     done = function()
-      R.photos, R.photoActive = nil, nil
+      R.photos, R.photoActive, R.photoNear, R.photoGoAt = nil, nil, nil, nil
+      S.settings.autoPhotos = false
       pcall(FS.removeFile, FS, L.PHOTO_FLAG)
     end,
   })
@@ -7298,8 +8422,11 @@ function L.serviceFrame(dt)
   if not okV then log('E', logTag, 'service: ' .. tostring(errV)) end
   pcall(L.radioRegionTick, now())
   pcall(L.whereTick, now())
+  pcall(L.accTick, now())
+  pcall(L.welcomeTick, now())
   pcall(L.rentalTick, now())
   pcall(L.cineTick, now())
+  pcall(L.extraTick, now())
 end
 function L.accidentFrame(dt)
   if S.settings.accidents == false then return end
@@ -7320,6 +8447,7 @@ end
 
 function M.onUpdate(dtReal, dtSim)
   if R.loadWant or R.loadAt then pcall(L.loadMusicTick) end
+  pcall(L.moodTick)
   if not S then return end
   L.tickTasks()
   pcall(L.menuBlurTick, dtReal)
@@ -7427,7 +8555,7 @@ function M.onUpdate(dtReal, dtSim)
   L.mk('yard')
   end
   if not R.boot then pcall(L.townTick, t); pcall(L.odoTick, t); pcall(L.gapHintTick, t); pcall(L.tutTick, t); pcall(L.condTick, t); pcall(L.tourTick, t); pcall(L.weatherTick, t)
-    pcall(L.loadTick, t, dtSim); pcall(L.wearTick, t); pcall(L.copTick, t); pcall(L.cbTick, t); pcall(L.assistTick, t)
+    pcall(L.loadTick, t, dtSim); pcall(L.wearTick, t); pcall(L.copTick, t); pcall(L.restCheckTick, t); pcall(L.workTick); pcall(L.encTick, t); pcall(L.trafficGuard, t); pcall(L.cbTick, t); pcall(L.assistTick, t)
     do local okFx, errFx = pcall(L.fxDraw); if not okFx and not R.fxErr then R.fxErr = true; log('W', logTag, 'fx: ' .. tostring(errFx)) end end end
   L.mk('town/gap/tutorial/cond')
   -- the introduction (FernfahrerSzene 'FernfahrerTutorial'): once the flight is over and no menu is up
@@ -7464,6 +8592,14 @@ function M.onUpdate(dtReal, dtSim)
     -- the start of a day at the yard: a camera flight over it under the title card (not after sleeping: the fade)
     if not R.titleText and S.settings.intro ~= false then
       local c, ey = yard.center()
+      -- (2026-11-09: a first day has to start on the yard, whatever happened while the world loaded)
+      do
+        local sp0, v0 = yard.parkSpot(), playerVeh()
+        if sp0 and v0 and not S.tutorialDone and not S.job and vehSpeed(v0) < 1 and vehPos(v0):distance(sp0.pos) > 14 and vehPos(v0):distance(sp0.pos) < 800 then
+          log('I', logTag, string.format('first day: the truck stood %.0f m off the yard, put in front of the hall', vehPos(v0):distance(sp0.pos)))
+          pcall(spawn.safeTeleport, v0, sp0.pos, quatFromDir(sp0.dir, vec3(0, 0, 1)))
+        end
+      end
       local v = playerVeh()
       if c and v and vehPos(v):distance(c) < 500 then
         vices.installCam()
@@ -7476,11 +8612,12 @@ function M.onUpdate(dtReal, dtSim)
     R.titleUntil = t + 7                         -- (the title card's time on screen: no mirrors over it)
     -- a new career's first day: the introduction after the card (and the camera flight)
     if not S.tutorialDone and not R.titleText then R.tutorialAt = t + 6.5 end
+    pcall(L.moodSting, 'morgen')
     guihooks.trigger('FernfahrerTitle', { day = weekday(), clock = clockText(), place = place,
       company = S.company and S.company.name or nil, text = R.titleText })
     R.titleText = nil
   end
-  if vices.override and not cinematic.active() and not R.photoActive and not L.cine.active() then vices.override = nil end    -- (the flight is over)
+  if vices.override and not cinematic.active() and not R.photoActive and not L.cine.active() and not R.workShow and not R.garageOn then vices.override = nil end    -- (the flight is over)
   -- a delivery done: its note filed, the settlement card up (not over another screen)
   if R.reportAt and t > R.reportAt and not R.officeOpen and not R.stopOpen then
     R.reportAt = nil
@@ -7489,17 +8626,7 @@ function M.onUpdate(dtReal, dtSim)
   end
   -- after "Zum Hof": the truck in front of the hall, facing the gate (once the yard stands there)
   -- (2026-11-07: as soon as the yard stands and the ground is in – under the loading screen, which waits for this)
-  if R.parkAtYard and t > R.parkAtYard.t and not R.pendingTeleport and not R.trailerId and not R.pendingAdopt then
-    local sp = yard.parkSpot()
-    local v = careerVeh()
-    local w = earthLoading()
-    if sp and v and not (w and w.ground) and vehPos(v):distance(sp.pos) < 800 then
-      pcall(spawn.safeTeleport, v, sp.pos, quatFromDir(sp.dir, vec3(0, 0, 1)))
-      R.parkAtYard = nil
-    elseif t > R.parkAtYard.untilT then
-      R.parkAtYard = nil
-    end
-  end
+  if R.parkAtYard and t > R.parkAtYard.t and not R.pendingTeleport and not R.trailerId and not R.pendingAdopt then pcall(L.parkTick, t) end
   -- after "continue": the vehicle along the road there, the way it was driven
   if R.orient and t > R.orient.t then
     local o = R.orient
@@ -7530,6 +8657,7 @@ function M.onUpdate(dtReal, dtSim)
     local rf = R.restoreFuel
     R.restoreFuel = nil
     local v = vehById(rf.id)
+    if v and rf.cond then pcall(L.condApply, v, rf.cond, rf.keep) end
     if v then
       for _, tank in ipairs(rf.tanks) do
         if tank.name and tank.currentEnergy then core_vehicleBridge.executeAction(v, 'setEnergyStorageEnergy', tank.name, tank.currentEnergy) end

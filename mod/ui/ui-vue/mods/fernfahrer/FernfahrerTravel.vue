@@ -92,7 +92,7 @@ const statusText = computed(() => {
   if (kind.value === "road") {
     if (arrived.value) return trip.value && trip.value.trailer ? "Alles bereit – der Auflieger wird angekuppelt" : "Alles bereit – gute Fahrt"
     const l = loading.value, parts = loadParts(l)
-    if (l && l.yard) return "Dein Firmenhof wird gebaut …"
+    if (l && l.yard) return "Einen Moment: Dein Hof wird geladen und dein Lkw abgestellt …"
     if (l && l.settling && !parts.length) return "Letzte Details …"
     if (parts.length) return parts.join(", ") + " werden geladen …"
     return trip.value && trip.value.world ? "Die Welt wird geladen …" : "Zurück zu deiner letzten Position …"

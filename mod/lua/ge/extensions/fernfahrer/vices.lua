@@ -255,6 +255,11 @@ function M.installCam()
   if origSet or type(f) ~= 'function' then return end
   origSet = f
   rawset(_G, 'setCameraPosRotFovNearClipC', function(x, y, z, qx, qy, qz, qw, fov, near)
+    -- (2026-11-09, BeamNG.Earth 1.9) its 3D map flies the camera up to the globe: no camera flight or wobble of ours on that
+    local m3 = rawget(_G, 'beamngEarth_map3d')
+    if m3 and m3.isActive and (m3.isActive() or m3.isTransitioning()) then return origSet(x, y, z, qx, qy, qz, qw, fov, near) end
+    -- (2026-11-09: what stands in the cab first: a pose close to it must not be one frame behind a truck doing 25 m/s)
+    if M.override and M.camHook then pcall(M.camHook) end
     -- a camera flight (cinematic.lua): it gets the game's pose and returns the one to draw
     if M.override then
       local okO, ox, oy, oz, oqx, oqy, oqz, oqw, ofov = pcall(M.override, x, y, z, qx, qy, qz, qw, fov)
@@ -286,6 +291,8 @@ function M.installCam()
       qx, qy, qz, qw = qmul(qx, qy, qz, qw, lx, ly, lz, lw)
       fov = (fov or 60) + df
     end
+    -- (2026-11-09: what sits in the cab is placed here, with the very state the camera of this frame was made from)
+    if M.camHook then pcall(M.camHook) end
     return origSet(x, y, z, qx, qy, qz, qw, fov, near)
   end)
 end

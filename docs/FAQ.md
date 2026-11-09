@@ -54,3 +54,11 @@ Stelle im Büro unter **Einstellungen** die **Leistung** auf **Maximale FPS**, o
    %LOCALAPPDATA%\BeamNG\BeamNG.drive\current\beamng.log
    ```
 3. Ein [Issue](../../../issues/new/choose) öffnen, beschreiben, was passiert ist, und die Datei anhängen.
+
+## Warum geht Reset nicht mehr?
+
+In der Karriere sind Reset, Bergen, Neuladen und die Fahrzeugmenüs von BeamNG gesperrt, sonst wäre jede Reparatur umsonst. In den Einstellungen unter „Entwicklermodus: BeamNG-Reset“ schaltest du sie wieder ein.
+
+## Warum nur Europa, wenn es Trucks of Earth heißt?
+
+Aktuell gibt es Aufträge, Firmen und Orte nur für Europa. Der Rest der Welt wird noch nicht unterstützt.

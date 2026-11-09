@@ -58,7 +58,7 @@
 
           <!-- behind the building -->
           <template v-if="tab === 'shady'">
-            <h2>Hinterhof <small>Hier fragt keiner nach einer Quittung</small></h2>
+            <h2>{{ v.place.action === 'underground' ? 'Underground' : 'Hinterhof' }} <small>Hier fragt keiner nach einer Quittung</small></h2>
             <button v-if="backTry" class="door" :disabled="backTry.disabled" @mouseenter="hov" @click="run('back:try')">
               <span>🚶</span><div><b>{{ backTry.label }}</b><small>{{ backTry.sub }}</small></div><em>Hingehen</em>
             </button>
@@ -84,7 +84,7 @@
             <h2>Werkstatt</h2>
             <div class="hero" v-if="repairAct">
               <span class="hero-ic">🔧</span>
-              <div class="hero-t"><b>{{ repairAct.disabled ? 'Keine Schäden' : 'Reparatur' }}</b><small>{{ repairAct.disabled ? 'Dein LKW ist in Ordnung.' : repairAct.sub }}</small></div>
+              <div class="hero-t"><b>Komplett reparieren</b><small>{{ repairAct.sub === 'Keine Schäden' ? 'Es gibt gerade nichts zu reparieren.' : repairAct.sub + ' · Unfallschaden und alle Bauteile in einem, nur der Kilometerstand bleibt' }}</small></div>
               <button class="cta" :disabled="repairAct.disabled" @mouseenter="hov" @click="run('repair')">Reparieren</button>
             </div>
             <template v-for="s in workSections" :key="s.t">
@@ -205,7 +205,7 @@ function groupOf(a) {
   if (id === "back:try") return "shady"
   if (id.indexOf("take:") === 0) return a.offer && a.offer.smuggle ? "shady" : "jobs"
   if (id === "milktour" || id === "milktour:end") return "jobs"
-  if (id === "repair" || id === "diag" || id === "tank:big" || /^(fix|assist|limiter):/.test(id)) return "work"
+  if (id === "repair" || id === "diag" || id === "tank:big" || /^(fix|part|assist|limiter):/.test(id)) return "work"
   return "place"
 }
 const byGroup = computed(() => { const g = {}; actions.value.forEach(a => { const k = groupOf(a); (g[k] = g[k] || []).push(a) }); return g })
@@ -218,9 +218,9 @@ const TABS = [
   { id: "shady", icon: "🚶", label: "Hinterhof", sub: "Unter der Hand" },
   { id: "rest", icon: "🛏", label: "Ausruhen", sub: "Pause und Schlaf" },
 ]
-const tabs = computed(() => TABS.filter(t => t.id === "rest" || byGroup.value[t.id]))
+const tabs = computed(() => TABS.filter(t => t.id === "rest" || byGroup.value[t.id]).map(t => t.id === "shady" && v.value && v.value.place && v.value.place.action === "underground" ? { ...t, icon: "🕶️", label: "Underground", sub: "Fracht ohne Papiere" } : t))
 const chosen = ref(null)
-const FIRST = { refuel: "fuel", sleep: "rest", repair: "work", home: "place", freight: "jobs", dealerTruck: "place", dealerCar: "place", ferry: "place", fly: "place" }
+const FIRST = { refuel: "fuel", sleep: "rest", repair: "work", home: "place", freight: "jobs", dealerTruck: "place", dealerCar: "place", underground: "shady", ferry: "place", fly: "place" }
 const tab = computed(() => {
   const list = tabs.value
   if (chosen.value && list.some(t => t.id === chosen.value)) return chosen.value
@@ -244,7 +244,8 @@ const shadyGoods = computed(() => (byGroup.value.shady || []).filter(a => a.shop
 const shadyJobs = computed(() => (byGroup.value.shady || []).filter(a => a.offer))
 const workSections = computed(() => {
   const all = (byGroup.value.work || []).filter(a => a.id !== "repair")
-  return [...section("Mängel", all.filter(a => a.id === "diag" || a.id.indexOf("fix:") === 0)),
+  return [...section("Oder einzeln, nur was du brauchst", all.filter(a => a.id.indexOf("part:") === 0)),
+    ...section("Mängel", all.filter(a => a.id === "diag" || a.id.indexOf("fix:") === 0)),
     ...section("Einbauten", all.filter(a => a.id === "tank:big" || a.id.indexOf("assist:") === 0)),
     ...section("Begrenzer", all.filter(a => a.id.indexOf("limiter:") === 0))]
 })
@@ -271,7 +272,7 @@ function run(id) {
     if (a && a.offer) { sound("click"); detail.value = { id, ...a.offer }; return }
   }
   sound("click"); call("stopDo", id)
-  if (id === "repair" || id.indexOf("buy:") === 0 || id === "tank:big") setTimeout(load, 300)
+  if (id === "repair" || id.indexOf("buy:") === 0 || id.indexOf("part:") === 0 || id === "tank:big") setTimeout(load, 300)
 }
 
 // --- the back door's minigame ---

@@ -60,7 +60,7 @@ local function noteFuel(recs)
     end
     if spot and spot.pos and not electricOnly and not fuels[r.id] then
       local lat, lon = geo(spot.pos[1], spot.pos[2], spot.pos[3])
-      if lat then fuels[r.id] = { id = r.id, lat = lat, lon = lon, name = (r.name and r.name ~= '') and r.name or ((r.brand and r.brand ~= '') and r.brand or 'Tankstelle') } end
+      if lat then M.fuelDirty = true; M.fuelCount = (M.fuelCount or 0) + 1; fuels[r.id] = { id = r.id, lat = lat, lon = lon, name = (r.name and r.name ~= '') and r.name or ((r.brand and r.brand ~= '') and r.brand or 'Tankstelle') } end
     end
   end
 end
@@ -77,6 +77,25 @@ function M.lotNear(lat, lon, m)
   end
   if best then return { id = best.id, lat = best.la / best.n, lon = best.lo / best.n }, bd end
 end
+-- (2026-11-09) all the fuel stations Earth has shown so far, remembered between sessions: they go on the office's map
+M.FUEL_FILE = '/settings/fernfahrer/earth_fuel.json'
+M.FUEL_MAX = 30000
+function M.fuelAll() return fuels end
+function M.fuelLoad()
+  if M.fuelLoaded then return end
+  M.fuelLoaded = true
+  local ok, d = pcall(jsonReadFile, M.FUEL_FILE)
+  if ok and type(d) == 'table' then
+    for _, f in ipairs(d) do if f.id and f.lat and not fuels[f.id] then fuels[f.id] = f; M.fuelCount = (M.fuelCount or 0) + 1 end end
+  end
+end
+function M.fuelSave()
+  if not M.fuelDirty then return end
+  M.fuelDirty = false
+  local list = {}
+  for _, f in pairs(fuels) do if #list < M.FUEL_MAX then list[#list + 1] = f end end
+  pcall(jsonWriteFile, M.FUEL_FILE, list, false)
+end
 function M.fuelNear(lat, lon, m)
   local best, bd
   local kx, ky = 111320 * math.cos(math.rad(lat)), 111320
@@ -89,6 +108,7 @@ end
 function M.resetPlaces() lots, stalls, nStalls, fuels = {}, {}, 0, {} end
 
 function M.install()
+  pcall(M.fuelLoad)
   -- (Earth's fuel stations: hooked once, whatever becomes of the parking below)
   local okG, gs = pcall(require, 'beamngEarth/gasstations')
   if okG and type(gs) == 'table' and gs.onRows and not gs.__fernfahrerFuel then

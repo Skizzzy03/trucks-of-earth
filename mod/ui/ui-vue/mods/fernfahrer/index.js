@@ -17,8 +17,14 @@ function addMenuButton(addButton) {
   })
 }
 
-function routes(Setup, Office, Careers, Travel, Stop, Report, Rental) {
+function routes(Setup, Office, Careers, Travel, Stop, Report, Rental, Garage) {
   return [
+    {
+      path: "/fernfahrer-garage",
+      name: "fernfahrerGarage",
+      component: Garage,
+      meta: { luaRoute: { title: "Werkstatt", backTarget: "play" } },
+    },
     {
       path: "/fernfahrer-rental",
       name: "fernfahrerRental",
@@ -71,7 +77,7 @@ async function registerRoutes() {
     const list = routes((await import("./FernfahrerSetup.vue")).default, (await import("./FernfahrerOffice.vue")).default,
                         (await import("./FernfahrerCareers.vue")).default, (await import("./FernfahrerTravel.vue")).default,
                         (await import("./FernfahrerStop.vue")).default, (await import("./FernfahrerReport.vue")).default,
-                        (await import("./FernfahrerRental.vue")).default)
+                        (await import("./FernfahrerRental.vue")).default, (await import("./FernfahrerGarage.vue")).default)
     window.bngRoutes.add([{ path: SOURCE, routes: list }])
     const result = await lua.extensions.ui_router_routeManager.registerModRoutes(SOURCE, toLuaRoutes(list))
     if (!result?.success) {

@@ -35,6 +35,7 @@ const lit = v => v === null || v === undefined ? 'nil' : Array.isArray(v) ? '{' 
   : typeof v === 'object' ? '{' + Object.entries(v).map(([k, x]) => '[' + JSON.stringify(k) + ']=' + lit(x)).join(',') + '}'
   : typeof v === 'string' ? JSON.stringify(v) : String(v)
 const code = `
+package.preload['fernfahrer/accidents'] = function() return { behind = function() return nil end, zones = function() return nil end, nodeAlong = function() return nil end } end
 local V = {} V.__index = V
 function vec3(x, y, z) if type(x) == 'table' then return setmetatable({x=x.x,y=x.y,z=x.z or 0}, V) end return setmetatable({x=x or 0,y=y or 0,z=z or 0}, V) end
 V.__add = function(a,b) return vec3(a.x+b.x,a.y+b.y,a.z+b.z) end

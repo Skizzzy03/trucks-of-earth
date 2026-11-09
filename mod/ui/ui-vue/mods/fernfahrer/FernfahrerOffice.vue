@@ -288,63 +288,87 @@
 
           <!-- dealers -->
           <div v-if="tab === 'dealer'">
-            <template v-if="st.near && st.near.action === 'dealerTruck'">
-              <div class="bar"><b>{{ st.near.name }}</b><span class="muted">Zugmaschinen{{ st.europe ? " · EU-Modelle zuerst" : "" }}</span>
-                <span class="grow"></span>
-                <div class="filters">
-                  <a :class="{ on: dealerTab === 'new' }" @click="dealerTab = 'new'">Neu <span class="muted">{{ trucks.length }}</span></a>
-                  <a :class="{ on: dealerTab === 'used' }" @click="dealerTab = 'used'">Gebraucht <span class="muted">{{ trucksUsed.length }}</span></a>
-                </div></div>
-              <div v-if="dealerTab === 'new' && !trucks.length" class="info">Lade Angebot …</div>
-              <div v-if="dealerTab === 'used' && !trucksUsed.length" class="info">Gerade keine Gebrauchten – schau später wieder vorbei.</div>
-              <div v-if="dealerTab === 'used' && trucksUsed.length" class="muted small" style="margin-bottom:8px">Gebrauchte wechseln mit der Zeit. Kilometerstand und Gebrauchsspuren kommen mit – der Preis ist entsprechend niedriger.</div>
-              <div class="cards">
-                <div v-for="t in (dealerTab === 'new' ? trucks : trucksUsed)" :key="t.usedId || t.idx" class="vcard">
-                  <div class="pic"><img v-if="t.preview" :src="t.preview" loading="lazy" @error="e => e.target.style.visibility = 'hidden'" /><span v-if="t.eu" class="tag blue">EU</span><span v-if="t.used" class="tag used">Gebraucht</span></div>
-                  <div class="vb">
-                    <b>{{ t.brand }} {{ t.modelName }}</b>
-                    <div class="muted">{{ t.configName }}</div>
-                    <div class="specs"><span v-if="t.power">{{ t.power }} PS</span><span v-if="t.drivetrain">{{ t.drivetrain }}</span>
-                      <template v-if="t.used"><span>{{ Math.round(t.km).toLocaleString("de-DE") }} km</span><span>{{ t.age }} {{ t.age === 1 ? "Jahr" : "Jahre" }}</span>
-                        <span :class="t.condition >= 90 ? 'pos' : t.condition >= 80 ? 'warn' : 'neg'">Zustand {{ t.condition }} %</span></template></div>
-                    <div v-if="t.marks" class="muted small">Leichte Gebrauchsspuren, kleine Dellen</div>
-                    <div class="vfoot"><span class="pay" :class="{ dim: st.money < t.price }">{{ money(t.price) }}</span>
-                      <span v-if="t.used && t.newPrice" class="muted small">neu {{ money(t.newPrice) }}</span>
-                      <button class="btn primary" :disabled="st.money < t.price" @click="t.used ? buy('buyUsedTruck', t.usedId) : buy('buyTruck', t.idx)">Kaufen</button></div>
-                  </div>
-                </div>
-              </div>
-            </template>
-            <template v-else-if="st.near && st.near.action === 'dealerCar'">
-              <div class="bar"><b>{{ st.near.name }}</b><span class="muted">Autohaus</span><span class="grow"></span>
-                <input v-model="carQuery" class="input" placeholder="Marke oder Modell" @focus="typing(true)" @blur="typing(false)" @keydown.stop /></div>
-              <div v-if="!cars.length" class="info">Lade Angebot …</div>
-              <div v-for="m in filteredCars" :key="m.idx" class="acc">
-                <div class="acchead" @click="openModel = openModel === m.idx ? null : m.idx">
-                  <img v-if="m.preview" class="thumb" :src="m.preview" loading="lazy" @error="e => e.target.style.visibility = 'hidden'" />
-                  <b>{{ m.brand }} {{ m.modelName }}</b> <span v-if="m.eu" class="tag blue">EU</span>
-                  <span class="grow"></span><span class="muted">{{ toArray(m.configs).length }} Ausstattungen · ab {{ money(m.minPrice) }}</span>
-                </div>
-                <div v-if="openModel === m.idx">
-                  <div v-for="(c, ci) in toArray(m.configs)" :key="ci" class="cfg">
-                    <img v-if="c.preview" class="thumb" :src="c.preview" loading="lazy" @error="e => e.target.style.visibility = 'hidden'" />
-                    <span>{{ c.configName }}{{ c.power ? " · " + c.power + " PS" : "" }}</span>
-                    <span class="pay" :class="{ dim: st.money < c.price }">{{ money(c.price) }}</span>
-                    <button class="btn primary" :disabled="st.money < c.price" @click="buy('buyCar', m.idx, ci + 1)">Kaufen</button>
-                  </div>
-                </div>
+            <template v-if="st.near && /^dealer/.test(st.near.action)">
+              <div class="sh" :class="'sh-' + (showDealer.key || 'x')">
+                <header class="shsign">
+                  <div><div class="shkind">{{ showDealer.style || (st.near.action === 'dealerTruck' ? 'Nutzfahrzeuge' : 'Gebrauchtwagen') }}</div><div class="shname">{{ st.near.name }}</div></div>
+                  <div class="shtag">{{ showDealer.tag }}</div>
+                </header>
+                <nav v-if="showAll.length" class="seg shseg"><a v-for="f in SHOW_FILTER" :key="f.k" :class="{ on: showFilter === f.k }" @mouseenter="sound('hover')" @click="showFilter = f.k">{{ f.l }}<small>{{ showCount(f.k) }}</small></a></nav>
+                <div v-if="!showItems.length" class="shempty">{{ showAll.length ? 'In dieser Auswahl steht hier gerade nichts.' : showLoaded ? 'Gerade steht nichts im Verkaufsraum – schau später wieder vorbei.' : 'Die Fahrzeuge werden in den Verkaufsraum gefahren …' }}</div>
+                <template v-else>
+                  <section class="shhall">
+                    <div class="shlights"><i v-for="n in 7" :key="n"></i></div>
+                    <button class="sharrow l" @click="showStep(-1)" aria-label="Vorheriges Fahrzeug">‹</button>
+                    <div class="shstage">
+                      <img v-if="showCur.preview" :key="showCur.showId" :src="showCur.preview" @error="e => e.target.style.visibility = 'hidden'" />
+                      <div class="shpodium"></div>
+                    </div>
+                    <button class="sharrow r" @click="showStep(1)" aria-label="Nächstes Fahrzeug">›</button>
+                    <aside class="shcard">
+                      <div class="shbadges"><span :class="showCur.used ? 'used' : 'neu'">{{ showCur.used ? 'Gebraucht' : 'Neu' }}</span><span v-if="showCur.eu" class="eu">EU</span></div>
+                      <div class="shbrand">{{ showCur.brand }}</div>
+                      <h3>{{ showCur.modelName }}</h3>
+                      <div class="shcfg">{{ showCur.configName }}</div>
+                      <dl>
+                        <template v-if="showCur.power"><dt>Leistung</dt><dd>{{ showCur.power }} PS</dd></template>
+                        <template v-if="showCur.drivetrain"><dt>Antrieb</dt><dd>{{ showCur.drivetrain }}</dd></template>
+                        <template v-if="showCur.used"><dt>Kilometer</dt><dd>{{ Math.round(showCur.km).toLocaleString("de-DE") }} km</dd>
+                          <dt>Alter</dt><dd>{{ showCur.age }} {{ showCur.age === 1 ? "Jahr" : "Jahre" }}</dd>
+                          <dt>Zustand</dt><dd :class="showCur.condition >= 90 ? 'pos' : showCur.condition >= 80 ? 'warn' : 'neg'">{{ showCur.condition }} %</dd></template>
+                      </dl>
+                      <div v-if="showCur.marks" class="shmarks">Leichte Gebrauchsspuren, kleine Dellen</div>
+                      <div class="shprice"><b :class="{ dim: st.money < showCur.price }">{{ money(showCur.price) }}</b><span v-if="showCur.used && showCur.newPrice">neu {{ money(showCur.newPrice) }}</span></div>
+                      <button class="btn primary shbuy" :disabled="st.money < showCur.price" @click="buy('buyShowroom', showCur.showId)">{{ st.money < showCur.price ? 'Nicht genug Geld' : 'Kaufen' }}</button>
+                    </aside>
+                  </section>
+                  <nav class="shrow">
+                    <a v-for="(v, i) in showItems" :key="v.showId" class="shcar" :class="{ on: i === showIdx }" @mouseenter="sound('hover')" @click="showIdx = i">
+                      <img v-if="v.preview" :src="v.preview" loading="lazy" @error="e => e.target.style.visibility = 'hidden'" />
+                      <div class="shtag2"><b>{{ v.brand }} {{ v.modelName }}</b><span>{{ money(v.price) }}</span></div>
+                    </a>
+                  </nav>
+                </template>
               </div>
             </template>
             <template v-else>
-              <div class="info">Fahrzeuge kaufst du vor Ort beim Händler. Wähle einen aus und lass dich hinnavigieren.</div>
-              <table class="tbl"><tbody>
-                <tr v-for="p in dealers" :key="p.id">
-                  <td><span class="badge" :style="{ background: typeColor(p.type) }"></span><b>{{ p.name }}</b><div class="muted">{{ p.typeName }}{{ p.detail ? " · " + p.detail : "" }}</div></td>
-                  <td class="r">{{ dist(p.d) }}</td>
-                  <td class="r"><button class="btn" @click="act('navToPlace', p.id); close()">Navi</button></td>
-                </tr>
-              </tbody></table>
+              <div class="dl">
+                <header class="dlh">
+                  <div><h2>Händler</h2><p>Gekauft wird vor Ort: Händler wählen, Navi starten und im Verkaufsraum aussuchen.</p></div>
+                  <nav class="seg"><a v-for="f in DEALER_FILTER" :key="f.k" :class="{ on: dealerFilter === f.k }" @mouseenter="sound('hover')" @click="dealerFilter = f.k">{{ f.l }}<small>{{ dealerCount(f.k) }}</small></a></nav>
+                </header>
+                <div v-if="!dealerList.length" class="dlnone">In der Nähe ist noch kein Händler bekannt. Fahr ein Stück, dann tauchen welche auf.</div>
+                <div v-else class="dlt">
+                  <a v-for="(p, i) in dealerList" :key="p.id" class="dlr" :class="{ near: i === 0 }" @mouseenter="sound('hover')" @click="act('navToPlace', p.id); close()">
+                    <span class="dli">{{ p.type === 'truckdealer' ? '🚛' : '🚗' }}</span>
+                    <span class="dln"><b>{{ p.name }}</b><small>{{ dealerStyle(p).name }} · <i class="dlp" :class="'p' + dealerStyle(p).pc">{{ '€'.repeat(dealerStyle(p).pc) }} {{ dealerStyle(p).price }}</i></small></span>
+                    <span v-if="i === 0" class="dlb">Am nächsten</span><span v-else></span>
+                    <span class="dld">{{ dist(p.d) }}</span>
+                    <span class="dlgo">Navi starten ›</span>
+                  </a>
+                </div>
+              </div>
             </template>
+          </div>
+
+          <!-- the online shop (accessories.lua): ordered here, delivered to the yard, fitted in the yard's workshop -->
+          <div v-if="tab === 'shop'" class="ons">
+            <header class="dlh">
+              <div><h2>Trucker-Shop</h2><p>In den Warenkorb legen, bestellen, an den Hof liefern lassen. Eingebaut wird am Hof oder in der Werkstatt.</p></div>
+              <a class="cartbtn" @mouseenter="sound('hover')" @click="cartShow(true)">🛒 Warenkorb<b v-if="cartCount">{{ cartCount }}</b></a>
+            </header>
+            <nav class="seg onseg"><a :class="{ on: shopCat === 'all' }" @click="shopCat = 'all'">Alles</a><a v-for="c in shopCats" :key="c.key" :class="{ on: shopCat === c.key }" @mouseenter="sound('hover')" @click="shopCat = c.key">{{ c.name }}</a></nav>
+            <div class="ong"><article v-for="it in shopItems.filter(i => shopCat === 'all' || i.cat === shopCat)" :key="it.id" class="onc" :class="{ incart: cartHas(it.id) }">
+              <img :src="it.thumb" loading="lazy" @error="e => e.target.style.visibility = 'hidden'" />
+              <b>{{ it.name }}</b><p>{{ it.text }}</p>
+              <div class="onf"><span class="pay">{{ money(it.price) }}</span><span v-if="it.fitted" class="ont">Eingebaut</span><span v-else-if="it.stock" class="ont">{{ it.stock }} im Regal</span><button class="btn primary" @click="cartAdd(it.id)">{{ cartHas(it.id) ? 'Noch eins' : 'In den Warenkorb' }}</button></div>
+            </article></div>
+          </div>
+
+          <!-- the driving school: short films drawn on a canvas (ffClips.js), only the chosen one runs -->
+          <div v-if="tab === 'school'" class="sch">
+            <div class="schmain"><canvas ref="clipCanvas" width="960" height="540"></canvas><h2>{{ clips[clipIdx].title }}</h2><p>{{ clips[clipIdx].text }}</p></div>
+            <div class="schlist"><a v-for="(c, i) in clips" :key="c.id" :class="{ on: i === clipIdx }" @mouseenter="sound('hover')" @click="clipIdx = i"><canvas :ref="el => stillRef(el, c)" width="192" height="108"></canvas><span>{{ c.title }}</span></a></div>
           </div>
 
           <!-- finances: the books (career.lua L.pay → S.ledger) as graphs, the loan, the fines -->
@@ -679,6 +703,22 @@
             </div>
           </div>
         </main>
+        <div v-if="cartVisible" class="cartshade" :style="{ opacity: (100 - cartX) / 100 }" @click="cartShow(false)"></div>
+        <aside v-if="cartVisible" class="cart" :style="{ transform: 'translateX(' + cartX + '%)' }">
+          <header><h3>Warenkorb</h3><a class="cartx" @click="cartShow(false)">✕</a></header>
+          <div v-if="cartMsg" class="cartok"><span>✓</span><div><b>{{ cartMsg.t }}</b><small>{{ cartMsg.s }}</small></div></div>
+          <div class="cartlist">
+            <div v-if="!cartLines.length && !shopOnWay.length" class="cartnone">Noch nichts drin. Leg etwas aus dem Shop hinein.</div>
+            <article v-for="l in cartLines" :key="l.id" class="cartl">
+              <img :src="l.it.thumb" @error="e => e.target.style.visibility = 'hidden'" />
+              <div class="cartm"><b>{{ l.it.name }}</b><span>{{ money(l.it.price) }}</span>
+                <div class="cartq"><a @click="cartStep(l.id, -1)">−</a><i>{{ l.n }}</i><a @click="cartStep(l.id, 1)">+</a><a class="cartone" :class="{ off: st.money < l.it.price }" @click="cartOrder([{ id: l.id, n: 1 }])">Einzeln bestellen</a></div></div>
+              <a class="cartx" title="Entfernen" @click="cartStep(l.id, -l.n)">✕</a>
+            </article>
+            <template v-if="shopOnWay.length"><h4>Unterwegs zu deinem Hof</h4><div v-for="(o, i) in shopOnWay" :key="i" class="cartway"><span>📦 {{ o.name }}</span><b>{{ o.left > 60 ? Math.ceil(o.left / 60) + ' min' : Math.max(1, Math.round(o.left)) + ' s' }}</b></div></template>
+          </div>
+          <footer v-if="cartLines.length"><div><span>Summe</span><b :class="{ neg: st.money < cartTotal }">{{ money(cartTotal) }}</b></div><small v-if="st.money < cartTotal">Dafür reicht dein Geld gerade nicht.</small><button class="btn primary cartall" :disabled="st.money < cartTotal" @click="cartOrder(cartLines.map(l => ({ id: l.id, n: l.n })))">Alles bestellen</button></footer>
+        </aside>
       </section>
     </div>
   </div>
@@ -689,25 +729,34 @@ import { ref, computed, watch, onMounted, onUnmounted, nextTick } from "vue"
 import FfMap from "./FfMap.vue"
 import { call, navigate, typing, money, signed, dist, duration, clock, toArray } from "./ffBridge.js"
 import { sound } from "./ffSound.js"
+import { clips, play as playClip, still as clipStill } from "./ffClips.js"
 
 // (one entry per area – the current job is on the Aufträge page, bank and fines are the Finanzen: no doubles)
 const NAV = [
-  { label: "Start", items: [{ id: "home", label: "Zentrale", icon: "🏠", sub: "Alles Wichtige auf einen Blick" }] },
-  { label: "Fahren", items: [
+  { label: "Start", items: [
+    { id: "home", label: "Zentrale", icon: "🏠", sub: "Alles Wichtige auf einen Blick" },
+    { id: "messages", label: "Nachrichten", icon: "💬", sub: "Funk von Mira und der Firma" },
+  ] },
+  { label: "Unterwegs", items: [
     { id: "market", label: "Aufträge", icon: "📦", sub: "Laufender Auftrag und Frachtbörse" },
     { id: "map", label: "Karte & Orte", icon: "🗺", sub: "Tankstellen, Rastplätze, Kunden, Händler" },
     { id: "travel", label: "Reisen", icon: "⚓", sub: "Fähren, Autozug und Flüge" },
   ] },
-  { label: "Firma", items: [
+  { label: "Fahrzeuge", items: [
     { id: "fleet", label: "Fuhrpark & Werkstatt", icon: "🚛", sub: "Deine Fahrzeuge, wechseln, verkaufen, reparieren" },
     { id: "dealer", label: "Händler", icon: "🏷", sub: "Neue und gebrauchte Fahrzeuge" },
+    { id: "shop", label: "Online-Shop", icon: "🛒", sub: "Zubehör für die Kabine, geliefert an deinen Hof" },
+  ] },
+  { label: "Firma", items: [
     { id: "bank", label: "Finanzen", icon: "📈", sub: "Kontostand, Einnahmen, Ausgaben, Kredit und Bußgelder" },
     { id: "club", label: "Club & Versicherung", icon: "🛡", sub: "Pannendienst, Punkte, Haftpflicht und Kasko" },
     { id: "docs", label: "Dokumente", icon: "📄", sub: "Lieferscheine und Polizeiberichte" },
     { id: "stats", label: "Statistik", icon: "📊", sub: "Entdeckte Orte, Kilometer, Routen und Fahrerwertung" },
-    { id: "messages", label: "Nachrichten", icon: "💬", sub: "Funk von Mira und der Firma" },
   ] },
-  { label: "System", items: [{ id: "settings", label: "Einstellungen", icon: "⚙", sub: "Spielmodus anpassen" }] },
+  { label: "Hilfe & System", items: [
+    { id: "school", label: "Fahrschule", icon: "🎬", sub: "Kurze Erklärfilme und Tipps" },
+    { id: "settings", label: "Einstellungen", icon: "⚙", sub: "Spielmodus anpassen" },
+  ] },
 ]
 const TITLES = Object.fromEntries(NAV.flatMap(g => g.items.map(i => [i.id, i.label])))
 const SUBS = Object.fromEntries(NAV.flatMap(g => g.items.map(i => [i.id, i.sub])))
@@ -720,9 +769,11 @@ const SETTINGS = [
     { v: "roadworks:kurz", l: "Tagesbaustelle" }, { v: "roadworks:kanal", l: "Kanal" }, { v: "roadworks:bruecke", l: "Brücke" }, { v: "roadworks:nacht", l: "Nacht" },
     { v: "radar", l: "Blitzer" }, { v: "laser", l: "Laser" }, { v: "control", l: "Kontrolle" }, { v: "breakdown", l: "Panne" }, { v: "cargo", l: "Ladung" },
     { v: "crash", l: "Unfall" }, { v: "oil", l: "Ölspur" }, { v: "grit", l: "Splitt" }, { v: "potholes", l: "Schlaglöcher" }, { v: "mowing", l: "Mähen" },
-    { v: "siren", l: "Blaulicht" }, { v: "heavy", l: "Schwertransport" }, { v: "ghost", l: "Falschfahrer" },
+    { v: "siren", l: "Blaulicht" }, { v: "heavy", l: "Schwertransport" }, { v: "ghost", l: "Falschfahrer" }, { v: "npc", l: "Begegnung an der Tür" },
     { v: "fail:tire", l: "Eigene Panne: Reifen" }, { v: "fail:radiator", l: "Eigene Panne: Kühler" }, { v: "fail:hose", l: "Eigene Panne: Notlauf" }, { v: "fail:oil", l: "Eigene Panne: Öl" } ] },
   { key: "breakdowns", label: "Pannen unterwegs", hint: "Hin und wieder platzt ein Reifen oder der Kühler gibt auf, auch wenn du nichts falsch gemacht hast. Dann hilft der Pannendienst.", opts: [{ v: true, l: "An", def: true }, { v: false, l: "Aus" }] },
+  { key: "mood", label: "Stimmungsmusik", hint: "Leise Musik passend zur Situation: am Rastplatz, bei Begegnungen, Kontrollen und nach der Lieferung. Bei „An“ pausiert das Radio dafür am Rastplatz und im Gespräch.", opts: [{ v: "all", l: "An", def: true }, { v: "noradio", l: "Nur ohne Radio" }, { v: "off", l: "Aus" }] },
+  { key: "moodVol", label: "Lautstärke Stimmungsmusik", hint: "Damit sie im Hintergrund bleibt.", opts: [{ v: "low", l: "Leise" }, { v: "mid", l: "Mittel", def: true }, { v: "high", l: "Lauter" }] },
   { key: "loadMusic", label: "Lademusik", hint: "Der Truck-Beat auf den Ladebildschirmen: beim Reinladen, zum Hof, auf Fähren und Flügen.", opts: [{ v: true, l: "An", def: true }, { v: false, l: "Aus" }] },
   { key: "radioRegional", label: "Regionalsender", hint: "Fährst du in ein anderes Bundesland, wechselt das Radio mit kurzem Rauschen auf den Sender von dort. Von Hand umschalten geht weiterhin.", opts: [{ v: true, l: "An", def: true }, { v: false, l: "Aus" }] },
   { key: "cb", label: "CB-Funk", hint: "Alle paar Minuten meldet sich ein anderer Fahrer auf dem Kanal. Steht wirklich etwas auf deiner Route, sagt er es dir.", opts: [{ v: true, l: "An", def: true }, { v: false, l: "Aus" }] },
@@ -736,6 +787,9 @@ const SETTINGS = [
   { key: "drugFx", label: "Rausch-Effekt", hint: "Nach Bier oder Joint schwankt die Sicht leicht, das Bild bekommt einen dunklen Rand und eine Färbung. Aus: kein Bildeffekt – Promille und THC zählen bei Kontrollen trotzdem.", opts: [{ v: true, l: "An", def: true }, { v: false, l: "Aus" }] },
   { key: "smartTraffic", label: "Verkehr: Überholen & Rücksicht", hint: "Autos überholen langsame LKW, wenn der Gegenverkehr es zulässt (brechen ab, wenn es eng wird), und bremsen vor Baustellen, Blitzern, Kontrollen und Unfällen. Hauptstraßen werden automatisch Vorfahrtsstraßen.", opts: [{ v: true, l: "An", def: true }, { v: false, l: "Aus" }] },
   { key: "accidents", label: "Unfälle & Polizei", hint: "Nach einem Unfall kommen Polizei (und Rettungsdienst) und nehmen einen Bericht auf.", opts: [{ v: true, l: "An", def: true }, { v: false, l: "Aus" }] },
+  { key: "autoPhotos", label: "Automatik-Fotomodus", hint: "Macht alles allein: Es öffnet nacheinander die Menüs, fotografiert sie, fährt los und nimmt die Fahrt von nah und fern auf, auch mit Kippe und Bier. Dauert etwa 8 Minuten und läuft am besten im eigenen Lkw im Stand los. Fertig liegt alles im Ordner screenshots/trucks_of_earth_github. Strg+Umschalt+C bricht ab.", opts: [{ v: false, l: "Aus", def: true }, { v: true, l: "An" }] },
+  { key: "photoSeries", label: "Fotomodus im Autodrive", hint: "An: Im Autodrive erscheint neben Cinematic der Knopf „Fotos“. Dann entstehen laufend Bilder von der Kabine und deinen Einbauten, von außen und von innen, bis du sie mit Strg+Umschalt+C beendest. Die Bilder landen im Ordner screenshots/trucks_of_earth und brauchen Platz.", opts: [{ v: false, l: "Aus", def: true }, { v: true, l: "An" }] },
+  { key: "devResets", label: "Entwicklermodus: BeamNG-Reset", hint: "Normal sind Reset, Bergen, Neuladen und die Fahrzeug- und Teilemenüs von BeamNG in der Karriere gesperrt, sonst wäre jede Reparatur umsonst. An: Sie funktionieren wieder, und ein Reset repariert den Lkw kostenlos.", opts: [{ v: false, l: "Aus", def: true }, { v: true, l: "An" }] },
   { key: "events", label: "Ereignisse", hint: "Baustellen, mobile Blitzer und Polizeikontrollen auf der Route.", opts: [{ v: true, l: "An", def: true }, { v: false, l: "Aus" }] },
   { key: "hitch", label: "Ankuppeln", hint: "Automatisch: rückwärts heranfahren und anhalten. Selbst: darunter setzen und L.", opts: [{ v: "auto", l: "Automatisch", def: true }, { v: "manual", l: "Selbst" }] },
   { key: "tutorial", label: "Einführung", hint: "Das Handbuch vom ersten Tag noch einmal zeigen: Aufträge, Fahrzeit, Müdigkeit, Kabine, Radio, Pannen, Club, Versicherung und alle Hilfen.", opts: [{ v: "again", l: "Noch einmal zeigen" }] },
@@ -780,6 +834,21 @@ const date0 = t => new Date(t * 1000).toLocaleDateString("de-DE")
 const sel = ref(null), selPlace = ref(null), filter = ref(null), kind = ref("all")
 const confirmReset = ref(false)
 const trucks = ref([]), trucksUsed = ref([]), cars = ref([]), carQuery = ref(""), openModel = ref(null)
+// the showroom of the dealer the truck stands at (career.lua L.showroom); the same styles as there, for the list of dealers
+const showroom = ref(null), showIdx = ref(0), showLoaded = ref(false)
+const showDealer = computed(() => (showroom.value && showroom.value.dealer) || {})
+const showAll = computed(() => toArray(showroom.value && showroom.value.items)), showFilter = ref("all")
+const showItems = computed(() => showAll.value.filter(v => showFilter.value === "all" || (showFilter.value === "used") === !!v.used))
+const showCount = k => k === "all" ? showAll.value.length : showAll.value.filter(v => (k === "used") === !!v.used).length
+const SHOW_FILTER = [{ k: "all", l: "Alle" }, { k: "new", l: "Neu" }, { k: "used", l: "Gebraucht" }]
+watch(showFilter, () => { showIdx.value = 0 })
+const showCur = computed(() => showItems.value[Math.min(showIdx.value, showItems.value.length - 1)] || {})
+function showStep(d) { const n = showItems.value.length; if (n) { showIdx.value = (showIdx.value + d + n) % n; sound("click") } }
+const CAR_STYLES = [{ key: "budget", name: "Gebrauchtwagenmarkt", tag: "Günstig, ehrlich, mit Geschichte", pc: 1, price: "eher günstig" }, { key: "family", name: "Familien- und Alltagsautos", tag: "Gepflegte Gebrauchte für jeden Tag", pc: 2, price: "mittlere Preise" },
+  { key: "premium", name: "Premium & Sportwagen", tag: "Das Besondere, frisch aufbereitet", pc: 3, price: "eher teuer" }, { key: "work", name: "Gelände- und Nutzwagen", tag: "Robust, kräftig, zum Arbeiten", pc: 2, price: "mittlere Preise" }]
+const TRUCK_STYLES = [{ key: "exchange", name: "Nutzfahrzeug-Börse", tag: "Gebrauchte Zugmaschinen zum fairen Preis", pc: 1, price: "eher günstig" }, { key: "center", name: "Truck-Center", tag: "Neue und junge Gebrauchte aus einer Hand", pc: 2, price: "mittel bis teuer" },
+  { key: "long", name: "Fernverkehr-Spezialist", tag: "Starke Zugmaschinen für die lange Strecke", pc: 3, price: "eher teuer" }]
+function dealerStyle(p) { let h = 5381; const s = String(p.id); for (let i = 0; i < s.length; i++) h = (h * 33 + s.charCodeAt(i)) % 2147483647; const l = p.type === "truckdealer" ? TRUCK_STYLES : CAR_STYLES; return l[h % l.length] }
 const dealerTab = ref("new")
 
 const offers = computed(() => toArray(st.value && st.value.offers))
@@ -838,6 +907,9 @@ const hours = h => (h < 1 ? Math.round(h * 60) + " min" : (Math.round(h * 4) / 4
 const places = computed(() => placesCache.value.map(p => ({ ...p, d: haversine(here.value, p) })).sort((a, b) => (a.d || 0) - (b.d || 0)))
 const filteredPlaces = computed(() => places.value.filter(p => !filter.value || p.type === filter.value).slice(0, 80))
 const dealers = computed(() => places.value.filter(p => p.type === "truckdealer" || p.type === "cardealer"))
+const DEALER_FILTER = [{ k: "all", l: "Alle" }, { k: "truckdealer", l: "Lkw" }, { k: "cardealer", l: "Autos" }]
+const dealerCount = k => k === "all" ? dealers.value.length : dealers.value.filter(p => p.type === k).length
+const dealerList = computed(() => dealers.value.filter(p => dealerFilter.value === "all" || p.type === dealerFilter.value).slice().sort((a, b) => (a.d || 0) - (b.d || 0)))
 const filteredCars = computed(() => {
   const q = carQuery.value.trim().toLowerCase()
   return (q ? cars.value.filter(m => (m.brand + " " + m.modelName).toLowerCase().includes(q)) : cars.value).slice(0, 120)
@@ -979,7 +1051,56 @@ function badge(id) {
   return null
 }
 
+// the online shop and the driving school
+const shopView = ref(null), clipIdx = ref(0), clipCanvas = ref(null)
+const shopItems = computed(() => toArray(shopView.value && shopView.value.items)), shopCats = computed(() => toArray(shopView.value && shopView.value.cats)), shopOnWay = computed(() => toArray(shopView.value && shopView.value.onWay))
+// the cart: lines { id, n }; the drawer slides by frames (the game's page does not run CSS transitions reliably)
+window.ffShopCat = c => { shopCat.value = c }
+const cart = ref([]), cartVisible = ref(false), cartX = ref(100), cartMsg = ref(null), shopCat = ref("all"), dealerFilter = ref("all")
+const cartLines = computed(() => cart.value.map(l => ({ ...l, it: shopItems.value.find(i => i.id === l.id) })).filter(l => l.it))
+const cartCount = computed(() => cart.value.reduce((a, l) => a + l.n, 0)), cartTotal = computed(() => cartLines.value.reduce((a, l) => a + l.it.price * l.n, 0))
+const cartHas = id => cart.value.some(l => l.id === id)
+let cartRaf = 0, cartMsgT = 0, cartPoll = 0
+function cartShow(open) {
+  cancelAnimationFrame(cartRaf)
+  if (open) { cartVisible.value = true; sound("open"); clearInterval(cartPoll); cartPoll = setInterval(() => call("uiShop", r => { if (r) shopView.value = r }), 1000) } else clearInterval(cartPoll)
+  const a = cartX.value, b = open ? 0 : 100, t0 = performance.now()
+  ;(function step(now) { const k = Math.min(1, (now - t0) / 260), e = 1 - Math.pow(1 - k, 3); cartX.value = a + (b - a) * e; if (k < 1) cartRaf = requestAnimationFrame(step); else if (!open) cartVisible.value = false })(t0)
+}
+function cartAdd(id) { const l = cart.value.find(x => x.id === id); if (l) l.n++; else cart.value.push({ id, n: 1 }); sound("click"); cartMsg.value = null; if (!cartVisible.value || cartX.value > 0) cartShow(true) }
+function cartStep(id, d) { const l = cart.value.find(x => x.id === id); if (!l) return; l.n += d; if (l.n <= 0) cart.value = cart.value.filter(x => x.id !== id); sound("click") }
+function cartOrder(list) {
+  const queue = list.flatMap(l => Array(l.n).fill(l.id)), n = queue.length
+  if (!n) return
+  const it = shopItems.value.find(i => i.id === queue[0]), name = n === 1 && it ? it.name : n + " Teile", ids = {}
+  queue.forEach(id => { ids[id] = (ids[id] || 0) + 1 })
+  ;(function next() {
+    const id = queue.shift()
+    if (!id) {
+      Object.keys(ids).forEach(i => cartStep(i, -ids[i]))
+      cartMsg.value = { t: "Bestellung hat geklappt", s: name + " kommt in etwa " + Math.ceil(((shopView.value && shopView.value.delivery) || 150) / 60) + " Minuten an deinen Hof." }
+      sound("done"); clearTimeout(cartMsgT); cartMsgT = setTimeout(() => { cartMsg.value = null }, 8000); refresh(); return
+    }
+    call("shopOrder", id, r => { if (r) shopView.value = r; next() })
+  })()
+}
+onUnmounted(() => { clearInterval(cartPoll); clearTimeout(cartMsgT); cancelAnimationFrame(cartRaf) })
+let stopClip = null
+function stillRef(el, c) { if (el) clipStill(el, c) }
+function startClip() { if (stopClip) { stopClip(); stopClip = null } if (tab.value === "school" && clipCanvas.value) stopClip = playClip(clipCanvas.value, clips[clipIdx.value]) }
+watch([tab, clipIdx], async () => { await nextTick(); startClip(); if (tab.value === "shop") call("uiShop", r => { if (r) shopView.value = r }) })
+onUnmounted(() => { if (stopClip) stopClip() })
+let showKey = null
+function loadShowroom() {
+  const n = st.value && st.value.near
+  if (!n || !/^dealer/.test(n.action)) { showroom.value = null; showKey = null; showLoaded.value = false; return }
+  const k = String(n.id) + (usedStale ? ":x" : "")
+  if (k === showKey && showAll.value.length) return
+  showKey = String(n.id); usedStale = false
+  call("uiShowroom", r => { showroom.value = r && r.dealer ? r : null; showIdx.value = 0; showLoaded.value = !!(r && r.dealer) })
+}
 function loadCatalogs() {
+  loadShowroom()
   if (!st.value || !st.value.near) return
   if (st.value.near.action === "dealerTruck" && !trucks.value.length) {
     call("uiCatalog", "truck", r => {
@@ -1024,7 +1145,7 @@ function refresh() {
 }
 function act(fn, ...args) { call(fn, ...args, () => refresh()) }
 let usedStale = false
-function buy(fn, ...args) { if (fn === "buyUsedTruck") usedStale = true; call(fn, ...args, () => { refresh(); close() }) }
+function buy(fn, ...args) { if (fn === "buyUsedTruck" || fn === "buyShowroom") usedStale = true; call(fn, ...args, () => { refresh(); close() }) }
 function accept(o) { call("acceptOffer", o.id, () => { refresh(); close() }) }
 // the customer's request: a counter-offer (career.lua negotiate) – more is a risk, less is always taken
 const NEG = [-0.1, -0.05, 0.05, 0.1, 0.2]
@@ -1291,6 +1412,63 @@ h3 { margin: 0 0 10px; font-size: 11px; letter-spacing: .12em; text-transform: u
 .legal ul { margin: 4px 0 6px 18px; padding: 0; } .legal li { margin: 2px 0; }
 .legal .verdict { font-weight: 700; } .legal .verdict.prison { color: #b3261e; }
 .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
+.onh { display: flex; justify-content: space-between; gap: 16px; margin-bottom: 8px; } .onh h2 { margin: 0; font-size: 22px; color: #fff; } .onh p { margin: 3px 0 0; font-size: 13.5px; color: #aeb7c3; } .onw { display: flex; flex-direction: column; font-size: 12.5px; color: #c9d3de; padding: 8px 12px; background: #16202b; border-radius: 6px; white-space: nowrap; } .onw b { color: #ffb12e; }
+.ons h3 { margin: 16px 0 8px; font-size: 15px; color: #dbe2ea; } .ong { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
+.onc { display: flex; flex-direction: column; padding: 10px; border-radius: 8px; background: #161b22; border: 1px solid #222832; } .onc:hover { border-color: #3a4554; } .onc img { width: 100%; height: 130px; object-fit: cover; border-radius: 5px; background: #232a34; } .onc b { margin-top: 7px; font-size: 14px; color: #fff; } .onc p { margin: 2px 0 8px; font-size: 12px; color: #9aa4b2; flex: 1; } .onf { display: flex; align-items: center; gap: 6px; } .onf .btn { margin-left: auto; } .ont { font-size: 11px; color: #7fe3a4; }
+/* 2026-11-09: one colour for all dealers, plain lists, the cart */
+.sh.sh { --sh1: #1a212b; --sh2: #10151c; --sha: #ffb12e; } .shlights { display: none; } .shtag { color: #9aa4b2; font-style: normal; } .shcard { background: transparent; border: 0; box-shadow: none; border-left: 1px solid rgba(255,255,255,.08); border-radius: 0; }
+.shcar { border: 2px solid transparent; } .shcar.on { border-color: #ffb12e; }
+.dlh { display: flex; justify-content: space-between; align-items: flex-end; gap: 18px; margin-bottom: 14px; } .dlh h2 { margin: 0; font-size: 22px; color: #fff; } .dlh p { margin: 3px 0 0; font-size: 13.5px; color: #9aa4b2; }
+.seg { display: inline-flex; background: #12171e; border-radius: 9px; padding: 3px; flex: none; } .seg a { padding: 7px 14px; border-radius: 7px; font-size: 13px; font-weight: 700; color: #aeb7c3; cursor: pointer; white-space: nowrap; } .seg a:hover { color: #fff; } .seg a.on { background: #ffb12e; color: #16110a; } .seg small { margin-left: 6px; font-size: 11px; opacity: .65; }
+.dlt { background: #12171e; border-radius: 10px; overflow: hidden; } .dlr { display: grid; grid-template-columns: 34px minmax(0, 1fr) 110px 90px 130px; align-items: center; gap: 10px; padding: 11px 16px; cursor: pointer; border-top: 1px solid rgba(255,255,255,.05); } .dlr:first-child { border-top: 0; } .dlr:hover { background: #1a212b; }
+.dli { font-size: 19px; text-align: center; } .dln b { display: block; font-size: 14.5px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .dln small { font-size: 12px; color: #8b95a3; } .dlb { font-size: 11px; font-weight: 800; color: #ffb12e; } .dld { text-align: right; font-size: 13.5px; font-weight: 700; color: #dbe2ea; font-variant-numeric: tabular-nums; } .dlgo { text-align: right; font-size: 13px; font-weight: 700; color: #6f7a88; } .dlr:hover .dlgo { color: #ffb12e; }
+.dlnone { padding: 50px 20px; text-align: center; color: #9aa4b2; background: #12171e; border-radius: 10px; }
+.onseg { margin: 0 0 14px; flex-wrap: wrap; } .cartbtn { display: inline-flex; align-items: center; gap: 8px; flex: none; padding: 9px 15px; border-radius: 9px; background: #1a212b; color: #fff; font-size: 14px; font-weight: 800; cursor: pointer; } .cartbtn:hover { background: #242d39; } .cartbtn b { background: #ffb12e; color: #16110a; font-size: 12px; min-width: 20px; text-align: center; border-radius: 10px; padding: 1px 5px; }
+.onc.incart { border-color: #ffb12e; } .content { position: relative; overflow: hidden; }
+.cartshade { position: absolute; inset: 0; background: rgba(5,8,12,.55); z-index: 30; } .cart { position: absolute; top: 0; right: 0; bottom: 0; width: 380px; max-width: 92%; z-index: 31; display: flex; flex-direction: column; background: #161c24; box-shadow: -18px 0 50px rgba(0,0,0,.5); }
+.cart header { display: flex; justify-content: space-between; align-items: center; padding: 16px 18px; border-bottom: 1px solid rgba(255,255,255,.07); } .cart h3 { margin: 0; font-size: 18px; color: #fff; } .cartx { cursor: pointer; color: #8b95a3; font-size: 15px; padding: 2px 6px; } .cartx:hover { color: #fff; }
+.cartok { display: flex; gap: 11px; align-items: center; margin: 12px 14px 0; padding: 11px 13px; border-radius: 9px; background: rgba(58,211,139,.13); color: #dff8ec; } .cartok > span { flex: none; width: 28px; height: 28px; line-height: 28px; text-align: center; border-radius: 50%; background: #3ad38b; color: #08210f; font-weight: 900; } .cartok b { display: block; font-size: 14.5px; } .cartok small { font-size: 12.5px; color: #b6e7d0; }
+.cartlist { flex: 1; overflow-y: auto; padding: 12px 14px; } .cartnone { padding: 50px 10px; text-align: center; color: #8b95a3; font-size: 14px; } .cartl { display: flex; gap: 11px; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,.06); } .cartl img { width: 58px; height: 58px; border-radius: 7px; flex: none; } .cartm { flex: 1; min-width: 0; } .cartm b { display: block; font-size: 14px; color: #fff; } .cartm > span { font-size: 13px; color: #ffb12e; font-weight: 700; }
+.cartq { display: flex; align-items: center; gap: 7px; margin-top: 6px; font-size: 13px; color: #dbe2ea; } .cartq a { cursor: pointer; } .cartq a:not(.cartone) { width: 24px; height: 24px; line-height: 23px; text-align: center; border-radius: 6px; background: #252e3a; font-weight: 800; } .cartq i { font-style: normal; min-width: 14px; text-align: center; font-weight: 800; } .cartone { margin-left: auto; font-size: 12.5px; font-weight: 700; color: #ffb12e; } .cartone.off { opacity: .4; pointer-events: none; }
+.cartlist h4 { margin: 16px 0 6px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: #8b95a3; } .cartway { display: flex; justify-content: space-between; padding: 5px 0; font-size: 13.5px; color: #dbe2ea; } .cartway b { color: #9aa4b2; font-variant-numeric: tabular-nums; }
+.cart footer { padding: 14px 18px 18px; border-top: 1px solid rgba(255,255,255,.07); } .cart footer > div { display: flex; justify-content: space-between; align-items: baseline; color: #c9d3de; font-size: 14px; } .cart footer b { font-size: 21px; color: #fff; } .cart footer b.neg { color: #ff6b5e; } .cart footer small { display: block; margin-top: 2px; color: #ff9a8d; font-size: 12.5px; } .cartall { display: block; width: 100%; margin-top: 11px; padding: 12px 0; font-size: 15px; text-align: center; }
+.shseg { align-self: flex-start; }
+.sch { display: grid; grid-template-columns: 1fr 230px; gap: 16px; } .schmain canvas { display: block; width: 100%; aspect-ratio: 16 / 9; border-radius: 8px; background: #10151b; } .schmain h2 { margin: 10px 0 2px; font-size: 20px; color: #fff; } .schmain p { margin: 0; font-size: 14px; color: #c9d3de; }
+.schpics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 12px; } .schpics figure { margin: 0; } .schpics img { display: block; width: 100%; border-radius: 6px; } .schpics figcaption { margin-top: 3px; font-size: 12px; color: #aeb7c3; }
+.schlist { display: flex; flex-direction: column; gap: 8px; } .schlist a { display: block; padding: 5px; border-radius: 7px; background: #161b22; border: 2px solid #252c36; cursor: pointer; } .schlist a:hover { border-color: #4d5a6b; } .schlist a.on { border-color: #ffb12e; } .schlist canvas { display: block; width: 100%; border-radius: 4px; } .schlist span { display: block; margin-top: 4px; font-size: 12.5px; font-weight: 700; color: #dbe2ea; }
+/* the showroom: a sales hall with its lights, one vehicle on the podium, the others parked along the front */
+.sh { display: flex; flex-direction: column; gap: 12px; }
+.shsign { display: flex; align-items: flex-end; justify-content: space-between; gap: 18px; padding: 12px 18px; border-radius: 8px; background: linear-gradient(100deg, var(--sh1, #18324f), var(--sh2, #0f1d2e)); box-shadow: inset 0 -3px 0 var(--sha, #4d9bff); }
+.shkind { font-size: 11px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; color: var(--sha, #7fb7f5); }
+.shname { font-size: 24px; font-weight: 800; color: #fff; line-height: 1.15; }
+.shtag { font-size: 13px; color: #c9d3de; font-style: italic; text-align: right; }
+.sh-budget, .shd-budget { --sh1: #4a2f10; --sh2: #22170b; --sha: #f5a623; } .sh-family, .shd-family { --sh1: #17444a; --sh2: #0d2225; --sha: #4fd1c5; }
+.sh-premium, .shd-premium { --sh1: #2e2348; --sh2: #15101f; --sha: #c9a227; } .sh-work, .shd-work { --sh1: #2f4019; --sh2: #161f0c; --sha: #9ccc4a; }
+.sh-exchange, .shd-exchange { --sh1: #44301a; --sh2: #20170d; --sha: #e8a33d; } .sh-center, .shd-center { --sh1: #17365c; --sh2: #0c1b2e; --sha: #4d9bff; } .sh-long, .shd-long { --sh1: #4a1f1f; --sh2: #210f0f; --sha: #ff7a59; }
+.shempty { padding: 60px 20px; text-align: center; color: #9aa4b2; background: #12161c; border-radius: 8px; }
+.shhall { position: relative; display: grid; grid-template-columns: 1fr 300px; gap: 16px; min-height: 340px; padding: 34px 18px 20px; border-radius: 8px; overflow: hidden;
+  background: linear-gradient(180deg, #2c333c 0, #3b444f 46%, #565f6a 58%, #252a31 59%, #15181d 100%); }
+.shhall::before { content: ""; position: absolute; left: 0; right: 0; top: 58%; bottom: 0; background: repeating-linear-gradient(90deg, rgba(255,255,255,.04) 0 1px, transparent 1px 90px), linear-gradient(180deg, rgba(255,255,255,.1), transparent 60%); }
+.shlights { position: absolute; top: 8px; left: 4%; right: 4%; display: flex; justify-content: space-between; } .shlights i { width: 74px; height: 7px; border-radius: 4px; background: #fff7e0; box-shadow: 0 0 22px 8px rgba(255,240,200,.55); }
+.shstage { position: relative; display: flex; align-items: flex-end; justify-content: center; min-height: 280px; }
+.shstage img { position: relative; z-index: 1; max-width: 92%; max-height: 270px; object-fit: contain; border-radius: 8px; box-shadow: 0 16px 28px rgba(0,0,0,.5); -webkit-box-reflect: below 3px linear-gradient(transparent 68%, rgba(255,255,255,.2)); }
+.shpodium { position: absolute; left: 7%; right: 7%; bottom: -4px; height: 34px; border-radius: 50%; background: radial-gradient(ellipse at center, rgba(255,240,200,.38), rgba(255,240,200,0) 70%); }
+.sharrow { all: unset; position: absolute; z-index: 3; top: 44%; width: 40px; height: 56px; text-align: center; font-size: 34px; line-height: 52px; color: #fff; background: rgba(10,14,20,.6); border-radius: 6px; cursor: pointer; } .sharrow:hover { background: var(--sha, #4d9bff); color: #081018; }
+.sharrow.l { left: 10px; } .sharrow.r { right: 326px; }
+.shcard { position: relative; z-index: 2; display: flex; flex-direction: column; padding: 14px 16px; background: rgba(13,17,23,.93); border: 1px solid rgba(255,255,255,.1); border-top: 3px solid var(--sha, #4d9bff); border-radius: 7px; }
+.shbadges { display: flex; gap: 6px; } .shbadges span { font-size: 10.5px; font-weight: 800; padding: 2px 8px; border-radius: 3px; background: #1f6f43; color: #dff7e8; } .shbadges .used { background: #6a4a10; color: #ffe2a8; } .shbadges .eu { background: #1b4f8a; color: #dbeaff; }
+.shbrand { margin-top: 10px; font-size: 12px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--sha, #7fb7f5); } .shcard h3 { margin: 1px 0 2px; font-size: 22px; line-height: 1.15; color: #fff; } .shcfg { font-size: 13px; color: #aeb7c3; }
+.shcard dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; margin: 12px 0 8px; font-size: 13px; } .shcard dt { color: #8b95a3; } .shcard dd { margin: 0; text-align: right; font-weight: 700; color: #eef1f5; }
+.shmarks { font-size: 12px; color: #ffcf7a; } .shprice { margin-top: auto; padding-top: 10px; display: flex; align-items: baseline; justify-content: space-between; } .shprice b { font-size: 25px; color: #7fe3a4; } .shprice b.dim { color: #ff8a80; } .shprice span { font-size: 12px; color: #8b95a3; text-decoration: line-through; }
+.shbuy { margin-top: 10px; padding: 11px 0; justify-content: center; text-align: center; font-size: 15px; }
+.shrow { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px; }
+.shcar { position: relative; flex: 0 0 170px; height: 112px; border-radius: 6px; overflow: hidden; cursor: pointer; background: #12161c; border: 2px solid #252c36; } .shcar:hover { border-color: #4d5a6b; } .shcar.on { border-color: var(--sha, #4d9bff); }
+.shcar img { width: 100%; height: 100%; object-fit: cover; display: block; } .shtag2 { position: absolute; left: 0; right: 0; bottom: 0; padding: 4px 8px; background: linear-gradient(transparent, rgba(0,0,0,.88) 45%); display: flex; flex-direction: column; font-size: 11px; color: #d7dee6; }
+.shtag2 b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #fff; } .shtag2 span { color: #ffd479; font-weight: 800; }
+.shdir-h h2 { margin: 0; font-size: 22px; color: #fff; } .shdir-h p { margin: 3px 0 14px; color: #aeb7c3; font-size: 13.5px; }
+.shdir { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.shd { display: flex; flex-direction: column; gap: 3px; padding: 14px 16px; border-radius: 8px; background: linear-gradient(135deg, var(--sh1, #18324f), var(--sh2, #0f1d2e)); border-left: 4px solid var(--sha, #4d9bff); } .shd b { font-size: 16px; color: #fff; } .shd p { margin: 0; font-size: 12.5px; color: #c9d3de; font-style: italic; }
+.shdk { font-size: 10.5px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--sha, #7fb7f5); } .shdf { margin-top: 8px; display: flex; align-items: center; justify-content: space-between; font-size: 12.5px; color: #aeb7c3; }
 .vcard { background: #161b22; border: 1px solid #222832; border-radius: 6px; overflow: hidden; display: flex; flex-direction: column; }
 .vcard:hover { border-color: #3a4554; }
 .vcard .pic { position: relative; height: 140px; background: linear-gradient(180deg, #1d232c, #12161c); display: flex; align-items: center; justify-content: center; }
@@ -1410,4 +1588,6 @@ aside { background: rgba(9, 12, 17, .55); border-right-color: rgba(255, 255, 255
 .ycard:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(0, 0, 0, .3); }
 .setting { transition: background .2s ease; }
 @media (prefers-reduced-motion: reduce) { .frame, .tabIn, .tbl tbody tr { animation: none; } }
+aside { overflow-y: auto; scrollbar-width: thin; } .nav { padding-top: 7px; padding-bottom: 7px; } .sect { padding-top: 10px !important; padding-bottom: 4px !important; }
+.dlp { font-style: normal; font-weight: 800; } .dlp.p1 { color: #7fdc8a; } .dlp.p2 { color: #ffc964; } .dlp.p3 { color: #ff9a7a; }
 </style>

@@ -25,6 +25,13 @@ end
 -- (the career's look at the road, five times a second: a steering correction, leave-the-lane, the gap to the car ahead)
 local as = { t = -1 }
 local accSet, accLast, brakeOwned, beepT = nil, nil, false, 0
+local brakeNow, accBusy, lkaNow = 0, false, 0
+local ACC_DEC = 0.6           -- (m/s²: how gently the speed comes down to that of the one ahead)
+local function setBusy(b)
+  if b == accBusy then return end
+  accBusy = b
+  obj:queueGameEngineLua('if fernfahrer_career then fernfahrer_career.onAccState(' .. tostring(b) .. ') end')
+end
 function M.assist(steer, beep, gap, lead)
   as.t, as.steer, as.beep, as.gap, as.lead = t, steer, beep, gap, lead
 end
@@ -34,10 +41,11 @@ local function signalling()
 end
 local function releaseBrake()
   if brakeOwned then electrics.values.brakeOverride = nil; brakeOwned = false end
+  brakeNow = 0
 end
 local function acc(dt)
   local cc = extensions.cruiseControl
-  if not cc or not cc.getConfiguration or not electrics.values.cruiseControlActive then accSet, accLast = nil, nil; releaseBrake(); return end
+  if not cc or not cc.getConfiguration or not electrics.values.cruiseControlActive then accSet, accLast = nil, nil; releaseBrake(); setBusy(false); return end
   local c = cc.getConfiguration()
   -- (the driver changed the set speed: that is the one to come back to)
   if accSet == nil or (accLast and math.abs(c.targetSpeed - accLast) > 0.2) then accSet = c.targetSpeed end
@@ -45,19 +53,30 @@ local function acc(dt)
   local fresh = t - as.t < 0.8
   local gap, lead = fresh and as.gap, fresh and as.lead
   local want = accSet
-  local brake = 0
+  local brake, need = 0, 0
+  -- (2026-11-09: it sees 250 m ahead, but only what has to happen is done: the truck stays at its speed until letting off the throttle is just enough to arrive at the normal gap at
+  -- the speed of the one ahead. Same speed ahead: nothing at all until the gap is reached. The brake only when letting off is not enough, eased on.)
   if gap then
+    lead = math.max(0, lead)
     local desired = math.max(14, v * 1.9)
-    if gap < desired then
-      want = math.max(0, math.min(accSet, lead + (gap - desired) * 0.25))
-      if v > lead + 0.5 and gap < desired * 0.85 then brake = math.min(0.6, (desired - gap) / desired * 0.9) end
+    local room = gap - desired
+    if room > 0 then want = math.min(accSet, math.sqrt(lead * lead + 2 * ACC_DEC * room))
+    else want = math.max(0, math.min(accSet, lead + room * 0.2)) end
+    if v > lead + 0.3 then
+      need = (v * v - lead * lead) / (2 * math.max(room + desired * 0.25, 3))
+      if need > 1.0 then brake = math.min(0.7, (need - 0.8) * 0.16) end
     end
   end
+  if brake > brakeNow then brakeNow = math.min(brake, brakeNow + dt * (need > 2 and 1.2 or 0.25))
+  else brakeNow = math.max(brake, brakeNow - dt * 0.6) end
+  if accBusy then if want > math.min(accSet, v) - 0.3 and brakeNow < 0.01 then setBusy(false) end
+  elseif want < math.min(accSet, v) - 0.7 or brakeNow > 0.02 then setBusy(true) end
   -- (too slow for the cruise control: it lets go, the driver takes over)
   if want < cc.minimumSpeed and v < cc.minimumSpeed + 0.5 then
     cc.setEnabled(false)
     releaseBrake()
-    obj:queueGameEngineLua('if fernfahrer_career then fernfahrer_career.onLaneBeep() end')
+    setBusy(false)
+    obj:queueGameEngineLua('if fernfahrer_career then fernfahrer_career.onAccOff() end')
     return
   end
   want = math.max(want, cc.minimumSpeed)
@@ -65,7 +84,8 @@ local function acc(dt)
     cc.setSpeed(want)
     accLast = want
   elseif not accLast then accLast = c.targetSpeed end
-  if brake > 0.02 then electrics.values.brakeOverride = brake; brakeOwned = true else releaseBrake() end
+  if brakeNow > 0.01 then electrics.values.brakeOverride = brakeNow; brakeOwned = true
+  elseif brakeOwned then electrics.values.brakeOverride = nil; brakeOwned = false end
 end
 
 local function engine()
@@ -147,17 +167,20 @@ local function updateGFX(dt)
     if cfg.drift and cfg.drift > 0 then
       off = off + cfg.drift * (math.sin(t * 0.43) * 0.6 + math.sin(t * 0.97 + 1.3) * 0.4)
     end
-    -- the lane keeper: only while the driver is not steering himself and not signalling
-    if t - as.t < 0.6 and as.steer and as.steer ~= 0 and math.abs(s) < 0.15 and (electrics.values.wheelspeed or 0) > 16 and not signalling() then
-      off = off + as.steer
-    end
+    -- the lane keeper: only while the driver is not steering himself and not signalling. (2026-11-09: the correction came five times a second and went straight onto the steering, the wheel
+    -- jumped. Now it is only a value to move towards, slowly, and it fades out the same way.)
+    local lkaWant = 0
+    if t - as.t < 0.6 and as.steer and as.steer ~= 0 and math.abs(s) < 0.15 and (electrics.values.wheelspeed or 0) > 16 and not signalling() then lkaWant = as.steer end
+    local lkaStep = (lkaWant - lkaNow) * math.min(1, dt * 2.5)
+    lkaNow = lkaNow + math.max(-dt * 0.05, math.min(dt * 0.05, lkaStep))
+    off = off + lkaNow
     if off ~= 0 and (electrics.values.wheelspeed or 0) > 2 then
       electrics.values.steering_input = math.max(-1, math.min(1, s + off))
     end
   end
   pcall(acc, dt)
   -- the lane warner
-  if as.beep and t - as.t < 0.6 and (electrics.values.wheelspeed or 0) > 15 and not signalling() and t - beepT > 2.5 then
+  if as.beep and t - as.t < 0.6 and (electrics.values.wheelspeed or 0) > 15 and not signalling() and t - beepT > 6 then
     beepT = t
     obj:queueGameEngineLua('if fernfahrer_career then fernfahrer_career.onLaneBeep() end')
   end
@@ -173,6 +196,8 @@ local function updateGFX(dt)
     if e and cfg.turbo then
       if e.outputTorqueState and e.outputTorqueState > 0.8 then e.outputTorqueState = 0.8 end
     end
+    -- (2026-11-09: the engine overhauled: the idle steady again, the kilometres stay)
+    if e and cfg.smooth and e.wearIdleAVReadErrorRangeCoef and e.wearIdleAVReadErrorRangeCoef > 1.5 then e.wearIdleAVReadErrorRangeCoef = 1.5 end
     if e and failed == 'hose' and e.outputTorqueState and e.outputTorqueState > 0.42 then e.outputTorqueState = 0.42 end
   end
   if cfg.turbo then
@@ -205,6 +230,8 @@ local function onReset()
   failed, tempT = nil, 0
   accSet, accLast = nil, nil
   releaseBrake()
+  setBusy(false)
+  lkaNow = 0
 end
 
 M.updateGFX = updateGFX

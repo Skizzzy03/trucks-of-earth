@@ -53,10 +53,13 @@ M.C = {
   GUARD_LAT_M = 2.0,
   GUARD_DECEL = 3.0,        -- needing to brake harder than this to stay clear of the truck: brakes applied
   ONCOMING_LAT_M = 7,
-  SLOW_SHARE = 0.65,        -- only vehicles slower than this share of the limit are passed (a truck, a tractor)
+  SLOW_SHARE = 0.6,         -- only vehicles slower than this share of the limit are passed
+  SLOW_SHARE_TRUCK = 0.85,  -- ... a lorry a good deal less slow: everybody passes a lorry doing 80 on a road for 100
+  TRUCK_LEN_M = 7,
+  TOWN_KMH = 60,            -- this limit or less: in town, nobody overtakes (only round something standing)
   QUEUE_M = 40,             -- an obstacle that itself follows a slower one this close: a queue, nobody jumps it
   MEET_M = 70,              -- meeting: an oncoming vehicle this close ahead
-  MEET_ROOM = 0.35,         -- ... with this much room between them (plus their half widths): no braking for it
+  MEET_ROOM = 0.12,         -- ... with this much room between them (plus their half widths): no braking for it
   MEET_S = 5,
   JUMP_M = 80,              -- a car this much farther than half a second ago was respawned
   AHEAD_CLEAR_M = 700,      -- no car respawned this close ahead in the player's lane (it starts from standstill)
@@ -75,7 +78,7 @@ M.C = {
   COOLDOWN_S = 40,
   MAX_PASSING = 1,
   ZONE_BEFORE_M = 220,
-  DODGE_M = { 15, 140 },    -- oncoming cars this far ahead of the player's truck move over
+  DODGE_M = { 15, 230 },    -- oncoming cars this far ahead of the player's truck move over
   DODGE_EXTRA = 0.55,       -- m right of their lane centre
   GAP_EVERY_S = { 30, 50 },
   GAP_LEN_S = { 30, 40 },
@@ -130,7 +133,8 @@ local function roadAt(pos, dir)
   local d = flat(ab)
   local fwd, back = n2, n1
   if d and dir and d:dot(dir) < 0 then d = -d; fwd, back = n1, n2 end
-  local link = a.links and a.links[n2]
+  -- (2026-11-09: an edge can be kept on one of its two nodes only - the game's own code asks both, this did not: "which road" was unknown for good)
+  local link = (a.links and a.links[n2]) or (b.links and b.links[n1])
   local half = (link and (link.inRadius or link.outRadius)) or ((a.radius or 3) + (b.radius or 3)) * 0.5
   return centre, d, half, back, fwd, nodes, link
 end
@@ -149,22 +153,24 @@ local function oneWayRoad(pos, dir)
 end
 
 -- (2026-11-09) how far right of the centre line a car is, only where that means something: a two-way road with as many lanes each
--- way, the car along it, no junction near. nil: can't tell here (turning, a junction, the nearest edge is another road).
+-- way, the car along it, no junction near. nil and why: can't tell here (turning, a junction, the nearest edge is another road).
 local function laneDrift(pos, dir)
   local centre, d, half, back, fwd, nodes, link = roadAt(pos, dir)
-  if not centre or not d or type(link) ~= 'table' or link.oneWay or d:dot(dir) < C.DRIFT_ALIGN then return nil end
-  if type(link.lanes) == 'string' then
+  if not centre or not d then return nil, 'no road' end
+  if type(link) == 'table' and link.oneWay then return nil, 'one-way' end
+  if d:dot(dir) < C.DRIFT_ALIGN then return nil, 'turning' end
+  if type(link) == 'table' and type(link.lanes) == 'string' then
     local _, plus = link.lanes:gsub('%+', '')
     local _, minus = link.lanes:gsub('%-', '')
-    if plus ~= minus then return nil end
+    if plus ~= minus then return nil, 'uneven lanes' end
   end
   for _, n in ipairs({ back, fwd }) do
     local degree = 0
     for _ in pairs(nodes[n].links or {}) do degree = degree + 1 end
-    if degree > 2 and nodes[n].pos:distance(pos) <= C.DRIFT_JUNCTION_M then return nil end
+    if degree > 2 and nodes[n].pos:distance(pos) <= C.DRIFT_JUNCTION_M then return nil, 'junction' end
   end
   local lat = (pos - centre):dot(vec3(d.y, -d.x, 0))
-  if lat < -half - 1.5 then return nil end
+  if lat < -half - 1.5 then return nil, 'another road' end
   return lat, half
 end
 
@@ -192,9 +198,12 @@ end
 -- the road ahead: the largest heading change, and the distance to the first real junction (a side road joining)
 local function roadAhead(pos, dir, dist)
   local centre, heading, _, back, fwd, nodes = roadAt(pos, dir)
-  if not centre or not heading then return 0, nil end
+  if not centre or not heading then return 0, nil, false end
   local start, maxBend, junctionAt = heading, 0, nil
+  local top, crest = pos.z, false                 -- (2026-11-09: over a crest nobody sees the oncoming lane)
   walk(nodes, back, fwd, heading, nodes[fwd].pos:distance(pos), dist, function(n, travelled, h, nextNode)
+    local z = nodes[n].pos.z
+    if z > top then top = z elseif top - z > 1.2 and top - pos.z > 1.8 then crest = true end
     local bend = math.deg(math.acos(math.max(-1, math.min(1, h:dot(start)))))
     if bend > maxBend then maxBend = bend end
     for m, link in pairs(nodes[n].links or {}) do
@@ -206,7 +215,7 @@ local function roadAhead(pos, dir, dist)
     end
     return false
   end)
-  return maxBend, junctionAt
+  return maxBend, junctionAt, crest
 end
 
 -- a place on the road dist m behind pos (against dir), in the right lane, facing dir
@@ -313,7 +322,9 @@ local function meeting(id, c, all)
       local rel = o.pos - c.pos
       local along = rel:dot(c.dir)
       local lat = math.abs(rel:dot(right))
-      if along > 6 and along < C.MEET_M and lat < 6 and (not bd or along < bd) then best, bd, blat = oid, along, lat end
+      -- (2026-11-09: the stock AI starts braking long before 70 m when both are fast: looked at as far ahead as they will need a few seconds for. A line of sight along a bend is wider too.)
+      local reach = math.max(C.MEET_M, math.min(280, (c.speed + o.speed) * 7))
+      if along > 6 and along < reach and lat < 6 + along * 0.02 and (not bd or along < bd) then best, bd, blat = oid, along, lat end
     end
   end
   return best, bd, blat
@@ -360,8 +371,11 @@ local function endPass(id, st, c, aborted, obstacleMs)
   st.phase = nil
   st.cool = now() + (aborted and C.COOLDOWN_S * 0.7 or C.COOLDOWN_S)
   st.behindT = 0
-  if c then steerTo(id, c, (st.half or 3.2) * 0.5, math.max(20, c.speed * 2)) end
   send(id, string.format('ai.driveInLane("on") ai.setAggression(%.2f) electrics.set_left_signal(false)', st.aggr))
+  if c then steerTo(id, c, (st.half or 3.2) * 0.5, math.max(20, c.speed * 2)) end
+  -- (2026-11-09: back in as anybody does it: the right indicator for a moment)
+  send(id, 'electrics.set_right_signal(true)')
+  st.blinkOffAt = now() + 2.2
   st.capMs = nil
   -- (aborted: just below the obstacle's speed, no full stop – the following logic then keeps the gap)
   if aborted then capSpeed(id, st, (obstacleMs or 8) * 0.85) else send(id, 'ai.setSpeedMode("legal")') end
@@ -371,6 +385,11 @@ end
 -- gaps ------------------------------------------------------------------------------------------------------------
 
 local function updateGap(t, pv, all, queued)
+  -- (2026-11-09: on a carriageway of its own nobody needs a gap in the other direction: Earth 1.9 fills that one on purpose)
+  if t >= gap.untilT and not next(gap.held) then
+    local pp = all[pv:getID()]
+    if pp and pp.dir and oneWayRoad(pp.pos, pp.dir) then return end
+  end
   if not gap.nextAt then gap.nextAt = t + rnd(C.GAP_EVERY_S[1], C.GAP_EVERY_S[2]) * 0.4 end
   local p = all[pv:getID()]
   if t < gap.untilT and p and p.dir then
@@ -555,6 +574,7 @@ function M.update(ctx, dt)
         end
       end
     end
+    if st.blinkOffAt and t >= st.blinkOffAt then st.blinkOffAt = nil; send(id, 'electrics.set_right_signal(false)') end
     if c and c.dir and c.pos:distance(center) < C.NEAR_M and not gap.held[id] then
       if t - st.aggrAt > 20 and not st.phase then
         st.aggrAt = t
@@ -576,12 +596,14 @@ function M.update(ctx, dt)
       -- direction, so it cannot push a car off the road).
       if not st.phase and not cap and c.speed > 3 then
         local lat, half = laneDrift(c.pos, c.dir)
+        if not lat then M.watch[half or '?'] = (M.watch[half or '?'] or 0) + 1 end
         -- (the log's proof that the watch runs: how many looks, how many could tell, how many found a car on the wrong side)
         local w = M.watch
         w.looks, w.known, w.left = w.looks + 1, w.known + (lat and 1 or 0), w.left + ((lat and lat < C.DRIFT_LAT) and 1 or 0)
         if t - w.at > 60 then
-          dlog('lane watch: %d looks, %d on a plain road, %d left of the centre line', w.looks, w.known, w.left)
-          w.at, w.looks, w.known, w.left = t, 0, 0, 0
+          dlog('lane watch: %d looks, %d on a plain road, %d left of the centre line (not judged: %d turning, %d junction, %d one-way, %d other road)', w.looks, w.known, w.left,
+            w.turning or 0, w.junction or 0, w['one-way'] or 0, (w['another road'] or 0) + (w['no road'] or 0))
+          M.watch = { at = t, looks = 0, known = 0, left = 0 }
         end
         if lat and lat < C.DRIFT_LAT then
           st.driftT = (st.driftT or 0) + stepS
@@ -683,6 +705,9 @@ function M.update(ctx, dt)
         local why
         -- (the look far ahead was for the speed only: overtaking is decided close behind, as before)
         if not o or gapM >= C.LOOK_M then st.behindT, st.stopT = 0, 0; goto next end
+        -- (2026-11-09: the limit of the road the car is on, not of the player's)
+        local _, _, ownLink = lateralOf(c.pos, c.dir)
+        local ownLimit = type(ownLink) == 'table' and tonumber(ownLink.speedLimit) and ownLink.speedLimit * 3.6 or limit
         if oid == playerId then queued = true end
         -- a standing obstacle (the player stopped at the roadside, a breakdown): the stock AI waits behind it for
         -- ever when it does not fit past in its lane (two cars stood a minute behind the player, 2026-11-03) –
@@ -691,13 +716,14 @@ function M.update(ctx, dt)
         local roundStopped = not moving and st.stopT >= (oid == playerId and C.STOP_WAIT_S or C.STOP_WAIT_OTHER_S) and gapM >= 5
         if not moving and not roundStopped then why = string.format('Hindernis steht (%.0f s)', st.stopT)
         elseif cap and not roundStopped then why = 'Zone'   -- (round a standing one even at an accident scene)
-        elseif not limit then why = 'kein Limit bekannt'
-        elseif limit >= 110 then why = 'Autobahn'
+        elseif not ownLimit then why = 'kein Limit bekannt'
+        elseif ownLimit >= 110 then why = 'Autobahn'
+        elseif not roundStopped and ownLimit <= C.TOWN_KMH then why = 'innerorts'
         elseif oneWayRoad(c.pos, c.dir) then why = 'Richtungsfahrbahn'
         elseif not roundStopped and (select(2, lateralOf(c.pos, c.dir)) or 0) < C.PASS_MIN_HALF then why = 'Straße zu schmal'
         elseif st.cool and t < st.cool then why = 'Pause nach Überholen'
-        elseif not roundStopped and o.speed * 3.6 > math.min(limit - C.SLOW_KMH, limit * C.SLOW_SHARE) then
-          why = string.format('Vordermann nicht langsam genug (%.0f von %d)', o.speed * 3.6, limit)
+        elseif not roundStopped and o.speed * 3.6 > math.min(ownLimit - C.SLOW_KMH, ownLimit * (obLen > C.TRUCK_LEN_M and C.SLOW_SHARE_TRUCK or C.SLOW_SHARE)) then
+          why = string.format('Vordermann nicht langsam genug (%.0f von %d)', o.speed * 3.6, ownLimit)
         elseif oid ~= playerId then
           -- a queue: the car ahead follows a slower one itself – wait (only the one behind the slow vehicle passes)
           local qid, qgap = obstacleAhead(oid, o, all)
@@ -716,15 +742,16 @@ function M.update(ctx, dt)
         if not why then
           local olen = lengthOf(oid)
           if oid == playerId and trailerId then olen = olen + lengthOf(trailerId) + 1 end
-          local passMs = roundStopped and C.ROUND_MS or math.min(limit / 3.6 + 2.5, o.speed + C.PASS_EXTRA_KMH / 3.6)
+          local passMs = roundStopped and C.ROUND_MS or math.min(ownLimit / 3.6 + 2.5, o.speed + C.PASS_EXTRA_KMH / 3.6)
           if passMs - o.speed < C.MIN_GAIN_MS then why = 'kein Tempoüberschuss'
           else
             local passDist = gapM + olen + C.MERGE_M + 6
             local tp = passDist / (passMs - o.speed) + 2
             local need = passMs * tp + 30
-            local bend, junctionAt = roadAhead(c.pos, c.dir, need)
+            local bend, junctionAt, crest = roadAhead(c.pos, c.dir, need)
             local block = oncomingBlock(id, c, all, passMs, tp, st.risk)
             if bend > C.MAX_BEND_DEG then why = string.format('Kurve %.0f°', bend); st.behindT = st.wait * 0.7
+            elseif crest and not roundStopped then why = 'Kuppe'; st.behindT = st.wait * 0.7
             -- (a side road matters only where the car is beside the obstacle – not one far ahead on the way)
             elseif junctionAt and junctionAt < gapM + olen + 35 then why = string.format('Einmündung in %.0f m', junctionAt); st.behindT = st.wait * 0.7
             elseif block then why = string.format('Gegenverkehr in %.0f m (Überholweg %.0f m)', block, need)

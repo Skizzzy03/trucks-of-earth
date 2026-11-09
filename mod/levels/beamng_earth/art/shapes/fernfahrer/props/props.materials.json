@@ -1351,5 +1351,115 @@
       {}
     ],
     "castShadows": false
+  },
+  "ff_off_navy": {
+    "name": "ff_off_navy",
+    "mapTo": "ff_off_navy",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.035,
+          0.06,
+          0.13,
+          1
+        ],
+        "roughnessFactor": 0.7,
+        "metallicFactor": 0
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": true
+  },
+  "ff_off_yellow": {
+    "name": "ff_off_yellow",
+    "mapTo": "ff_off_yellow",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.95,
+          0.75,
+          0.05,
+          1
+        ],
+        "roughnessFactor": 0.45,
+        "metallicFactor": 0
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": true
+  },
+  "ff_off_skin": {
+    "name": "ff_off_skin",
+    "mapTo": "ff_off_skin",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.75,
+          0.53,
+          0.42,
+          1
+        ],
+        "roughnessFactor": 0.6,
+        "metallicFactor": 0
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": true
+  },
+  "ff_off_black": {
+    "name": "ff_off_black",
+    "mapTo": "ff_off_black",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.015,
+          0.015,
+          0.018,
+          1
+        ],
+        "roughnessFactor": 0.45,
+        "metallicFactor": 0
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": true
+  },
+  "ff_off_white": {
+    "name": "ff_off_white",
+    "mapTo": "ff_off_white",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.82,
+          0.84,
+          0.86,
+          1
+        ],
+        "roughnessFactor": 0.55,
+        "metallicFactor": 0
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": true
   }
 }

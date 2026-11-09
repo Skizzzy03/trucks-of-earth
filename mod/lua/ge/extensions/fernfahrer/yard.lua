@@ -18,6 +18,7 @@ M.SEARCH_M = 180               -- (the yard's centre at most this far from the h
 M.NEAR_M = 220                 -- (the search runs with the player this near the home: the colliders are there)
 M.BUILD_M = 700                -- (built with the player this near; gone beyond DROP_M)
 M.DROP_M = 2500
+M.ANY_GROUND = { obstacle = 1e6, relief = 1e6 }      -- (2026-11-09: the saved place is built on whatever the rays say now)
 M.OBSTACLE_M = 1.3             -- (a ray hit this far above the ground's median: something stands there)
 M.RELIEF_M = 1.4               -- (the ground inside may rise or fall at most this much)
 -- the lamps' heads (model: tools/build_yard.js) and the truck's place in front of the hall, facing the gate
@@ -180,7 +181,7 @@ local function build(f, z, anchorId, night)
   o.canSave = false
   o:registerObject('ff_yard')
   if scenetree.MissionGroup then pcall(function() scenetree.MissionGroup:addObject(o) end) end
-  Y = { id = o:getID(), lights = {}, ox = f.ox, oy = f.oy, oz = z, ex = f.ex, ey = f.ey, anchorId = anchorId }
+  Y = { id = o:getID(), lights = {}, ox = f.ox, oy = f.oy, oz = z, ex = f.ex, ey = f.ey, anchorId = anchorId, builtAt = os.clock() }
   local d = createObject('TSStatic')
   if d then
     d:setField('shapeName', 0, M.DECO)
@@ -321,6 +322,7 @@ local function hook()
 end
 
 -- the truck's place: in front of the hall, facing the gate (world pos, direction), when the yard stands
+function M.builtAge() return Y and Y.builtAt and (os.clock() - Y.builtAt) or 0 end
 function M.parkSpot()
   if not Y then return nil end
   local x, y = toWorld(Y, M.PARK[1], M.PARK[2])
@@ -461,6 +463,41 @@ end
 
 -- ctx: { save() → S, homeWorld() → vec3, playerPos() → vec3, anchor(), anchorId(), loading() → bool, night() → bool,
 --        found(yard) (first time) }
+-- (2026-11-09) the yard was not there on the way back, with the log saying "built" 700 m before: built from afar on the coarse far ground, and nothing ever looked again.
+-- Now it is looked after while the player is near: an object gone is built again; once the fine ground is in, the slab is set on it.
+function M.watch(S, d, pp)
+  local t = os.clock()
+  if t - (Y.watchT or 0) < 2 then return end
+  Y.watchT = t
+  if not scenetree.findObjectById(Y.id) then
+    log('W', 'fernfahrer', string.format('yard: its building was gone (%.0f m away): built again', d))
+    Y = nil
+    return
+  end
+  local stage = d < 120 and 2 or (d < 280 and 1 or 0)
+  if stage <= (Y.seated or 0) then return end
+  local hs = {}
+  for lx = -M.W - 5, M.W + 5, 6 do
+    for _, ly in ipairs({ -4, M.D + 5 }) do local x, y = toWorld(Y, lx, ly); local h = groundAt(x, y, Y.oz); if h then hs[#hs + 1] = h end end
+  end
+  for ly = 4, M.D, 8 do
+    for _, lx in ipairs({ -M.W - 5, M.W + 5 }) do local x, y = toWorld(Y, lx, ly); local h = groundAt(x, y, Y.oz); if h then hs[#hs + 1] = h end end
+  end
+  if #hs < 8 then return end
+  table.sort(hs)
+  local med = hs[math.floor(#hs / 2) + 1]
+  Y.seated = stage
+  local off = med + 0.2 - Y.oz
+  log('I', 'fernfahrer', string.format('yard: %.0f m away, slab at %.1f, ground around it %.1f, player at %.1f', d, Y.oz, med, pp.z))
+  if math.abs(off) > 0.8 then
+    log('W', 'fernfahrer', string.format('yard: set on the fine ground, %.1f m', off))
+    Y.oz = Y.oz + off
+    Y.driveDirty = true
+    M.place(Y.night)
+    if be and be.reloadCollision then pcall(function() be:reloadCollision() end) end
+  end
+end
+
 function M.update(ctx)
   hook()
   local S = ctx.save()
@@ -483,12 +520,16 @@ function M.update(ctx)
     local x, y = anchor:geodeticToWorld(S.yard.lat, S.yard.lon, 0)
     local d = math.sqrt((x - pp.x) ^ 2 + (y - pp.y) ^ 2)
     if Y and d > M.DROP_M then clear(); M.status = 'far'; return end
+    if Y then pcall(M.watch, S, d, pp) end
     if not Y and d < M.BUILD_M then
       local h = math.rad(S.yard.hdg or 0)
       local ey = vec3(math.sin(h), math.cos(h), 0)
       local f = { ox = x, oy = y, ex = vec3(ey.y, -ey.x, 0), ey = ey }
-      local z = scan(f, pp.z)
-      if z then build(f, z, aid, ctx.night()); M.status = 'built' else M.status = 'waiting for ground' end
+      local z = scan(f, pp.z, M.ANY_GROUND)
+      if z then
+        build(f, z, aid, ctx.night()); M.status = 'built'
+        log('I', 'fernfahrer', string.format('yard: built again %.0f m from the player, slab at %.1f, player at %.1f', d, z, pp.z))
+      else M.status = 'waiting for ground' end
     end
     return
   end

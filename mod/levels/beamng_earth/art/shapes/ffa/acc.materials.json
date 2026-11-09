@@ -1,0 +1,991 @@
+{
+  "ff_acc_green": {
+    "name": "ff_acc_green",
+    "mapTo": "ff_acc_green",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.05,
+          0.42,
+          0.14,
+          1
+        ],
+        "roughnessFactor": 0.8,
+        "metallicFactor": 0
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": true
+  },
+  "ff_acc_red": {
+    "name": "ff_acc_red",
+    "mapTo": "ff_acc_red",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.72,
+          0.05,
+          0.06,
+          1
+        ],
+        "roughnessFactor": 0.75,
+        "metallicFactor": 0
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": true
+  },
+  "ff_acc_yellow": {
+    "name": "ff_acc_yellow",
+    "mapTo": "ff_acc_yellow",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.95,
+          0.72,
+          0.1,
+          1
+        ],
+        "roughnessFactor": 0.75,
+        "metallicFactor": 0
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": true
+  },
+  "ff_acc_white": {
+    "name": "ff_acc_white",
+    "mapTo": "ff_acc_white",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.86,
+          0.86,
+          0.84,
+          1
+        ],
+        "roughnessFactor": 0.7,
+        "metallicFactor": 0
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": true
+  },
+  "ff_acc_black": {
+    "name": "ff_acc_black",
+    "mapTo": "ff_acc_black",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.02,
+          0.02,
+          0.022,
+          1
+        ],
+        "roughnessFactor": 0.5,
+        "metallicFactor": 0
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": true
+  },
+  "ff_acc_grey": {
+    "name": "ff_acc_grey",
+    "mapTo": "ff_acc_grey",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.34,
+          0.36,
+          0.38,
+          1
+        ],
+        "roughnessFactor": 0.45,
+        "metallicFactor": 0
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": true
+  },
+  "ff_acc_brown": {
+    "name": "ff_acc_brown",
+    "mapTo": "ff_acc_brown",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.28,
+          0.15,
+          0.07,
+          1
+        ],
+        "roughnessFactor": 0.8,
+        "metallicFactor": 0
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": true
+  },
+  "ff_acc_tan": {
+    "name": "ff_acc_tan",
+    "mapTo": "ff_acc_tan",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.62,
+          0.42,
+          0.22,
+          1
+        ],
+        "roughnessFactor": 0.85,
+        "metallicFactor": 0
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": true
+  },
+  "ff_acc_blue": {
+    "name": "ff_acc_blue",
+    "mapTo": "ff_acc_blue",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.05,
+          0.16,
+          0.5,
+          1
+        ],
+        "roughnessFactor": 0.7,
+        "metallicFactor": 0
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": true
+  },
+  "ff_acc_orange": {
+    "name": "ff_acc_orange",
+    "mapTo": "ff_acc_orange",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.9,
+          0.36,
+          0.05,
+          1
+        ],
+        "roughnessFactor": 0.6,
+        "metallicFactor": 0
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": true
+  },
+  "ff_acc_gold": {
+    "name": "ff_acc_gold",
+    "mapTo": "ff_acc_gold",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.8,
+          0.6,
+          0.18,
+          1
+        ],
+        "roughnessFactor": 0.3,
+        "metallicFactor": 0.9
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": true
+  },
+  "ff_acc_chrome": {
+    "name": "ff_acc_chrome",
+    "mapTo": "ff_acc_chrome",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.8,
+          0.82,
+          0.84,
+          1
+        ],
+        "roughnessFactor": 0.18,
+        "metallicFactor": 1
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": true
+  },
+  "ff_acc_skin": {
+    "name": "ff_acc_skin",
+    "mapTo": "ff_acc_skin",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.82,
+          0.6,
+          0.48,
+          1
+        ],
+        "roughnessFactor": 0.6,
+        "metallicFactor": 0
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": true
+  },
+  "ff_acc_pink": {
+    "name": "ff_acc_pink",
+    "mapTo": "ff_acc_pink",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.92,
+          0.42,
+          0.56,
+          1
+        ],
+        "roughnessFactor": 0.7,
+        "metallicFactor": 0
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": true
+  },
+  "ff_acc_glass": {
+    "name": "ff_acc_glass",
+    "mapTo": "ff_acc_glass",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.72,
+          0.84,
+          0.9,
+          1
+        ],
+        "roughnessFactor": 0.08,
+        "metallicFactor": 0.4
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": true
+  },
+  "ff_acc_cord": {
+    "name": "ff_acc_cord",
+    "mapTo": "ff_acc_cord",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.06,
+          0.06,
+          0.07,
+          1
+        ],
+        "roughnessFactor": 0.8,
+        "metallicFactor": 0
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": true
+  },
+  "ff_acc_led": {
+    "name": "ff_acc_led",
+    "mapTo": "ff_acc_led",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          1,
+          0.42,
+          0.06,
+          1
+        ],
+        "roughnessFactor": 0.4,
+        "metallicFactor": 0,
+        "emissiveFactor": [
+          6,
+          2.52,
+          0.36
+        ]
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": true
+  },
+  "ff_acc_ledblue": {
+    "name": "ff_acc_ledblue",
+    "mapTo": "ff_acc_ledblue",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.1,
+          0.55,
+          1,
+          1
+        ],
+        "roughnessFactor": 0.4,
+        "metallicFactor": 0,
+        "emissiveFactor": [
+          0.6000000000000001,
+          3.3000000000000003,
+          6
+        ]
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": true
+  },
+  "ff_acc_curtainr": {
+    "name": "ff_acc_curtainr",
+    "mapTo": "ff_acc_curtainr",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.55,
+          0.05,
+          0.07,
+          1
+        ],
+        "roughnessFactor": 0.95,
+        "metallicFactor": 0
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": true
+  },
+  "ff_acc_curtainb": {
+    "name": "ff_acc_curtainb",
+    "mapTo": "ff_acc_curtainb",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.06,
+          0.14,
+          0.42,
+          1
+        ],
+        "roughnessFactor": 0.95,
+        "metallicFactor": 0
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": true
+  },
+  "ff_acc_ledred": {
+    "name": "ff_acc_ledred",
+    "mapTo": "ff_acc_ledred",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          1,
+          0.05,
+          0.05,
+          1
+        ],
+        "roughnessFactor": 0.4,
+        "metallicFactor": 0,
+        "emissiveFactor": [
+          7,
+          0.35000000000000003,
+          0.35000000000000003
+        ]
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": true
+  },
+  "ff_acc_ember": {
+    "name": "ff_acc_ember",
+    "mapTo": "ff_acc_ember",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          1,
+          0.35,
+          0.05,
+          1
+        ],
+        "roughnessFactor": 0.4,
+        "metallicFactor": 0,
+        "emissiveFactor": [
+          7,
+          2.4499999999999997,
+          0.35000000000000003
+        ]
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": true
+  },
+  "ff_acc_leaf": {
+    "name": "ff_acc_leaf",
+    "mapTo": "ff_acc_leaf",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.12,
+          0.4,
+          0.1,
+          1
+        ],
+        "roughnessFactor": 0.8,
+        "metallicFactor": 0
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": true
+  },
+  "ff_acc_redeye": {
+    "name": "ff_acc_redeye",
+    "mapTo": "ff_acc_redeye",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.9,
+          0.22,
+          0.22,
+          1
+        ],
+        "roughnessFactor": 0.4,
+        "metallicFactor": 0
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": true
+  },
+  "ff_acc_glassg": {
+    "name": "ff_acc_glassg",
+    "mapTo": "ff_acc_glassg",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.25,
+          0.6,
+          0.55,
+          1
+        ],
+        "roughnessFactor": 0.1,
+        "metallicFactor": 0.3
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": true
+  },
+  "ff_acc_urine": {
+    "name": "ff_acc_urine",
+    "mapTo": "ff_acc_urine",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.85,
+          0.68,
+          0.1,
+          1
+        ],
+        "roughnessFactor": 0.2,
+        "metallicFactor": 0
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": true
+  },
+  "ff_acc_ash": {
+    "name": "ff_acc_ash",
+    "mapTo": "ff_acc_ash",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.3,
+          0.3,
+          0.3,
+          1
+        ],
+        "roughnessFactor": 0.95,
+        "metallicFactor": 0
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": true
+  },
+  "ff_acc_mold": {
+    "name": "ff_acc_mold",
+    "mapTo": "ff_acc_mold",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.35,
+          0.55,
+          0.25,
+          1
+        ],
+        "roughnessFactor": 1,
+        "metallicFactor": 0
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": true
+  },
+  "ff_acc_foil": {
+    "name": "ff_acc_foil",
+    "mapTo": "ff_acc_foil",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.78,
+          0.8,
+          0.84,
+          1
+        ],
+        "roughnessFactor": 0.3,
+        "metallicFactor": 0.9
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": true
+  },
+  "ff_acc_furpink": {
+    "name": "ff_acc_furpink",
+    "mapTo": "ff_acc_furpink",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.95,
+          0.35,
+          0.6,
+          1
+        ],
+        "roughnessFactor": 1,
+        "metallicFactor": 0
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": true
+  },
+  "ff_acc_lace": {
+    "name": "ff_acc_lace",
+    "mapTo": "ff_acc_lace",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.55,
+          0.03,
+          0.1,
+          1
+        ],
+        "roughnessFactor": 0.7,
+        "metallicFactor": 0
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": true
+  },
+  "ff_acc_duck": {
+    "name": "ff_acc_duck",
+    "mapTo": "ff_acc_duck",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.98,
+          0.78,
+          0.08,
+          1
+        ],
+        "roughnessFactor": 0.35,
+        "metallicFactor": 0
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": true
+  },
+  "ff_acc_alien": {
+    "name": "ff_acc_alien",
+    "mapTo": "ff_acc_alien",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.3,
+          0.72,
+          0.25,
+          1
+        ],
+        "roughnessFactor": 0.5,
+        "metallicFactor": 0
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": true
+  },
+  "ff_acc_pig": {
+    "name": "ff_acc_pig",
+    "mapTo": "ff_acc_pig",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.95,
+          0.6,
+          0.62,
+          1
+        ],
+        "roughnessFactor": 0.5,
+        "metallicFactor": 0
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": true
+  },
+  "ff_acc_card": {
+    "name": "ff_acc_card",
+    "mapTo": "ff_acc_card",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.55,
+          0.4,
+          0.24,
+          1
+        ],
+        "roughnessFactor": 0.9,
+        "metallicFactor": 0
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": true
+  },
+  "ff_acc_cheese": {
+    "name": "ff_acc_cheese",
+    "mapTo": "ff_acc_cheese",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.9,
+          0.6,
+          0.15,
+          1
+        ],
+        "roughnessFactor": 0.7,
+        "metallicFactor": 0
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": true
+  },
+  "ff_acc_salami": {
+    "name": "ff_acc_salami",
+    "mapTo": "ff_acc_salami",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.6,
+          0.1,
+          0.07,
+          1
+        ],
+        "roughnessFactor": 0.7,
+        "metallicFactor": 0
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": true
+  },
+  "ff_acc_stain": {
+    "name": "ff_acc_stain",
+    "mapTo": "ff_acc_stain",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.3,
+          0.2,
+          0.08,
+          1
+        ],
+        "roughnessFactor": 0.9,
+        "metallicFactor": 0
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": true
+  },
+  "ff_acc_wood": {
+    "name": "ff_acc_wood",
+    "mapTo": "ff_acc_wood",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.35,
+          0.2,
+          0.09,
+          1
+        ],
+        "roughnessFactor": 0.7,
+        "metallicFactor": 0
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": true
+  },
+  "ff_acc_silverf": {
+    "name": "ff_acc_silverf",
+    "mapTo": "ff_acc_silverf",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.55,
+          0.7,
+          0.9,
+          1
+        ],
+        "roughnessFactor": 0.2,
+        "metallicFactor": 0.8
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": true
+  },
+  "ff_acc_fringe": {
+    "name": "ff_acc_fringe",
+    "mapTo": "ff_acc_fringe",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.86,
+          0.68,
+          0.2,
+          1
+        ],
+        "roughnessFactor": 0.9,
+        "metallicFactor": 0
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": true
+  },
+  "ff_acc_paper": {
+    "name": "ff_acc_paper",
+    "mapTo": "ff_acc_paper",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.92,
+          0.9,
+          0.84,
+          1
+        ],
+        "roughnessFactor": 0.9,
+        "metallicFactor": 0
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": true
+  },
+  "ff_acc_cactus": {
+    "name": "ff_acc_cactus",
+    "mapTo": "ff_acc_cactus",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.16,
+          0.42,
+          0.2,
+          1
+        ],
+        "roughnessFactor": 0.85,
+        "metallicFactor": 0
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": true
+  },
+  "ff_acc_foto": {
+    "name": "ff_acc_foto",
+    "mapTo": "ff_acc_foto",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorMap": "levels/beamng_earth/art/shapes/ffa/ff_foto_leer.png",
+        "baseColorFactor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "roughnessFactor": 0.55,
+        "metallicFactor": 0
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": false
+  }
+}

@@ -18,9 +18,9 @@ angular.module('beamng.apps')
   var FAT = { 1: '#3ad38b', 2: '#ffd166', 3: '#ff9a3c', 4: '#ff5b4d' }
   var FULL_DRIVE = 16200                       // (4.5 h: a full stint between two breaks)
   var css =
-    // (from its top: the cab app sits right on top of it, whichever face it shows – 2026-11-08)
-    '.fft{font-family:inherit;color:#eef1f5;height:100%;display:flex;flex-direction:column;justify-content:flex-start;position:relative}' +
-    '.fft .c{background:rgba(14,17,22,.9);border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:7px 9px;box-shadow:0 6px 22px rgba(0,0,0,.35)}' +
+    // (2026-11-09: on the same line as the Tempomat, growing upwards; the cab app measures it and stands on it)
+    '.fft{font-family:inherit;color:#eef1f5;height:100%;display:flex;flex-direction:column;justify-content:flex-end;position:relative;pointer-events:none}' +
+    '.fft .c{pointer-events:auto;background:rgba(14,17,22,.9);border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:7px 9px;box-shadow:0 6px 22px rgba(0,0,0,.35)}' +
     '.fft .hd{display:flex;align-items:center;gap:5px;font-size:10px;font-weight:800;letter-spacing:.6px;color:#9aa4b2;text-transform:uppercase;white-space:nowrap}' +
     '.fft .hd .v{background:#ff6b5e;color:#fff;border-radius:4px;padding:0 4px;letter-spacing:0;font-size:9.5px}' +
     '.fft .hd .bk{flex:0 0 auto;min-width:20px;height:20px;box-sizing:border-box;text-align:center;color:#cfd6de;cursor:pointer;border-radius:4px;padding:1px}.fft .hd .bk:hover,.fft .hd .bk.on{background:#2a313b;color:#fff}' +
@@ -131,8 +131,10 @@ angular.module('beamng.apps')
         '</div>' +
       '</div></div>',
     replace: true,
-    link: function (scope) {
+    link: function (scope, el) {
       'use strict'
+      // (the frame is the game's and takes the mouse; here it is much bigger than the card, and the view has to stay turnable through it)
+      for (var hostEl = el[0].parentElement; hostEl && hostEl !== document.body; hostEl = hostEl.parentElement) { hostEl.style.pointerEvents = 'none'; if (hostEl.classList.contains('ui-app-host')) { break } }
       scope.h = { mode: false }
       scope.t = null
       scope.f = null

@@ -29,6 +29,9 @@ M.C = {
   SLOW_M = 70,              -- from here on a slow approach
   STUCK_S = 6,              -- standing this long on the approach: parked where it is
   DRIVE_TIMEOUT_S = 110,    -- then they are put at the scene
+  NO_PROGRESS_S = 12,       -- (2026-11-09) on the way and not a metre nearer for this long: stuck, crashed: it starts again nearer the scene
+  NO_START_S = 22,          -- ... the same for one that never got going
+  MAX_RECOVERS = 2,         -- ... and after that it is put at the scene: it always arrives
   REPORT_S = 8,             -- the police at the scene this long: the report
   LEAVE_S = 18,             -- after the report they leave
   GONE_M = 400,             -- the player this far away: the responders go
@@ -270,11 +273,18 @@ local function sidewaysCmd(uv, up, dest)
 end
 
 -- where a responder starts when the truck has come a way: on the truck's own way back there, not on top of another car
+-- (2026-11-09: and where the game has a road to drive on: Earth's road graph and its solid ground only reach some hundred metres round the
+-- truck. From beyond that the AI had no way to plan: it drove off straight on into whatever stood there.)
+local function hasRoad(p, d)
+  local ok, n1, _, off = pcall(map.findClosestRoad, p)
+  if not ok or not n1 or (off and off > 14) then return false end
+  return M.nodeAlong(p, d, 40) ~= nil
+end
 local function startOnTrail(a, dist)
   if not a.trail then return nil end
-  for _, m in ipairs({ dist, dist + 25, dist * 0.75, dist * 0.5 }) do
+  for _, m in ipairs({ dist, dist * 0.8, dist * 0.6, dist * 0.4, dist * 0.25 }) do
     local p, d = trailPoint(a.trail, m)
-    if p and d then
+    if p and d and hasRoad(p, d) then
       local free = true
       for _, o in pairs(map and map.objects or {}) do
         if o.pos and flatDist(vec3(o.pos), p) < 9 then free = false; break end
@@ -285,10 +295,20 @@ local function startOnTrail(a, dist)
   return nil
 end
 
+-- what a responder is told: a road and a lane to keep, at a speed it can take the bends at (blue lights: somewhat over the limit)
+local function responderCmd(kind, a, target)
+  local start = kind == 'service' and 'controller.setFreeze(0) electrics.set_warn_signal(1) ' or 'controller.setFreeze(0) electrics.set_lightbar_signal(2) '
+  if not target then return start end
+  local limit = (a.limit or 80) / 3.6
+  local vmax = kind == 'service' and math.max(12, math.min(22, limit)) or math.max(14, math.min(27, limit * 1.2))
+  return start .. string.format('ai.setMode("manual") ai.setTarget(%q) ai.setSpeedMode("limit") ai.setSpeed(%.1f) ai.setAggression(%.2f) ai.setAvoidCars("on") ai.driveInLane("on")',
+    target, vmax, kind == 'service' and 0.35 or 0.45)
+end
+
 local function spawnResponder(ctx, kind, scene)
   local a = scene or acc
   -- (the ambulance a little farther back: it comes in behind the patrol car; the breakdown service from farther still)
-  local dist = kind == 'service' and 520 or (kind == 'ambulance' and 320 or 260)
+  local dist = kind == 'service' and 340 or (kind == 'ambulance' and 300 or 240)
   local pos, dir = startOnTrail(a, dist)
   local sNode, target, nextNode, nodes
   if pos then
@@ -323,16 +343,12 @@ local function spawnResponder(ctx, kind, scene)
   local veh = id and getObjectByID(id)
   if not veh then log('W', 'fernfahrer', 'responder ' .. kind .. ': none'); return end
   ctx.protect(id)
-  local cmd = kind == 'service' and 'controller.setFreeze(0) electrics.set_warn_signal(1) ' or 'controller.setFreeze(0) electrics.set_lightbar_signal(2) '
-  if target then
-    local vmax = math.max(16, math.min(36, ((a.limit or 80) / 3.6) * 1.2))
-    cmd = cmd .. string.format('ai.setMode("manual") ai.setTarget(%q) ai.setSpeedMode("limit") ai.setSpeed(%.1f) ai.setAggression(0.55) ai.setAvoidCars("on") ai.driveInLane("on")', target, vmax)
-  end
+  local cmd = responderCmd(kind, a, target)
   veh:queueLuaCommand(cmd)
   local dest, ddir = freeSpot(ctx, a, kind)
   -- (cmd is given again until it moves: an order to a vehicle just spawned or woken up gets lost – it stood where it had
   -- come into the world and was put at the scene after the time-out, 2026-11-08)
-  table.insert(a.units, { a = a, id = id, kind = kind, t0 = now(), arrived = false, driving = target ~= nil, cmd = cmd, kickAt = now() + 0.4, dest = dest, ddir = ddir, from = vec3(pos) })
+  table.insert(a.units, { a = a, id = id, kind = kind, t0 = now(), kickT0 = now(), arrived = false, driving = target ~= nil, cmd = cmd, kickAt = now() + 0.4, dest = dest, ddir = ddir, from = vec3(pos) })
 end
 
 local function park(u, ctx, teleport)
@@ -561,6 +577,8 @@ end
 local function detect(ctx, v, t)
   local id = v:getID()
   if not ctx.busy() then trailAdd(vehPos(v)) end
+  -- (2026-11-09: being chased is no accident to report; the way behind goes on being noted, the chasers come along it)
+  if M.muted then prev.id = nil; return end
   local dmg = ctx.damageOf(id)
   local sp = ctx.speedKmh()
   if prev.id ~= id then
@@ -630,6 +648,28 @@ end
 -- (the HUD's phone hung up: no police)
 function M.dismissCall() if acc and acc.stage == 'ask' then acc = nil end end
 
+-- (2026-11-09) got stuck, crashed, on its roof: it comes back whole on the truck's way, nearer the scene, and drives on from there. The
+-- second time it does not work out it is simply put at the scene: whoever was called arrives.
+local function recoverUnit(u, a, ctx, t, uv, dd, why)
+  u.recovers = (u.recovers or 0) + 1
+  local pos, dir
+  if u.recovers <= C.MAX_RECOVERS then pos, dir = startOnTrail(a, math.max(70, math.min(dd * 0.55, 200))) end
+  if not pos then
+    log('I', 'fernfahrer', string.format('responder %s: %s, %.0f m off: put at the scene', u.kind, why, dd))
+    park(u, ctx, true)
+    return
+  end
+  pcall(function() uv:requestReset(RESET_PHYSICS) end)
+  local rot = quatFromDir(dir, vec3(0, 0, 1))
+  local sp = rawget(_G, 'spawn')
+  if sp and sp.safeTeleport then pcall(sp.safeTeleport, uv, pos + vec3(0, 0, 0.4), rot, true, nil, false)
+  else uv:setPositionRotation(pos.x, pos.y, pos.z + 0.4, rot.x, rot.y, rot.z, rot.w) end
+  local before = (a.trail and trailPoint(a.trail, 18)) or a.pos
+  u.cmd = responderCmd(u.kind, a, M.nodeAlong(before, a.dir or dir, 180) or M.nodeAlong(pos, dir, 150))
+  u.kickT0, u.kickAt, u.p0, u.bestDd, u.bestAt, u.stillT = t, t + 0.4, nil, nil, t, 0
+  log('I', 'fernfahrer', string.format('responder %s: %s, %.0f m off: on its way again from nearer (%d)', u.kind, why, dd, u.recovers))
+end
+
 -- one responder on its way, one frame
 local function driveUnit(u, a, ctx, t, dt, uv)
   local up = vehPos(uv)
@@ -640,13 +680,23 @@ local function driveUnit(u, a, ctx, t, dt, uv)
   -- "on its way" after 0.0 s, the order was lost, it stood there and was put at the scene, in game 2026-11-08)
   if u.cmd then
     local gone = u.p0 and flatDist(up, u.p0) > C.MIN_RUN_M and sp > 1
-    if gone or t - u.t0 > 45 then
-      log('I', 'fernfahrer', string.format('responder %s: %s after %.1f s', u.kind, gone and 'on its way' or 'did not start', t - u.t0))
+    if gone or t - (u.kickT0 or u.t0) > 45 then
+      log('I', 'fernfahrer', string.format('responder %s: %s after %.1f s', u.kind, gone and 'on its way' or 'did not start', t - (u.kickT0 or u.t0)))
       u.cmd = nil
     elseif t >= (u.kickAt or 0) then
       u.kickAt = t + 1.5
       u.p0 = u.p0 or up
       uv:queueLuaCommand(u.cmd)
+    end
+  end
+  -- is it getting anywhere? (not in the last stretch: there it is meant to crawl; a car on its roof at once)
+  if dd >= C.SLOW_M and u.driving then
+    if not u.bestDd or dd < u.bestDd - 4 then u.bestDd, u.bestAt = dd, t end
+    local okU, upv = pcall(function() return uv:getDirectionVectorUp() end)
+    local rolled = okU and upv and upv.z < 0.3
+    if rolled or t - (u.bestAt or t) > (u.cmd and C.NO_START_S or C.NO_PROGRESS_S) then
+      recoverUnit(u, a, ctx, t, uv, dd, rolled and 'on its side' or 'not getting nearer')
+      return
     end
   end
   if dd < C.ARRIVE_M then park(u, ctx, false)

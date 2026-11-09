@@ -5,7 +5,7 @@ angular.module('beamng.apps')
 .directive('fernfahrerAntrieb', [function () {
   var css =
     '.ffa{font-family:inherit;color:#eef1f5}' +
-    '.ffa .c{background:rgba(14,17,22,.86);border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:6px 8px;box-shadow:0 6px 22px rgba(0,0,0,.35)}' +
+    '.ffa .c{pointer-events:auto;background:rgba(14,17,22,.86);border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:6px 8px;box-shadow:0 6px 22px rgba(0,0,0,.35)}' +
     '.ffa .hd{display:flex;align-items:center;gap:6px;font-size:10.5px;font-weight:800;letter-spacing:1px;color:#9aa4b2;text-transform:uppercase}' +
     '.ffa .gear{margin-left:auto;font:800 15px Consolas,monospace;color:#fff;background:#252c36;border-radius:4px;padding:0 7px;letter-spacing:0}' +
     '.ffa .d{display:flex;align-items:center;gap:5px;margin-top:4px;padding:3px 5px;border-radius:4px;background:#1a1f27;cursor:pointer;font-size:10.5px}' +
@@ -19,7 +19,7 @@ angular.module('beamng.apps')
     '.ffa .mut{font-size:11px;color:#8b95a3;margin-top:5px}'
   return {
     template:
-      '<div class="bngApp ffa" ng-show="h.mode" style="width:100%;height:100%;display:flex;flex-direction:column;justify-content:flex-end;background:transparent;box-shadow:none;">' +
+      '<div class="bngApp ffa" ng-show="h.mode" style="width:100%;height:100%;box-sizing:border-box;display:flex;flex-direction:column;justify-content:flex-end;background:transparent;box-shadow:none;pointer-events:none;">' +
       '<style>' + css + '</style>' +
       '<div class="c">' +
         '<div class="hd">Antrieb <span class="gear">{{ gear() }}</span></div>' +
@@ -32,16 +32,15 @@ angular.module('beamng.apps')
     replace: true,
     link: function (scope, el) {
       'use strict'
+      // (the frame is the game's and takes the mouse; here it is much bigger than the card, and the view has to stay turnable through it)
+      for (var hostEl = el[0].parentElement; hostEl && hostEl !== document.body; hostEl = hostEl.parentElement) { hostEl.style.pointerEvents = 'none'; if (hostEl.classList.contains('ui-app-host')) { break } }
       scope.h = { mode: false }
-      // (it stands right on the Tempomat, which is taller with driver assistance fitted in the workshop)
-      var wasAssist
-      function follow() {
-        var a = !!(scope.h.assist && Object.keys(scope.h.assist).length)
-        if (a === wasAssist) { return }
-        wasAssist = a
-        // (2026-11-09: only within its own frame, which has the room – moving the frame from here could put the whole app off the screen)
-        el[0].style.transform = a ? 'translateY(-24px)' : ''
-      }
+      // (2026-11-09: stands right on the app below it, however high that one is at the moment; its own frame is high enough for all there can be, so nothing is cut off)
+      var below = -1, stackT = setInterval(function () {
+        var o = document.querySelector('.fftm .c'), h = o && o.offsetHeight ? o.offsetHeight + 4 : 110
+        if (h !== below) { below = h; el[0].style.paddingBottom = h + 'px' }
+      }, 300)
+      scope.$on('$destroy', function () { clearInterval(stackT) })
       scope.e = {}
       var MODES = { open: 'OFFEN', locked: 'GESPERRT', lsd: 'SPERRDIFF', viscous: 'VISKO', welded: 'VERSCHW.', dualClutch: 'KUPPLUNG', activeLock: 'AKTIV' }
       var NAMES = [
@@ -84,7 +83,7 @@ angular.module('beamng.apps')
         lastKey = key
         scope.$evalAsync(function () { scope.e = { gear: el.gear, parkingbrake: el.parkingbrake, lowbeam: el.lowbeam, highbeam: el.highbeam, hazard_enabled: el.hazard_enabled } })
       })
-      scope.$on('FernfahrerHud', function (ev, data) { scope.$evalAsync(function () { scope.h = data || { mode: false }; rebuild(scope.h.drive); follow() }) })
+      scope.$on('FernfahrerHud', function (ev, data) { scope.$evalAsync(function () { scope.h = data || { mode: false }; rebuild(scope.h.drive) }) })
     }
   }
 }]);

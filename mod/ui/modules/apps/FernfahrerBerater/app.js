@@ -107,7 +107,7 @@ angular.module('beamng.apps')
             '<div class="mk tg" ng-if="m.target" ng-style="{left: m.target.x + \'px\', top: m.target.y + \'px\', transform: mkT()}">Z</div>' +
             '</div>' +
             '<div class="me" ng-style="meStyle()"></div>' +
-            '<div class="loc" ng-if="h.where" title="{{ h.where.state ? h.where.state + \', \' : \'\' }}{{ h.where.country }}"><span class="fl" ng-style="flag(h.where.code)"></span><span class="cn">{{ h.where.country }}</span><span class="st" ng-if="h.where.state || h.where.town">{{ [h.where.state, h.where.town].filter(ok).join(\' · \') }}</span></div>' +
+            '<div class="loc" ng-if="h.where" title="{{ h.where.state ? h.where.state + \', \' : \'\' }}{{ h.where.country }}"><span class="fl" ng-style="flag(h.where.code)"></span><span class="cn">{{ h.where.country }}</span><span class="st" ng-if="h.where.state || h.where.town || h.where.street">{{ [h.where.state, h.where.town, h.where.street].filter(ok).join(\' · \') }}</span></div>' +
             '<div class="legend" ng-if="showLegend"><i style="background:#ff8f1f"></i>Fracht<i style="background:#f5a623"></i>Tank<i style="background:#7ac943"></i>Rast<i style="background:#ff7a45"></i>Werkstatt<i style="background:#3d8bfd"></i>Händler<i style="background:#2fbf71"></i>Kunde</div>' +
             '<div class="mapctl"><a ng-click="zoom(1)">+</a><a ng-click="zoom(-1)">−</a><a ng-click="showLegend = !showLegend">?</a>' +
               '<a ng-click="toggleSound()" title="Navi-Ansagen an/aus" ng-class="{off: !h.navSound}">{{ h.navSound ? \'🔊\' : \'🔇\' }}</a>' +
@@ -173,11 +173,15 @@ angular.module('beamng.apps')
             '<span style="margin-left:auto;font:800 12px Consolas,monospace;color:#fff">{{ h.service.dist !== undefined && h.service.dist !== null ? h.service.dist + \' m\' : (h.service.left !== undefined && h.service.left !== null ? h.service.left + \' s\' : \'\') }}</span></div>' +
           '<div ng-if="h.service.pct !== undefined && h.service.pct !== null" style="height:4px;margin-top:5px;border-radius:2px;background:rgba(255,255,255,.14);overflow:hidden"><i style="display:block;height:100%;background:#ffd666" ng-style="{width: h.service.pct + \'%\'}"></i></div>' +
         '</div>' +
+        '<div class="near" ng-if="h.viewHint">🔭 <b>{{ h.viewHint.name }}</b> <span class="mut">· {{ h.viewHint.km }} {{ h.viewHint.where }}</span> <a ng-if="h.viewHint.canGo" style="cursor:pointer;color:#ffc964;font-weight:800;margin-left:6px" ng-click="lua(\'navToPlace\', h.viewHint.id)">Hinfahren ›</a></div>' +
         '<div class="near" ng-if="h.near">Vor Ort: <b>{{ h.near.name }}</b> <span class="mut">· {{ h.near.typeName }}</span></div>' +
         '<div class="acts">' +
           '<button class="btn pri" ng-click="lua(\'toggleOffice\')">Büro</button>' +
           // (BeamNG.Earth's autodrive along the route, on and off while driving – Strg+Umschalt+A)
           '<button class="btn" ng-class="{go: h.autodrive}" ng-click="lua(\'autodriveToggle\')" title="Autodrive: der LKW fährt die Navi-Route selbst (Strg+Umschalt+A)">🤖 {{ h.autodrive ? \'Autodrive an\' : \'Autodrive\' }}</button>' +
+          '<button class="btn" ng-if="h.autodrive && h.photoSet" ng-class="{go: h.photoRun}" ng-click="lua(\'photoSeriesToggle\')" title="Fotos von der Kabine und deinen Einbauten, bis du sie beendest (Strg+Umschalt+C)">📷 Fotos</button>' +
+          '<button class="btn go" ng-if="h.near && h.near.action===\'discover\'" ng-click="lua(\'viewPhoto\')" title="Ein Foto vom Lkw an diesem Aussichtspunkt">📷 Foto machen</button>' +
+          '<button class="btn" ng-if="h.near && h.near.action===\'discover\'" ng-click="lua(\'photoMode\')" title="Der Fotomodus von BeamNG">Fotomodus</button>' +
           '<button class="btn" ng-if="h.autodrive" ng-class="{go: h.cine}" ng-click="lua(\'cineToggle\')" title="Kamerafahrten von außen, die Anzeigen werden ausgeblendet (Strg+Umschalt+C)">🎬 Cinematic</button>' +
           '<button class="btn go" ng-if="h.near && h.near.action===\'refuel\' && speed() < 3" ng-click="lua(\'refuel\')">Tanken</button>' +
           '<button class="btn go" ng-if="h.near && (h.near.action===\'repair\' || h.near.action===\'home\') && (h.damage||0) > .01" ng-click="lua(\'repair\')">Reparieren{{ h.near.repairCost ? \' \' + money(h.near.repairCost) : \'\' }}</button>' +

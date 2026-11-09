@@ -1,6 +1,4 @@
-<p align="center"><img src="docs/bilder/titel.jpg" alt="Trucks of Earth: ein Sattelzug im Sonnenuntergang auf einer Landstraße"></p>
-
-<h1 align="center">Trucks of Earth</h1>
+<p align="center"><img src="docs/bilder/titel.jpg" alt="Trucks of Earth, die Lkw-Karriere für BeamNG.drive"></p>
 
 <p align="center"><b>Gründe deine eigene Spedition und fahre Aufträge auf echten Straßen.</b><br>
 Eine große Lkw-Karriere für <a href="https://www.beamng.com/">BeamNG.drive</a> auf der realen Welt von BeamNG.Earth: von der ersten Tour im Leih-Lkw bis zum eigenen Fuhrpark. Komplett auf Deutsch.</p>
@@ -13,21 +11,40 @@ Eine große Lkw-Karriere für <a href="https://www.beamng.com/">BeamNG.drive</a>
 
 <p align="center"><a href="../../releases/latest"><b>Herunterladen</b></a> · <a href="docs/INSTALLATION.md">Installation</a> · <a href="docs/SPIELANLEITUNG.md">Spielanleitung</a> · <a href="docs/FAQ.md">Hilfe</a></p>
 
-<p align="center"><sub>Die Fahrschule, die Begegnungen am Rastplatz, die Stimmungsmusik und der Online-Shop kommen mit der nächsten Version.</sub></p>
-
 | | |
 |---|---|
 | **Spielversion** | BeamNG.drive 0.40 |
 | **Pflicht-Mod** | [BeamNG.Earth](https://github.com/TecnaGamer/BeamNG.Earth), getestet mit 1.9.0-beta, nicht im Download enthalten |
+| **Region** | Aktuell nur Europa, der Rest der Welt ist noch nicht dabei |
 | **System** | Windows, Internetverbindung |
 
 ## So sieht es aus
 
+<p align="center"><a href="docs/trailer.mp4"><b>▶ Trailer ansehen</b></a></p>
+
 | | |
 |---|---|
-| ![Die Anzeigen im Führerhaus erklärt](docs/bilder/cockpit_erklaert.jpg) | ![Die Zentrale im Büro](docs/bilder/zentrale.jpg) |
-| ![Die echte Welt von oben](docs/bilder/welt.jpg) | ![Club und Versicherung im Büro](docs/bilder/buero_club_versicherung.jpg) |
-| ![Sattelzug von vorn](docs/bilder/fahrt_front.jpg) | ![Sattelzug von hinten](docs/bilder/fahrt_heck.jpg) |
+| ![Echte Straßen](docs/bilder/strasse_gold.jpg) | ![Fracht liefern](docs/bilder/strasse_land.jpg) |
+| ![Aus der Fahrerkabine](docs/bilder/cockpit.jpg) | ![Die Anzeigen im Führerhaus erklärt](docs/bilder/cockpit_erklaert.jpg) |
+| ![Tag und Nacht](docs/bilder/strasse_abend.jpg) | ![Polizeikontrollen](docs/bilder/polizei.jpg) |
+
+### Deine Firma
+
+| | |
+|---|---|
+| ![Die Zentrale](docs/bilder/zentrale.jpg) | ![Aufträge](docs/bilder/auftraege.jpg) |
+| ![Dein eigener Hof](docs/bilder/hof.jpg) | ![Fahrzeuge kaufen](docs/bilder/haendler.jpg) |
+| ![Werkstatt](docs/bilder/werkstatt.jpg) | ![Club und Versicherung](docs/bilder/club.jpg) |
+
+### Deine Kabine
+
+| | |
+|---|---|
+| ![Deine Kabine](docs/bilder/kabine.jpg) | ![Diskokugel an](docs/bilder/kabine_disko.jpg) |
+| ![Figuren auf dem Armaturenbrett](docs/bilder/kabine_figur.jpg) | ![Teile selbst ausrichten](docs/bilder/kabine_luefter.jpg) |
+| ![Der Online-Shop](docs/bilder/shop.jpg) | ![Underground: Fracht ohne Papiere](docs/bilder/underground.jpg) |
+
+![Die echte Welt von oben](docs/bilder/welt.jpg)
 
 ## Die Fahrschule aus dem Spiel
 
@@ -48,16 +65,18 @@ Diese kurzen Filme findest du im Spiel im Büro unter **Fahrschule**. Sie zeigen
 ## Was dich erwartet
 
 **Dein Alltag als Fahrer**
-- Aufträge zwischen echten Firmen und Orten, mit Lieferfrist und Sternewertung am Ende
+- Aufträge zwischen echten Orten in ganz Europa, mit Lieferfrist und Sternewertung am Ende
 - Auflieger ankuppeln, Ladung sichern, ADR-Gefahrgut, Milchtouren, Fernverkehr mit Fähre, Autozug und Flug
 - Nach dem Flug zu Fuß weiter oder mit dem Mietwagen deiner Wahl
 - Fahrtenschreiber mit echten Lenk- und Ruhezeiten, dazu Müdigkeit, die dir irgendwann die Augen zufallen lässt
 - Kabine mit Kaffee, Energydrink, Bier, Zigaretten und mehr, und mit Folgen bei der nächsten Polizeikontrolle
-- Deutsche Navi-Ansagen, Tempomat, kaufbare Assistenzsysteme, virtuelle Spiegel
+- Deutsche Navi-Ansagen, Tempomat, kaufbare Assistenzsysteme mit Abstandsautomatik und Spurhalter, virtuelle Spiegel
 
 **Eine Straße, die lebt**
 - Baustellen, Blitzer, Laser, Polizeikontrollen mit Gespräch, Pannenautos, Unfälle, Blaulicht, Ölspuren, Schwertransporte, Falschfahrer
 - Verkehr, der überholt und Rücksicht nimmt
+- Underground-Orte auf der Karte mit Fracht ohne Papiere, und wenn sie dich erwischen, eine echte Polizeiverfolgung
+- Aussichtspunkte mit Hinweis unterwegs und Foto auf Knopfdruck
 - Begegnungen am Rastplatz: Es klopft an der Tür, und nicht jeder meint es gut mit dir
 - Polizisten und Fremde mit Mimik, an der du ablesen kannst, wie das Gespräch läuft
 - Leise, eigens komponierte Stimmungsmusik passend zur Situation
@@ -70,13 +89,15 @@ Diese kurzen Filme findest du im Spiel im Büro unter **Fahrschule**. Sie zeigen
 - Club-Mitgliedschaft mit Punkten, dazu Haftpflicht, Teilkasko oder Vollkasko mit Schadenfreiheitsrabatt
 
 **Deine Firma**
-- Lkw kaufen, auch gebraucht und mit versteckten Mängeln
+- Lkw kaufen, auch gebraucht und mit versteckten Mängeln, bei Händlern mit eigener Preisklasse
+- Eigener Hof, Werkstatt für den ganzen Lkw oder Teil für Teil, mit Szene in der Werkhalle
 - Online-Shop mit Lieferung an den Hof: über 50 Teile für die Kabine, dazu Geräte wie Popcornmaschine, Kaffeemaschine und Radio-Display
+- Kabine selbst einrichten: Teile verschieben, drehen, aufhängen, ein eigenes Foto in den Bilderrahmen. Im Leih-Lkw zumindest alles, was hängt
 - Finanzen und Kredite, Dokumente, Statistik mit entdeckten Orten und Fahrerwertung
 
 **Im Führerhaus**
 - Internetradio mit Regionalsender je Bundesland, Favoriten, Spotify-Steuerung, Equalizer und Videoplayer
-- Cinematic-Modus mit Außenkamera-Fahrten während Autodrive
+- Cinematic-Modus mit Außenkamera-Fahrten während Autodrive, dazu eine Fotoserie von Kabine und Fahrt
 
 Ein Handbuch im Spiel erklärt beim ersten Start alles Schritt für Schritt.
 
@@ -107,6 +128,7 @@ Die genaue Anleitung und die empfohlenen Zusatz-Mods mit Links stehen in [docs/I
 
 ## Bekannte Einschränkungen
 
+- **Nur Europa:** Trotz des Namens läuft die Karriere aktuell nur in Europa. Aufträge, Firmen und Orte gibt es noch nicht für den Rest der Welt.
 - **Hof-Upgrades werden in dieser Version noch nicht unterstützt**, auch wenn sie im Spiel angezeigt werden. Das Einstellen von Fahrern setzt ein Hof-Upgrade voraus und ist deshalb ebenfalls betroffen.
 - Der Equalizer wirkt bei Spotify nur über die Quelle LINE.
 - Firmen und Rastplätze sind für Deutschland und die Nachbarländer mitgeliefert. Anderswo gibt es weniger Ziele.

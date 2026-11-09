@@ -9,11 +9,11 @@ local M = {}
 M.DIR = '/levels/beamng_earth/art/shapes/fernfahrer/props/'
 M.RADIUS = 6.5                 -- (inside: the truck's centre this near the ring's centre)
 M.COLOR = { sleep = 'green', refuel = 'orange', repair = 'red', dealerTruck = 'blue', dealerCar = 'blue',
-  ferry = 'violet', fly = 'violet', rental = 'violet', home = 'yellow', freight = 'cyan', tour = 'green' }
+  ferry = 'violet', fly = 'violet', rental = 'violet', underground = 'red', home = 'yellow', freight = 'cyan', tour = 'green' }
 M.HINT = { sleep = 'Rastplatz – schlafen, tanken, einkaufen', refuel = 'Tankstelle – tanken, schlafen', repair = 'Werkstatt – reparieren',
   dealerTruck = 'Händler – Fahrzeuge kaufen', dealerCar = 'Händler – Fahrzeuge kaufen', ferry = 'Hafen – Überfahrt buchen',
   fly = 'Flughafen – Flug buchen', rental = 'Mietwagen-Schalter – Auto auswählen', home = 'Firmenhof – Büro, schlafen, Werkstatt', freight = 'Firma – Fracht übernehmen',
-  tour = 'Anhalten – die Milch wird von selbst umgepumpt' }
+  tour = 'Anhalten – die Milch wird von selbst umgepumpt', underground = 'Hier fragt keiner nach Papieren' }
 
 local ring                     -- { key, pos (vec3), ids = { ring, gem }, place }
 local t = 0

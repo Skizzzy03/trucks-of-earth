@@ -4,8 +4,9 @@
 angular.module('beamng.apps')
 .directive('fernfahrerTempomat', [function () {
   var css =
-    '.fftm{font-family:inherit;color:#eef1f5;height:100%;display:flex;flex-direction:column;justify-content:flex-end}' +
-    '.fftm .c{background:rgba(14,17,22,.9);border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:5px 7px;box-shadow:0 6px 22px rgba(0,0,0,.35)}' +
+    '.fftm{font-family:inherit;color:#eef1f5;height:100%;display:flex;flex-direction:column;justify-content:flex-end;pointer-events:none}' +
+    '.fftm .ab{align-self:center;padding:0 4px;border-radius:3px;background:#d6322b;color:#fff;font-size:8.5px;letter-spacing:.3px;line-height:13px}' +
+    '.fftm .c{pointer-events:auto;background:rgba(14,17,22,.9);border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:5px 7px;box-shadow:0 6px 22px rgba(0,0,0,.35)}' +
     '.fftm .hd{display:flex;align-items:baseline;gap:6px;font-size:10px;font-weight:800;letter-spacing:.6px;color:#9aa4b2;text-transform:uppercase}' +
     '.fftm .v{margin-left:auto;font:800 16px Consolas,monospace;color:#6f7a88;letter-spacing:0;text-transform:none}.fftm .v small{font-size:10px;font-weight:700;margin-left:3px}' +
     '.fftm .v.on{color:#7fe3a4}' +
@@ -20,7 +21,7 @@ angular.module('beamng.apps')
       '<div class="bngApp fftm" ng-show="h.mode" style="background:transparent;box-shadow:none;">' +
       '<style>' + css + '</style>' +
       '<div class="c">' +
-        '<div class="hd">Tempomat<span class="v" ng-class="{on: on}">{{ on ? shown() : "–" }}<small>km/h</small></span></div>' +
+        '<div class="hd">Tempomat<span class="ab" ng-show="h.accBusy" title="Die Abstandsautomatik regelt gerade">Abstand</span><span class="v" ng-class="{on: on}">{{ on ? shown() : "–" }}<small>km/h</small></span></div>' +
         '<div class="r"><a class="" ng-class="{go: !on}" ng-click="set()" title="Aktuelle Geschwindigkeit halten">SET</a>' +
           '<a ng-class="{off: !last}" ng-click="res()" title="Letzte Geschwindigkeit wieder aufnehmen">RES</a>' +
           '<a ng-class="{off: !on}" ng-click="off()" title="Tempomat aus">AUS</a></div>' +
@@ -28,9 +29,19 @@ angular.module('beamng.apps')
         '<div class="as" ng-if="h.assist"><a ng-repeat="k in order" ng-if="h.assist[k]" ng-class="{on: h.assist[k].on}" ng-click="toggle(k)" title="{{ h.assist[k].name }} an/aus">{{ h.assist[k].icon }}</a></div>' +
       '</div></div>',
     replace: true,
-    link: function (scope) {
+    link: function (scope, el) {
       'use strict'
+      // (2026-11-09: red and blinking while the distance control holds the truck back. Set by hand: CSS animations stand still in the game's browser)
+      var blink = false, blinkT = setInterval(function () {
+        blink = !blink
+        var c = el[0].querySelector('.ab'), card = el[0].querySelector('.c')
+        if (c) { c.style.opacity = blink ? '1' : '.25' }
+        if (card) { card.style.borderColor = (scope.h && scope.h.accBusy && blink) ? '#ff4a3d' : '' }
+      }, 380)
+      scope.$on('$destroy', function () { clearInterval(blinkT) })
       // (the frame in the layout has room for the row of driver assistance; the content stands at its bottom)
+      // (the frame is the game's and takes the mouse; here it is much bigger than the card, and the view has to stay turnable through it)
+      for (var hostEl = el[0].parentElement; hostEl && hostEl !== document.body; hostEl = hostEl.parentElement) { hostEl.style.pointerEvents = 'none'; if (hostEl.classList.contains('ui-app-host')) { break } }
       scope.h = { mode: false }
       scope.on = false
       scope.last = null

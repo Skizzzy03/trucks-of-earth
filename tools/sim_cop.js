@@ -8,6 +8,7 @@ const a = src.indexOf('L.COP = {'), b = src.indexOf('-- (2026-11-08) ADR papers'
 if (a < 0 || b < 0) throw new Error('block not found')
 const block = src.slice(a, b)
 const code = `
+vices = { installCam = function() end, setLook = function() end }
 local L, M, R, S = {}, {}, {}, {}
 local fines, trig = {}, 0
 local function round(x, s) s = s or 1; return math.floor(x / s + 0.5) * s end

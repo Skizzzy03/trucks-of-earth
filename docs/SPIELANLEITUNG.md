@@ -122,3 +122,13 @@ Alle 7 Tage ohne Schaden steigt die Schadenfreiheitsklasse und der Beitrag sinkt
 ## Einstellungen
 
 Im Büro unter **Einstellungen** lässt sich fast alles an- und abschalten: Verkehrsmenge, Ereignisse, Pannen, Unfälle, Lkw-Tempo, Wetter, Tag und Nacht, Lademusik, Regionalsender, Navi-Ansagen, Rausch-Effekt und mehr. Bei schwachem Rechner hilft **Leistung → Maximale FPS**.
+
+## Neu in 1.0.2
+
+**Underground.** Rote Orte auf der Karte, zum Beispiel ein dunkles Hafengebiet oder ein Waldlager. Dort gibt es Fracht ohne Papiere: sehr gut bezahlt, aber heiß. Wirst du erwischt, kommt die Polizei. Bleib in Bewegung, bis keine Streife mehr hinter dir ist. Stehst du neben einem Streifenwagen still, ist es vorbei.
+
+**Kabine einrichten.** Am Hof oder in der Werkstatt. Teile bestellst du im Online-Shop im Büro. Im Leih-Lkw kannst du nur aufhängen, was hängt.
+
+**Reparieren.** „Komplett reparieren“ macht alles außer dem Kilometerstand und ist teuer. Darunter bekommst du die Teile einzeln.
+
+**Fotos.** In der Nähe von Aussichtspunkten bekommst du einen Hinweis. Vor Ort gibt es „Foto machen“. Die Fotoserie im Autodrive schaltest du in den Einstellungen ein, Strg+Umschalt+C beendet sie.

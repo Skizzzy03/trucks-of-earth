@@ -5,18 +5,19 @@ angular.module('beamng.apps')
 .directive('fernfahrerKabine', [function () {
   var css =
     '.ffk{font-family:inherit;color:#eef1f5}' +
-    '.ffk .c{background:rgba(14,17,22,.86);border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:5px 7px;box-shadow:0 6px 22px rgba(0,0,0,.35)}' +
+    '.ffk .c{pointer-events:auto;background:rgba(14,17,22,.86);border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:5px 7px;box-shadow:0 6px 22px rgba(0,0,0,.35)}' +
     '.ffk .hd{display:flex;align-items:center;gap:6px;font-size:10.5px;font-weight:800;letter-spacing:1px;color:#9aa4b2;text-transform:uppercase}' +
     '.ffk .hd .v{margin-left:auto;letter-spacing:0;text-transform:none;font:800 11px Consolas,monospace;color:#cfd6de}' +
     '.ffk .hd .v.warn{color:#ffb12e}.ffk .hd .v.bad{color:#ff6b5e}' +
-    '.ffk .b{display:flex;gap:4px;margin-top:4px}' +
-    '.ffk .b a{flex:1;min-width:0;text-align:center;padding:3px 0;border-radius:4px;background:#1a1f27;cursor:pointer;font-size:9px;font-weight:700;color:#cfd6de;line-height:1.15;white-space:nowrap}' +
+    '.ffk .b{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}' +
+    '.ffk .b a{flex:1 1 30px;min-width:30px;text-align:center;padding:3px 0;border-radius:4px;background:#1a1f27;cursor:pointer;font-size:9px;font-weight:700;color:#cfd6de;line-height:1.15;white-space:nowrap}' +
     '.ffk .b a i{display:block;font-style:normal;font-size:14px}' +
     '.ffk .b a b{font:800 10px Consolas,monospace;color:#9aa4b2;margin-left:2px}' +
+    '.ffk .g a{flex:1 1 56px}' +
     '.ffk .b a:hover{background:#232a34}.ffk .b a.on{background:#3a2a0c;color:#ffb12e}.ffk .b a.off{opacity:.45;cursor:default}'
   return {
     template:
-      '<div class="bngApp ffk" ng-show="h.mode" style="width:100%;height:100%;display:flex;flex-direction:column;justify-content:flex-end;background:transparent;box-shadow:none;">' +
+      '<div class="bngApp ffk" ng-show="h.mode" style="width:100%;height:100%;box-sizing:border-box;display:flex;flex-direction:column;justify-content:flex-end;background:transparent;box-shadow:none;pointer-events:none;">' +
       '<style>' + css + '</style>' +
       '<div class="c">' +
         '<div class="hd">Kabine <span class="v" ng-class="bacClass()" title="Blutalkohol">{{ bacText() }}</span>' +
@@ -28,12 +29,21 @@ angular.module('beamng.apps')
           '<a ng-click="go(\'coffee\')" ng-class="{on: v.busy === \'coffee\', off: (v.busy && v.busy !== \'coffee\') || !n(\'coffee\')}" title="Kaffee to go – macht wach (Müdigkeit −20 %). Nachschub an der Tankstelle"><i>☕ <b>{{ n(\'coffee\') }}</b></i>Kaffee</a>' +
           '<a ng-click="go(\'energy\')" ng-class="{on: v.busy === \'energy\', off: (v.busy && v.busy !== \'energy\') || !n(\'energy\')}" title="Energydrink – kurz wach (Müdigkeit −12 %). Nachschub an der Tankstelle"><i>🥤 <b>{{ n(\'energy\') }}</b></i>Energy</a>' +
         '</div>' +
+        '<div class="b g" ng-if="h.gadgets && h.gadgets.length"><a ng-repeat="g in h.gadgets track by g.id" ng-click="gadget(g.id)" ng-class="{on: g.on, off: g.wait}" title="{{ g.label }}"><i>{{ g.icon }}</i>{{ g.wait ? g.wait + \' s\' : g.label }}</a></div>' +
       '</div></div>',
     replace: true,
-    link: function (scope) {
+    link: function (scope, el) {
       'use strict'
+      // (the frame is the game's and takes the mouse; here it is much bigger than the card, and the view has to stay turnable through it)
+      for (var hostEl = el[0].parentElement; hostEl && hostEl !== document.body; hostEl = hostEl.parentElement) { hostEl.style.pointerEvents = 'none'; if (hostEl.classList.contains('ui-app-host')) { break } }
       scope.h = { mode: false }
       scope.v = {}
+      // (2026-11-09: stands right on the app below it, however high that one is at the moment; its own frame is high enough for all there can be, so nothing is cut off)
+      var below = -1, stackT = setInterval(function () {
+        var o = document.querySelector('.fft .c'), h = o && o.offsetHeight ? o.offsetHeight + 4 : 230
+        if (h !== below) { below = h; el[0].style.paddingBottom = h + 'px' }
+      }, 300)
+      scope.$on('$destroy', function () { clearInterval(stackT) })
       var de = function (x, d) { return x.toFixed(d).replace('.', ',') }
       scope.bacText = function () { var b = scope.v.bac || 0; return de(b, 2) + ' ‰' + (scope.v.rising ? ' ↑' : '') }
       scope.bacClass = function () { var b = scope.v.bac || 0; return b >= 0.5 ? 'bad' : (b >= 0.1 ? 'warn' : '') }
@@ -45,6 +55,7 @@ angular.module('beamng.apps')
         unlock()
         bngApi.engineLua('if fernfahrer_career then fernfahrer_career.vice(' + JSON.stringify(kind) + ') end')
       }
+      scope.gadget = function (id) { bngApi.engineLua('if fernfahrer_career then fernfahrer_career.useGadget(' + JSON.stringify(id) + ') end') }
       scope.$on('FernfahrerHud', function (ev, data) {
         scope.$evalAsync(function () { scope.h = data || { mode: false }; scope.v = (data && data.vices) || {} })
       })
@@ -110,7 +121,7 @@ angular.module('beamng.apps')
           f.frequency.setValueAtTime(5200, ac.currentTime + 0.02); f.frequency.linearRampToValueAtTime(3600, ac.currentTime + 0.45)
         },
         // the lane warner (2026-11-08)
-        lane: function () { tone('square', 1250, 1250, 0.09, 0.05); tone('square', 1250, 1250, 0.09, 0.05, 0.16) },
+        lane: function () { tone('sine', 660, 620, 0.17, 0.02); tone('sine', 520, 490, 0.2, 0.017, 0.2) },
         // the CB radio's squelch: a burst of static, then a click (2026-11-08)
         cb: function () { hiss('bandpass', 2600, 0.8, [[0.02, 0.1], [0.3, 0.07], [0.5, 0.0001]]); tone('square', 900, 700, 0.03, 0.03, 0.5) },
         gulp: function () { tone('sine', 190, 90, 0.11, 0.35); tone('sine', 170, 80, 0.12, 0.3, 0.42) },
