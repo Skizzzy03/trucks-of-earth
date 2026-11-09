@@ -1,25 +1,49 @@
-# Trucks of Earth
+<p align="center"><img src="docs/bilder/titel.jpg" alt="Trucks of Earth: ein Sattelzug im Sonnenuntergang auf einer Landstraße"></p>
 
-![Ein Sattelzug im Sonnenuntergang auf einer Landstraße](docs/bilder/fahrt_sonnenuntergang.jpg)
+<h1 align="center">Trucks of Earth</h1>
 
-**Gründe deine eigene Spedition und fahre Aufträge auf echten Straßen.** Eine große Lkw-Karriere für [BeamNG.drive](https://www.beamng.com/) auf der realen Welt von BeamNG.Earth: von der ersten Tour im Leih-Lkw bis zum eigenen Fuhrpark.
+<p align="center"><b>Gründe deine eigene Spedition und fahre Aufträge auf echten Straßen.</b><br>
+Eine große Lkw-Karriere für <a href="https://www.beamng.com/">BeamNG.drive</a> auf der realen Welt von BeamNG.Earth: von der ersten Tour im Leih-Lkw bis zum eigenen Fuhrpark. Komplett auf Deutsch.</p>
 
-Die Mod ist komplett auf Deutsch.
+<p align="center">
+<a href="../../releases/latest"><img alt="Neueste Version" src="https://img.shields.io/github/v/release/Skizzzy03/trucks-of-earth?label=Version&color=ffb12e"></a>
+<img alt="Lizenz MIT" src="https://img.shields.io/github/license/Skizzzy03/trucks-of-earth?label=Lizenz&color=3ad38b">
+<img alt="BeamNG.drive 0.40" src="https://img.shields.io/badge/BeamNG.drive-0.40-4d9bff">
+</p>
+
+<p align="center"><a href="../../releases/latest"><b>Herunterladen</b></a> · <a href="docs/INSTALLATION.md">Installation</a> · <a href="docs/SPIELANLEITUNG.md">Spielanleitung</a> · <a href="docs/FAQ.md">Hilfe</a></p>
+
+<p align="center"><sub>Die Fahrschule, die Begegnungen am Rastplatz, die Stimmungsmusik und der Online-Shop kommen mit der nächsten Version.</sub></p>
 
 | | |
 |---|---|
 | **Spielversion** | BeamNG.drive 0.40 |
-| **Pflicht-Mod** | [BeamNG.Earth](https://github.com/TecnaGamer/BeamNG.Earth) ab Version 1.8, nicht im Download enthalten |
+| **Pflicht-Mod** | [BeamNG.Earth](https://github.com/TecnaGamer/BeamNG.Earth), getestet mit 1.9.0-beta, nicht im Download enthalten |
 | **System** | Windows, Internetverbindung |
-| **Download** | [Neueste Version](../../releases/latest) |
 
-## Bilder
+## So sieht es aus
 
 | | |
 |---|---|
-| ![Blick aus dem Führerhaus mit HUD](docs/bilder/cockpit_hud.jpg) | ![Frachtbörse im Büro](docs/bilder/buero_auftraege.jpg) |
-| ![Club und Versicherung im Büro](docs/bilder/buero_club_versicherung.jpg) | ![Sattelzug von vorn](docs/bilder/fahrt_front.jpg) |
-| ![Sattelzug von hinten](docs/bilder/fahrt_heck.jpg) | ![Sattelzug von oben auf der Landstraße](docs/bilder/fahrt_von_oben.jpg) |
+| ![Die Anzeigen im Führerhaus erklärt](docs/bilder/cockpit_erklaert.jpg) | ![Die Zentrale im Büro](docs/bilder/zentrale.jpg) |
+| ![Die echte Welt von oben](docs/bilder/welt.jpg) | ![Club und Versicherung im Büro](docs/bilder/buero_club_versicherung.jpg) |
+| ![Sattelzug von vorn](docs/bilder/fahrt_front.jpg) | ![Sattelzug von hinten](docs/bilder/fahrt_heck.jpg) |
+
+## Die Fahrschule aus dem Spiel
+
+Diese kurzen Filme findest du im Spiel im Büro unter **Fahrschule**. Sie zeigen in wenigen Sekunden, worauf es beim Lkw-Fahren ankommt.
+
+| Bergab fahren | Lenkzeit und Pause | Auflieger ankuppeln |
+|---|---|---|
+| ![Heiße Bremsen bergab](docs/bilder/film_bremsen.gif) | ![Lenkzeit und Pause](docs/bilder/film_lenkzeit.gif) | ![Auflieger ankuppeln](docs/bilder/film_kuppeln.gif) |
+| Nur auf der Bremse wird es heiß, bis ein Reifen platzt. Runterschalten hilft. | Nach 4:30 Stunden sind 45 Minuten Pause Pflicht. | Rückwärts unter den Auflieger setzen, anhalten, und es macht Klick. |
+
+| Abstand halten | Panne | Rechtzeitig tanken |
+|---|---|---|
+| ![Abstand halten](docs/bilder/film_abstand.gif) | ![Pannendienst rufen](docs/bilder/film_panne.gif) | ![Rechtzeitig tanken](docs/bilder/film_tanken.gif) |
+| Ein voller Lkw braucht einen sehr langen Bremsweg. | Sicher anhalten und anrufen, der Pannendienst kommt wirklich angefahren. | Tankstellen stehen auf der Karte, auch die von BeamNG.Earth. |
+
+![Die Regeln am Steuer: Lenkzeit, Pause, Tagesruhe und Wochenruhe](docs/bilder/regeln.jpg)
 
 ## Was dich erwartet
 
@@ -34,6 +58,9 @@ Die Mod ist komplett auf Deutsch.
 **Eine Straße, die lebt**
 - Baustellen, Blitzer, Laser, Polizeikontrollen mit Gespräch, Pannenautos, Unfälle, Blaulicht, Ölspuren, Schwertransporte, Falschfahrer
 - Verkehr, der überholt und Rücksicht nimmt
+- Begegnungen am Rastplatz: Es klopft an der Tür, und nicht jeder meint es gut mit dir
+- Polizisten und Fremde mit Mimik, an der du ablesen kannst, wie das Gespräch läuft
+- Leise, eigens komponierte Stimmungsmusik passend zur Situation
 - Echtes Wetter, Tag und Nacht, CB-Funk
 
 **Wenn etwas schiefgeht**
@@ -44,6 +71,7 @@ Die Mod ist komplett auf Deutsch.
 
 **Deine Firma**
 - Lkw kaufen, auch gebraucht und mit versteckten Mängeln
+- Online-Shop mit Lieferung an den Hof: über 50 Teile für die Kabine, dazu Geräte wie Popcornmaschine, Kaffeemaschine und Radio-Display
 - Finanzen und Kredite, Dokumente, Statistik mit entdeckten Orten und Fahrerwertung
 
 **Im Führerhaus**
@@ -68,6 +96,14 @@ Die genaue Anleitung und die empfohlenen Zusatz-Mods mit Links stehen in [docs/I
 - [Spielanleitung](docs/SPIELANLEITUNG.md)
 - [Häufige Fragen und Fehlerhilfe](docs/FAQ.md)
 - [Änderungen](CHANGELOG.md)
+
+## Gut zu wissen
+
+- **Kostenlos und offen:** MIT-Lizenz, den kompletten Code der Mod kannst du im Ordner [mod](mod) lesen.
+- **Keine Anmeldung, keine Werbung.** Deine Spielstände liegen nur auf deinem PC.
+- **Internet** braucht die Mod nur für BeamNG.Earth und für Radiosender oder Videos, die du selbst startest. An uns werden keine Daten geschickt.
+- **Sauber wieder weg:** Es ist eine normale BeamNG-Zip. Zum Entfernen löschst du einfach die Datei.
+- **Radio-Zusatzprogramm:** freiwillig, sein Quellcode liegt in [radio-helper](radio-helper).
 
 ## Bekannte Einschränkungen
 
