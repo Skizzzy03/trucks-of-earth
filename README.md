@@ -20,7 +20,7 @@ Eine große Lkw-Karriere für <a href="https://www.beamng.com/">BeamNG.drive</a>
 
 ## So sieht es aus
 
-<p align="center"><a href="docs/trailer.mp4"><b>▶ Trailer ansehen</b></a></p>
+<p align="center"><a href="../../releases/latest/download/Trucks_of_Earth_Trailer_1080p.mp4"><img src="docs/bilder/trailer_vorschau.gif" alt="Ausschnitt aus dem Trailer"></a><br><a href="../../releases/latest/download/Trucks_of_Earth_Trailer_1080p.mp4"><b>▶ Ganzen Trailer herunterladen</b></a> (MP4, 76 MB)</p>
 
 | | |
 |---|---|
