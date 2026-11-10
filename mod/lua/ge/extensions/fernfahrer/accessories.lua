@@ -144,7 +144,8 @@ function M.tick()
   end
   return got
 end
-function M.order(id) local it = BY[id]; if it then st.orders[#st.orders + 1] = { id = id, at = os.time() + M.DELIVERY_S } end; return it end
+-- (2026-11-10: 1:30 to 2:00 minutes, not 2:30)
+function M.order(id) local it = BY[id]; if it then st.orders[#st.orders + 1] = { id = id, at = os.time() + 90 + math.random(0, 30) } end; return it end
 
 -- views -------------------------------------------------------------------------------------------------------------
 -- (2026-11-09: in the loaner only what can simply be hung up; it goes back to the hirer as it came)
@@ -265,6 +266,7 @@ local function clear()
   built, builtVeh, builtSig, swing = {}, nil, nil, {}
   M.frame = nil
   discoOff()
+  if M.popLight then pcall(function() M.popLight:delete() end); M.popLight = nil end
 end
 M.clear = clear
 
@@ -372,6 +374,8 @@ local function buildFrame(veh, camNode)
   fr.off = { f = shift:dot(F0), r = shift:dot(R0), u = shift:dot(U0) }
   fr.cam.f, fr.cam.r, fr.cam.u = fr.cam.f - fr.off.f, fr.cam.r - fr.off.r, fr.cam.u - fr.off.u
   M.camRest = fr.cam
+  -- (2026-11-10) the vehicle's middle line (x = 0 at rest) against the same point: the passenger's seat is the driver's camera node mirrored over it
+  fr.midR = A0.x - fr.off.r
   -- (where the roof and the middle of this cab are, against the same point)
   local minR, maxR, topU = 1e9, -1e9, -1e9
   for _, e in ipairs(list) do
@@ -412,11 +416,15 @@ local function place(o, p, dir, up)
   o:setPosRot(p.x, p.y, p.z, q.x, q.y, q.z, q.w)
 end
 
+-- (2026-11-10) the passenger (fernfahrer/crew.lua) is held to the cab like everything in it - "sie springt die ganze Zeit hin und her": set apart from it, a
+-- frame late and from the vehicle's position, she jumped about. M.rider: her figure; with it the cab's frame is worked out even without any accessories.
+M.rider = nil
 function M.render(veh, truck, dt)
   gadgetTick()
   if not veh or not truck or not truck.acc or next(truck.acc) == nil then
     if next(built) then clear() end
-    return
+    if not (veh and M.rider) then return end
+    truck = { model = (truck and truck.model) or 'truck', acc = {} }
   end
   local id = veh:getID()
   local sig = signature(truck)
@@ -433,6 +441,7 @@ function M.render(veh, truck, dt)
         if it.pic then b.pic = make(it.pic); if b.pic then b.objs[#b.objs + 1] = b.pic end end
         if M.hung(it) then b.thread = make('faden'); if b.thread then b.objs[#b.objs + 1] = b.thread end end
         if iid == 'popcorn' then b.kern = {}; for i = 1, 6 do local k = make('popcorn_k'); if k then b.kern[i] = k; b.objs[#b.objs + 1] = k end end end
+        if iid == 'kaffeem' then b.stream = make('kaffee_strahl'); if b.stream then b.objs[#b.objs + 1] = b.stream end end
         built[iid] = b
       end
     end
@@ -479,6 +488,21 @@ function M.render(veh, truck, dt)
   local eye = node + F * eyes.f + R * eyes.r + U * eyes.u
   local flip = rhd and -1 or 1
   M.last = { eye = eye, F = F, R = R, U = U, flip = flip }
+  if M.rider then
+    -- (the seat beside the driver: the driver's place mirrored over the middle of the cab, a little back, sitting 0.74 below the eyes)
+    -- (2026-11-10, 2nd: from the eyes learned from the camera she sat off the seat - the camera can be moved. The driver's camera node of the vehicle itself, mirrored over the
+    -- vehicle's middle line, as at the start, only held by the cab's frame)
+    local fr = M.frame or {}
+    local p
+    if fr.cam and fr.midR then
+      p = node + F * (fr.cam.f - 0.12) + R * (2 * fr.midR - fr.cam.r) + U * (fr.cam.u - 0.74)
+    else
+      local mid = fr.centerR or (eyes.r + 0.62 * flip)
+      p = node + F * (eyes.f - 0.12) + R * (mid + (mid - eyes.r)) + U * (eyes.u - 0.74)
+    end
+    pcall(place, M.rider, p, F, U)
+    M.riderT = os.clock()
+  end
   -- the truck's own acceleration, for what hangs
   local vel = vec3(veh:getVelocity())
   local ax, af = 0, 0
@@ -579,6 +603,23 @@ function M.render(veh, truck, dt)
           local nod = math.sin(t * 7.5) * amp
           place(b.head, q, rot(-Fw, Rw, nod), rot(U, Rw, nod))
         end
+      end
+      if b.stream then
+        -- (2026-11-10) brewing: a thin stream into the cup and the machine humming, a little shaking with it
+        local g = G[iid]
+        local running = g and g.runTo and t < g.runTo
+        local shake = running and math.sin(t * 55) * 0.0012 or 0
+        place(b.stream, p + U * (running and 0 or -3) + Rw * shake, -Fw, U)
+      end
+      if iid == 'popcorn' then
+        -- (2026-11-10) the popcorn machine glows warm while it pops
+        local g = G[iid]
+        local running = g and g.runTo and t < g.runTo
+        if running and not M.popLight then
+          M.popLight = createObject('PointLight')
+          if M.popLight then M.popLight.canSave = false; pcall(function() M.popLight.radius = 0.9; M.popLight:setField('brightness', 0, '1.2'); M.popLight:setField('castShadows', 0, '0'); M.popLight:setField('color', 0, '1 0.62 0.25 1') end); M.popLight:registerObject('ff_poplight') end
+        elseif not running and M.popLight then pcall(function() M.popLight:delete() end); M.popLight = nil end
+        if M.popLight then pcall(function() M.popLight:setPosition(p + U * 0.12) end) end
       end
       if b.kern then
         local g = G[iid]

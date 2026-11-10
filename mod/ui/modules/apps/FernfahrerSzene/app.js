@@ -917,6 +917,7 @@ angular.module('beamng.apps')
         hitch: { bg: ['#b08a68', '#5a4433'], top: '#37706a', long: '#a8743a', beanie: '#b84c2e', skin: 4, brow: '#7a5128', lips: 1 },
         shady: { bg: ['#4a4251', '#1f1b25'], top: '#3a3a44', collar: '#d9d5cc', hair: 1, slick: 1, beard: 'goatee', beardC: '#1f1a17', skin: 2, gold: 1, glasses: 'sun' },
         stoned: { bg: ['#4f6a48', '#222e20'], top: '#3f6a3a', dread: '#3a2a1c', beanie: '#caa53a', skin: 3, stoned: 1, brow: '#2c1f15', stubble: 1 },
+        mechanic: { bg: ['#d08a3c', '#6a3a12'], top: '#e8731a', band: '#d9dde2', hat: 'cap', hatC: '#e8731a', stubble: 1, skin: 0 },
         nerd: { bg: ['#7a7f92', '#393c49'], top: '#6d6a58', hair: 3, wild: 1, glasses: 'round', skin: 4, foil: 1 },
       }
       function shade(hex, f) { var n = parseInt(hex.slice(1), 16), c = [n >> 16, n >> 8 & 255, n & 255].map(function (v) { return Math.round(v * f) }); return 'rgb(' + c.join(',') + ')' }

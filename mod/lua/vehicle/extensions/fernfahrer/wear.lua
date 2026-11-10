@@ -150,8 +150,42 @@ function M.fail(kind)
   end
 end
 
+-- (2026-11-10) the game's cruise control lets go at the slightest touch of the brake, and gives no throttle while throttle or
+-- clutch are a hair above 0 - a wheel's pedals at rest often read just that (0.01 ... 0.04). Its frame is wrapped: what is
+-- below a small dead zone counts as 0 for it. When it switches itself off, what the pedals said goes to the log.
+-- (2026-11-10, 2nd: the log had it let go at 0.08 and 0.15 of brake - a foot resting on the pedal, not braking. Now a brake counts from 0.22 at once, or from
+-- 0.08 when it is held for 0.4 s: a real touch of the brake still lets go at once, as in any lorry)
+local PED = { brake = 0.08, brakeNow = 0.22, brakeHold = 0.4, throttle = 0.06, clutch = 0.15 }
+local ccWhy, noCruiseSaid, brakeT, refusedT = nil, false, 0, -100
+local function wrapCruise()
+  local cc = extensions.cruiseControl
+  if not cc or cc.__ffWrapped or type(cc.updateGFX) ~= 'function' or not input then return end
+  local orig = cc.updateGFX
+  cc.updateGFX = function(dt)
+    local b, th, c = input.brake, input.throttle, input.clutch
+    if (b or 0) >= PED.brake then brakeT = brakeT + (dt or 0) else brakeT = 0 end
+    if (b or 0) < PED.brakeNow and brakeT < PED.brakeHold then input.brake = 0 end
+    if (th or 0) < PED.throttle then input.throttle = 0 end
+    if (c or 0) < PED.clutch then input.clutch = 0 end
+    local was = electrics.values.cruiseControlActive
+    local ok, err = pcall(orig, dt)
+    input.brake, input.throttle, input.clutch = b, th, c
+    if was and not electrics.values.cruiseControlActive then
+      ccWhy = string.format('brake %.2f, throttle %.2f, clutch %.2f, crash brake %s', b or 0, th or 0, c or 0, tostring(electrics.values.postCrashBrakeTriggered or false))
+    end
+    if not ok then error(err) end
+  end
+  cc.__ffWrapped = true
+  if extensions.hookUpdate then extensions.hookUpdate('updateGFX') end
+end
+
 local function updateGFX(dt)
   t = t + dt
+  wrapCruise()
+  if ccWhy then
+    obj:queueGameEngineLua('log("I", "fernfahrer.cruise", ' .. string.format('%q', 'cruise control let go by the game: ' .. ccWhy) .. ')')
+    ccWhy = nil
+  end
   if failed == 'radiator' or failed == 'oil' then
     tempT = tempT + dt
     if tempT > 2 then
@@ -187,6 +221,9 @@ local function updateGFX(dt)
   -- the cruise control refuses
   if cfg.noCruise and electrics.values.cruiseControlActive and extensions.cruiseControl and extensions.cruiseControl.setEnabled then
     extensions.cruiseControl.setEnabled(false)
+    if not noCruiseSaid then noCruiseSaid = true; obj:queueGameEngineLua('log("I", "fernfahrer.cruise", "cruise control off: high")') end
+    -- (2026-11-10: said, every time it is tried: it looked like a fault)
+    if t - refusedT > 12 then refusedT = t; obj:queueGameEngineLua('if fernfahrer_career and fernfahrer_career.onCruiseRefused then fernfahrer_career.onCruiseRefused() end') end
   end
   -- the worn turbo
   stateT = stateT + dt

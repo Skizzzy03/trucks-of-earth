@@ -60,6 +60,7 @@
           <template v-if="home">Hof: <b>{{ homeName || "Gewählter Ort" }}</b> · {{ home.lat.toFixed(5) }}, {{ home.lon.toFixed(5) }}</template>
           <template v-else>Klick auf die Karte, um deinen Hof zu setzen.</template>
         </div>
+        <div v-if="homeWarn" class="homewarn">🏙 {{ homeWarn }}</div>
       </div>
 
       <!-- 3 company -->
@@ -109,7 +110,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from "vue"
+import { ref, computed, watch, onMounted, onUnmounted } from "vue"
 import FfMap from "./FfMap.vue"
 import { engineLua, call, navigate, typing, toArray } from "./ffBridge.js"
 
@@ -119,6 +120,9 @@ const st = ref(null)
 const mapRef = ref(null)
 const query = ref(""), results = ref([]), searchMsg = ref("")
 const home = ref(null), homeName = ref("")
+// (2026-11-10: not in the middle of a city - said as soon as the place is picked)
+const homeWarn = ref("")
+watch(home, h => { homeWarn.value = ""; if (h) call("uiHomeCheck", { lat: h.lat, lon: h.lon }, r => { homeWarn.value = r && r.ok === false ? (r.why || "Hier ist kein Platz für einen Hof.") : "" }) })
 const company = ref(""), driver = ref("")
 const busy = ref(false), error = ref("")
 const DIFFS = [
@@ -137,7 +141,7 @@ const markers = computed(() => {
   if (home.value) out.push({ ...home.value, kind: "home", icon: "🏠", label: "Dein Hof" })
   return out
 })
-const canNext = computed(() => (step.value === 1 ? !!home.value : step.value === 2 ? company.value.trim().length > 0 : true))
+const canNext = computed(() => (step.value === 1 ? !!home.value && !homeWarn.value : step.value === 2 ? company.value.trim().length > 0 : true))
 
 function pick(p) { home.value = { lat: p.lat, lon: p.lon } }
 function pickResult(r) {
@@ -225,6 +229,7 @@ ul { margin: 0; padding-left: 18px; font-size: 14px; line-height: 1.55; }
 .result span { color: #9aa4b2; margin-left: 6px; }
 .map { flex: 1; min-height: 300px; border-radius: 10px; }
 .picked { margin-top: 8px; font-size: 14px; color: #cfd6de; }
+.homewarn { margin-top: 6px; padding: 8px 12px; border-radius: 6px; background: rgba(255, 107, 94, .14); border: 1px solid rgba(255, 107, 94, .5); color: #ffb3aa; font-size: 13.5px; }
 .company label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: #9aa4b2; font-weight: 700; margin-bottom: 14px; }
 .diff-h { font-size: 13px; color: #9aa4b2; font-weight: 700; margin: 2px 0 8px; }
 .diff { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px; }

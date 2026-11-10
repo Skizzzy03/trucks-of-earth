@@ -90,7 +90,7 @@
             <template v-for="s in workSections" :key="s.t">
               <h3>{{ s.t }}</h3>
               <button v-for="a in s.items" :key="a.id" class="row" :class="{ warn: a.warn }" :disabled="a.disabled" @mouseenter="hov" @click="run(a.id)">
-                <span class="r-ic">{{ a.icon }}</span><span class="r-tx"><b>{{ a.label }}</b><small>{{ parts(a).text }}</small></span><em v-if="parts(a).price">{{ parts(a).price }}</em>
+                <span class="r-ic">{{ a.icon }}</span><span class="r-tx"><b>{{ a.label }}</b><small>{{ parts(a).text }}</small><i v-if="a.meter !== undefined && a.meter !== null" class="meter"><s :style="{ width: a.meter + '%', background: a.meter >= 80 ? '#2fbf71' : a.meter >= 55 ? '#ffb12e' : '#ff6b5e' }"></s></i></span><em v-if="a.meter !== undefined && a.meter !== null">{{ a.meter }} %</em><em v-else-if="parts(a).price">{{ parts(a).price }}</em>
               </button>
             </template>
           </template>
@@ -205,7 +205,7 @@ function groupOf(a) {
   if (id === "back:try") return "shady"
   if (id.indexOf("take:") === 0) return a.offer && a.offer.smuggle ? "shady" : "jobs"
   if (id === "milktour" || id === "milktour:end") return "jobs"
-  if (id === "repair" || id === "diag" || id === "tank:big" || /^(fix|part|assist|limiter):/.test(id)) return "work"
+  if (id === "repair" || id === "diag" || id === "tank:big" || /^(fix|part|assist|limiter|gear|state):/.test(id)) return "work"
   return "place"
 }
 const byGroup = computed(() => { const g = {}; actions.value.forEach(a => { const k = groupOf(a); (g[k] = g[k] || []).push(a) }); return g })
@@ -244,9 +244,10 @@ const shadyGoods = computed(() => (byGroup.value.shady || []).filter(a => a.shop
 const shadyJobs = computed(() => (byGroup.value.shady || []).filter(a => a.offer))
 const workSections = computed(() => {
   const all = (byGroup.value.work || []).filter(a => a.id !== "repair")
-  return [...section("Oder einzeln, nur was du brauchst", all.filter(a => a.id.indexOf("part:") === 0)),
+  return [...section("Zustand der Bauteile", all.filter(a => a.id.indexOf("state:") === 0)),
+    ...section("Oder einzeln, nur was du brauchst", all.filter(a => a.id.indexOf("part:") === 0)),
     ...section("Mängel", all.filter(a => a.id === "diag" || a.id.indexOf("fix:") === 0)),
-    ...section("Einbauten", all.filter(a => a.id === "tank:big" || a.id.indexOf("assist:") === 0)),
+    ...section("Einbauten", all.filter(a => a.id === "tank:big" || a.id.indexOf("assist:") === 0 || a.id.indexOf("gear:") === 0)),
     ...section("Begrenzer", all.filter(a => a.id.indexOf("limiter:") === 0))]
 })
 const jobs = computed(() => byGroup.value.jobs || [])
@@ -398,6 +399,7 @@ onUnmounted(() => { call("uiStopOpen", false); if (timer) clearInterval(timer); 
 .row { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; padding: 10px 13px; margin-bottom: 6px; border-radius: 11px; cursor: pointer; background: #181e27; border: 1px solid #272f3b; transition: background .14s, border-color .14s, transform .08s; }
 .row:hover:not(:disabled) { background: #1f2631; border-color: #f5a623; } .row:active:not(:disabled) { transform: scale(.995); }
 .row.warn { border-color: rgba(255, 91, 77, .32); } .row.warn:hover:not(:disabled) { border-color: #ff5b4d; }
+.meter { display: block; height: 6px; margin-top: 5px; border-radius: 3px; background: rgba(255,255,255,.1); overflow: hidden; } .meter s { display: block; height: 100%; text-decoration: none; }
 .r-ic { flex: none; width: 28px; text-align: center; font-size: 20px; } .r-tx { flex: 1; min-width: 0; } .r-tx b { display: block; font-size: 14px; font-weight: 800; } .r-tx small { display: block; font-size: 12px; color: #8b95a3; }
 .row em { flex: none; font-style: normal; font-size: 13.5px; font-weight: 800; color: #ffc964; font-variant-numeric: tabular-nums; } .row em.go { color: #8b95a3; }
 .row.rest em { font: 700 12.5px Consolas, monospace; color: #cfd6de; padding: 3px 8px; border-radius: 5px; background: #252c37; }

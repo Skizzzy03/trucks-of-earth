@@ -1,4 +1,26 @@
 {
+  "ff_npc_orange": {
+    "name": "ff_npc_orange",
+    "mapTo": "ff_npc_orange",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.86,
+          0.3,
+          0.02,
+          1
+        ],
+        "roughnessFactor": 0.7,
+        "metallicFactor": 0
+      },
+      {},
+      {},
+      {}
+    ],
+    "castShadows": true
+  },
   "ff_npc_skin": {
     "name": "ff_npc_skin",
     "mapTo": "ff_npc_skin",

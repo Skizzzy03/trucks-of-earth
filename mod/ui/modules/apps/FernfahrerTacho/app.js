@@ -134,7 +134,36 @@ angular.module('beamng.apps')
     link: function (scope, el) {
       'use strict'
       // (the frame is the game's and takes the mouse; here it is much bigger than the card, and the view has to stay turnable through it)
-      for (var hostEl = el[0].parentElement; hostEl && hostEl !== document.body; hostEl = hostEl.parentElement) { hostEl.style.pointerEvents = 'none'; if (hostEl.classList.contains('ui-app-host')) { break } }
+      // (2026-11-10: at this moment the app is not in the page yet, there was no frame to find: the cab's took every click meant for the tachograph under it. Looked for until it is there)
+      var freeFrame = function () {
+        var host = el[0].parentElement
+        while (host && !host.classList.contains('ui-app-host')) { host = host.parentElement }
+        if (!host) { return false }
+        for (var x = el[0].parentElement; x; x = x.parentElement) { x.style.pointerEvents = 'none'; if (x === host) { break } }
+        return true
+      }
+      if (!freeFrame()) {
+        var frameT = setInterval(function () { if (freeFrame()) { clearInterval(frameT) } }, 200)
+        scope.$on('$destroy', function () { clearInterval(frameT) })
+      }
+      // (2026-11-10: clicks on the card did nothing in the game. Whatever may lie over it: a click inside the card goes to the card's own button,
+      // and the log says what took it)
+      var lastSeen = 0
+      var report = function (what) { var n = Date.now(); if (n - lastSeen > 400) { lastSeen = n; bngApi.engineLua('log("I", "fernfahrer.ui", ' + JSON.stringify('tachograph click: ' + what) + ')') } }
+      var nameOf = function (x) { return x ? (x.tagName || '?') + (x.id ? '#' + x.id : '') + (typeof x.className === 'string' && x.className ? '.' + x.className.split(' ').slice(0, 3).join('.') : '') : 'nothing' }
+      var cardClick = function (e) {
+        var card = el[0].querySelector('.c')
+        if (!card || !card.offsetWidth) { return }
+        var r = card.getBoundingClientRect()
+        if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) { return }
+        if (card.contains(e.target)) { report('reached the card, ' + nameOf(e.target)); return }
+        var list = card.querySelectorAll('[ng-click]'), hit = null
+        for (var i = 0; i < list.length; i++) { var b = list[i].getBoundingClientRect(); if (e.clientX >= b.left && e.clientX <= b.right && e.clientY >= b.top && e.clientY <= b.bottom) { hit = list[i] } }
+        report('blocked by ' + nameOf(e.target) + ', passed on to ' + nameOf(hit))
+        if (hit) { e.preventDefault(); e.stopPropagation(); hit.click() }
+      }
+      window.addEventListener('click', cardClick, true)
+      scope.$on('$destroy', function () { window.removeEventListener('click', cardClick, true) })
       scope.h = { mode: false }
       scope.t = null
       scope.f = null

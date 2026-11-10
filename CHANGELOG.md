@@ -1,5 +1,57 @@
 # Änderungen
 
+## 1.0.3
+
+### Neu
+
+- **Kluger Verkehr:** Auf Autobahnen und Schnellstraßen wechseln die Autos die Spur, überholen links und fahren danach wieder rechts. Jeder Fahrer hat sein eigenes Tempo, Verkehrs-Lkw halten sich an die Lkw-Regeln (Autobahn 80, Landstraße 60). Fädelst du ein oder blinkst du, wird Platz gemacht.
+- **Die Autos sprechen sich ab:** Lücken beim Spurwechsel werden reserviert, ein blockiertes Auto wird reingelassen, und bremst die Spitze einer Kolonne, gehen die Hinteren früh vom Gas. Ab und zu ist ein Raser unterwegs, der knapp einschert, mit Absicht und selten.
+- **Tagesrhythmus und Staus:** Nachts wenig Verkehr, im Berufsverkehr viel. Auf der Autobahn gibt es Staus mit Verkehrsfunk, Warnblinkern am Stauende und Stop-and-go.
+- **Eigene Fahr-KI (Beta, in den Einstellungen):** Unsere eigene Fahr-KI lenkt und bremst die Autos, hält an Ampeln und Stoppschildern, und an Kreuzungen vergibt eine Zentrale die Durchfahrt (Hauptstraße vor Seitenstraße, rechts vor links). Bei großen Kreuzungen und Problemen übernimmt wieder BeamNG.
+- **Underground im Büro:** eigener Reiter mit Ruf-Stufen vom Neuling bis zur Legende. Jede Stufe bringt mehr Lohn und heißere Ware, viel davon über die Häfen. Kontakte lassen sich anrufen, Aufträge direkt annehmen.
+- **Zustand der Bauteile:** Die Werkstatt zeigt für Motor, Antrieb, Fahrwerk und Karosserie eine Skala in Prozent.
+- **Parkplätze als Ziel:** Routenberater und Büro führen zum nächsten Parkplatz.
+- **Begegnungen am Straßenrand:** Wer abseits der Autobahn auf Pause steht, bekommt auch dort Besuch.
+- **Der Pannenhelfer kommt wirklich:** Er steigt neben seinem Wagen aus, kommt an deine Tür und fragt, was los ist. Deine Antwort bestimmt, wie lange er sucht. Dann geht er zum Reifen oder zum Motor, arbeitet, läuft zurück und fährt los.
+- **Anhalter am Straßenrand:** Auf Landstraßen steht manchmal jemand mit dem Daumen raus, ohne lange Vorwarnung. Halt an, dann kommt sie zur Beifahrertür. Wer mitfährt, sitzt sichtbar neben dir in der Kabine, bis sie aussteigt.
+- **Die Beifahrerin erzählt:** Jede Mitfahrerin hat ihren Namen und ihre eigene Geschichte, die sie dir in drei Teilen erzählt. Dazwischen Smalltalk über Ladung, Musik, Partys, Festivals und Kühe. Manchmal lässt sie Zigaretten oder etwas für den Feierabend da. Deine Antworten bestimmen ihre Laune und damit, wie sie sich am Ende bedankt und verabschiedet. Im Routenberater zeigt ein Balken, wie weit sie noch mitfährt.
+- **Mehr los auf dem Rastplatz:** fünf neue Begegnungen, vom Lkw-Fotografen über Festivalleute mit Plattfuß-Bus bis zum Imbisswirt kurz vor Feierabend.
+- **Polizeikontrolle auf dem Rastplatz:** Die Polizei wartet schon mit Streifenwagen, Blaulicht, zwei Beamten und einer blauen Fläche, in der du anhältst.
+- **Automatikgetriebe:** Händler und Fuhrpark zeigen, ob ein Lkw Automatik oder Schaltgetriebe hat. In der Werkstatt lässt sich ein Automatikgetriebe einbauen, wo es für das Modell eines gibt.
+
+### Verbessert
+
+- Der Verkehr fährt auf der Hauptstraße durch, statt an Seitenstraßen zu bremsen, und biegt seltener ab
+- Auch hinter dir ist wieder Verkehr unterwegs
+- Online-Shop liefert in 1:30 bis 2 Minuten
+- Kaffeemaschine brummt und brüht sichtbar, die Tasse steht richtig herum; die Popcornmaschine ist lauter und leuchtet beim Poppen
+- Das Radio geht kurz nach dem Abstellen des Motors aus und mit dem Motor wieder an
+- Die Werkstatt-Szene ist nicht mehr verschwommen
+- Autos fahren mittig in ihrer Spur statt Richtung Straßenmitte
+- Die Person an der Tür steht auf Fensterhöhe und ist durch die Scheibe zu sehen
+- Abends ist mehr los: Der Berufsverkehr von 16 bis 19 Uhr ist die vollste Zeit des Tages
+- Verkehrs-Lkw fahren auf schmaleren Straßen nicht mehr Richtung Mittellinie
+- Die Abstandsautomatik folgt der Kurve und bremst nicht mehr für Autos am Straßenrand
+- Einstellungen in Gruppen sortiert, die eigene Fahr-KI steht groß ganz oben; nach dem Start gibt es einen Hinweis darauf
+- Die Fremd-Mod „Realistic AI Traffic Behaviors“ wird nicht mehr angeboten und ausgeschaltet
+- Das Büro läuft flüssiger: die langen Listen werden nur noch geschickt, wenn sich etwas geändert hat
+- Der Hof lässt sich nicht mehr mitten in Städten setzen; ein Hof von früher in der Stadt zieht ins nächste Gewerbegebiet
+
+### Behoben
+
+- Lkw mit Schaltgetriebe konnten nach dem Laden oder einer Reise abstürzen („Fahrzeug konnte nicht geladen werden“)
+- Im Fahrtenschreiber ließ sich nichts anklicken
+- Der Tempomat ging mit einem Lenkrad sofort wieder aus oder gab kein Gas (leichtes Pedalrauschen oder ein auf der Bremse ruhender Fuß); bleibt er wegen eines Joints aus, wird das jetzt gesagt
+- Falschfahrer auf Richtungsfahrbahnen werden erkannt und richtig herum hinter dir wieder eingesetzt
+- An der Ampel fuhr der Verkehr hinter dir nach ein paar Sekunden um den wartenden Lkw herum und es kam zu Auffahrunfällen
+- Der Hof wurde zwischen Häuser gebaut, wenn die Gebäude beim Ankommen noch nicht geladen waren
+- Der Pannendienst änderte nichts am Zustand: Nach einem Unfall gibt es jetzt eine Notreparatur, die die Hälfte der Schäden behebt und den Lkw fahrbereit macht
+- Nach dem Einbau eines Automatikgetriebes war die Lackierung weg
+- Ein instand gesetzter Motor wurde immer wieder als reparaturbedürftig angeboten
+- Unter Rauscheinfluss verschmierten Kabinenteile und die Routenlinie
+- Verkehr fuhr mittig auf der Linie, schlenkerte im Gegenverkehr nach rechts und bremste grundlos
+- Autos kamen von der Fahrbahn ab, abgebrochene Überholvorgänge scherten zu früh und riskant ein
+
 ## 1.0.2
 
 ### Neu

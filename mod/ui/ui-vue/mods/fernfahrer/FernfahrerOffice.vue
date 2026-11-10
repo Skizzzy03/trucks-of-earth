@@ -143,6 +143,7 @@
               <div class="row">
                 <button class="btn" @click="act('navToHome'); close()">Navi: Hof</button>
                 <button class="btn" @click="act('navToNearest', 'rest'); close()">Nächster Rastplatz</button>
+                <button class="btn" @click="act('navToNearest', 'parking'); close()">Nächster Parkplatz</button>
                 <button class="btn" @click="act('navToNearest', 'fuel'); close()">Nächste Tankstelle</button>
                 <button class="btn" @click="act('navToNearest', 'workshop'); close()">Nächste Werkstatt</button>
               </div>
@@ -184,6 +185,37 @@
           </div>
 
           <!-- travel: ferries and flights -->
+          <!-- the underground (2026-11-10) -->
+          <div v-if="tab === 'underground'" class="ugp">
+            <div class="ughead">
+              <div class="ugbadge">{{ ug.level || 1 }}</div>
+              <div class="ugwho"><small>DEIN RUF IN DER SZENE</small><b>{{ ug.name || 'Neuling' }}</b>
+                <div class="ugbar"><i :style="{ width: ugPct + '%' }"></i></div>
+                <small>{{ ug.to ? (Math.round(ug.xp) + ' / ' + ug.to + ' Ruf · nächste Stufe: ' + ug.nextName) : 'Höchste Stufe erreicht' }}</small></div>
+              <div class="ugstat"><b>+{{ Math.round(((ug.mult || 1) - 1) * 100) }} %</b><small>mehr Lohn</small></div>
+              <div class="ugstat"><b>{{ ['Mild', 'Heiß', 'Sehr heiß'][ug.maxHeat || 0] }}</b><small>heißeste Ware</small></div>
+              <div class="ugstat"><b>{{ ug.jobs || 0 }}</b><small>Fahrten</small></div>
+            </div>
+            <div class="ugline">
+              <span v-if="ug.nearest">Nächster dunkler Ort: <b>{{ ug.nearest.name }}</b> · {{ String(ug.nearest.km).replace('.', ',') }} km · {{ ug.ports }} Häfen in der Gegend</span>
+              <span v-else>Noch kein dunkler Ort in der Nähe bekannt. Häfen, Holzlager und Schrottplätze haben oft einen.</span>
+              <button class="btn ugbtn" @click="act('ugCall'); refresh()">📞 Kontakte anrufen</button>
+              <button v-if="ug.nearest" class="btn ghost" @click="act('navToPlace', ug.nearest.id); close()">Navi dorthin</button>
+            </div>
+            <table class="tbl ugt" v-if="ugOffers.length">
+              <thead><tr><th>Ware</th><th>Von → Nach</th><th class="r">Strecke</th><th class="r">Risiko</th><th class="r">Lohn</th><th></th></tr></thead>
+              <tbody><tr v-for="o in ugOffers" :key="o.id">
+                <td><b>{{ o.icon }} {{ o.cargoName }}</b></td><td class="ft"><div>{{ o.from }}</div><div class="muted">→ {{ o.to }}</div></td>
+                <td class="r">{{ o.distKm }} km<div class="muted">+{{ o.pickupKm }} km</div></td>
+                <td class="r"><span class="ugheat" :class="'h' + (o.heat || 0)">{{ ['Mild', 'Heiß', 'Sehr heiß'][o.heat || 0] }}</span></td>
+                <td class="r"><b>{{ money(o.freight) }}</b></td>
+                <td class="r"><button class="btn ugbtn" :disabled="!!st.job" @click="accept(o)">Annehmen</button></td>
+              </tr></tbody>
+            </table>
+            <div v-else class="muted ugnone">Gerade keine Angebote. Ruf deine Kontakte an oder fahr zu einem dunklen Ort.</div>
+            <div class="ugperks"><b>Die Stufen</b><span v-for="(n, i) in ['Neuling', 'Kurier', 'Fahrer', 'Profi', 'Boss', 'Legende']" :key="n" :class="{ on: (ug.level || 1) > i }">{{ i + 1 }} · {{ n }}</span>
+              <small>Jede Stufe bringt 12 % mehr Lohn. Ab Kurier gibt es heiße Ware, ab Profi sehr heiße. Erwischt die Polizei dich, ist die Ware weg, und es wird teuer.</small></div>
+          </div>
           <div v-if="tab === 'travel'">
             <template v-if="tr && tr.hub">
               <div class="bar"><b>{{ tr.hub.name }}</b><span class="muted">{{ tr.hub.kind === 'airport' ? "Flughafen" : (tr.hub.train ? "Autozug-Terminal" : "Fährhafen") }}</span></div>
@@ -261,7 +293,7 @@
                 <tr v-for="(t, i) in owned" :key="i" :class="{ sel: st.active === i + 1 }">
                   <td style="display:flex;gap:10px;align-items:center"><img v-if="t.preview" class="thumb" :src="t.preview" @error="e => e.target.style.visibility = 'hidden'" />
                     <div><b>{{ t.brand }} {{ t.modelName }}</b> <span v-if="t.eu" class="tag blue">EU</span><span v-if="t.used" class="tag">gebraucht gekauft</span><div class="muted">{{ t.kind === 'car' ? "Auto" : "LKW" }}</div></div></td>
-                  <td class="muted">{{ t.configName }}{{ t.power ? " · " + t.power + " PS" : "" }}</td>
+                  <td class="muted">{{ t.configName }}{{ t.power ? " · " + t.power + " PS" : "" }}{{ t.gear ? " · " + (t.gear === "auto" ? "Automatik" : "Schaltgetriebe") : "" }}</td>
                   <td class="r">{{ Math.round(t.km || 0) }}</td>
                   <td class="r">
                     <template v-if="t.seized"><span class="tag red">Beschlagnahmt</span> <button class="btn primary" :disabled="st.money < seizeFee(t)" @click="act('redeemTruck', i + 1)">Auslösen {{ money(seizeFee(t)) }}</button></template>
@@ -313,6 +345,7 @@
                       <dl>
                         <template v-if="showCur.power"><dt>Leistung</dt><dd>{{ showCur.power }} PS</dd></template>
                         <template v-if="showCur.drivetrain"><dt>Antrieb</dt><dd>{{ showCur.drivetrain }}</dd></template>
+                        <template v-if="showCur.gear"><dt>Getriebe</dt><dd>{{ showCur.gear === "auto" ? "Automatik" : "Schaltgetriebe" }}</dd></template>
                         <template v-if="showCur.used"><dt>Kilometer</dt><dd>{{ Math.round(showCur.km).toLocaleString("de-DE") }} km</dd>
                           <dt>Alter</dt><dd>{{ showCur.age }} {{ showCur.age === 1 ? "Jahr" : "Jahre" }}</dd>
                           <dt>Zustand</dt><dd :class="showCur.condition >= 90 ? 'pos' : showCur.condition >= 80 ? 'warn' : 'neg'">{{ showCur.condition }} %</dd></template>
@@ -674,7 +707,15 @@
 
           <!-- settings -->
           <div v-if="tab === 'settings'">
-            <div class="setting" v-for="s in SETTINGS" :key="s.key">
+            <!-- (2026-11-10) the one most will want: our own driving AI, big and first -->
+            <div class="feat" v-for="s in SETTINGS.filter(x => x.group === 'feature')" :key="s.key" :class="{ on: st.settings[s.key] === true }">
+              <div class="feat-ic">🧠</div>
+              <div class="grow"><small>Beta · Neu</small><h3>{{ s.label }}</h3><p>{{ s.hint }}</p></div>
+              <div class="feat-sw"><a v-for="o in s.opts" :key="String(o.v)" :class="{ on: st.settings[s.key] === o.v || (st.settings[s.key] === undefined && o.def) }" @click="act('setOption', s.key, o.v)">{{ o.l }}</a></div>
+            </div>
+            <template v-for="g in SET_GROUPS" :key="g.id">
+            <h4 class="setgrp">{{ g.label }}</h4>
+            <div class="setting" v-for="s in SETTINGS.filter(x => x.group === g.id)" :key="s.key">
               <div class="grow"><b>{{ s.label }}</b><div class="muted">{{ s.hint }}</div>
                 <!-- (a real select cannot open in the game's browser: its popup is never drawn) -->
                 <div v-if="s.select && evOpen" class="evlist"><a v-for="o in s.opts" :key="String(o.v)" @click="act('setOption', s.key, o.v); evOpen = false">{{ o.l }}</a></div>
@@ -682,6 +723,8 @@
               <button v-if="s.select" class="evsel" @click="evOpen = !evOpen">{{ evOpen ? "Zuklappen" : "Ereignis wählen" }} <i :class="{ up: evOpen }">▾</i></button>
               <div v-else class="seg"><a v-for="o in s.opts" :key="String(o.v)" :class="{ on: st.settings[s.key] === o.v || (st.settings[s.key] === undefined && o.def) }" @click="act('setOption', s.key, o.v)">{{ o.l }}</a></div>
             </div>
+            </template>
+            <h4 class="setgrp">Status & Spielstand</h4>
             <div class="setting" v-if="st.weather">
               <div><b>Wetter – Status</b><div class="muted">{{ st.weather }}</div></div>
             </div>
@@ -725,7 +768,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onUnmounted, nextTick } from "vue"
+import { ref, computed, watch, onMounted, onUnmounted, nextTick, shallowRef } from "vue"
 import FfMap from "./FfMap.vue"
 import { call, navigate, typing, money, signed, dist, duration, clock, toArray } from "./ffBridge.js"
 import { sound } from "./ffSound.js"
@@ -741,6 +784,7 @@ const NAV = [
     { id: "market", label: "Aufträge", icon: "📦", sub: "Laufender Auftrag und Frachtbörse" },
     { id: "map", label: "Karte & Orte", icon: "🗺", sub: "Tankstellen, Rastplätze, Kunden, Händler" },
     { id: "travel", label: "Reisen", icon: "⚓", sub: "Fähren, Autozug und Flüge" },
+    { id: "underground", label: "Underground", icon: "🕶️", sub: "Fracht ohne Papiere, dein Ruf in der Szene" },
   ] },
   { label: "Fahrzeuge", items: [
     { id: "fleet", label: "Fuhrpark & Werkstatt", icon: "🚛", sub: "Deine Fahrzeuge, wechseln, verkaufen, reparieren" },
@@ -758,49 +802,54 @@ const NAV = [
     { id: "settings", label: "Einstellungen", icon: "⚙", sub: "Spielmodus anpassen" },
   ] },
 ]
+const SET_GROUPS = [
+  { id: "verkehr", label: "Verkehr" }, { id: "fahren", label: "Fahren & Regeln" }, { id: "welt", label: "Welt, Ton & Stimmung" },
+  { id: "leistung", label: "Leistung" }, { id: "test", label: "Testen & Entwickler" },
+]
 const TITLES = Object.fromEntries(NAV.flatMap(g => g.items.map(i => [i.id, i.label])))
 const SUBS = Object.fromEntries(NAV.flatMap(g => g.items.map(i => [i.id, i.sub])))
 const SETTINGS = [
-  { key: "intro", label: "Kamerafahrt am Tagesbeginn", hint: "Nach dem Laden am Hof fliegt die Kamera kurz über deinen Hof, dann geht es los. Enter überspringt sie.", opts: [{ v: true, l: "An", def: true }, { v: false, l: "Aus" }] },
-  { key: "dayNight", label: "Tag-Nacht-Zyklus", hint: "Die Uhr läuft 10× schneller (wie der Fahrtenschreiber). Aus: echte Uhrzeit von BeamNG.Earth.", opts: [{ v: true, l: "An", def: true }, { v: false, l: "Aus" }] },
-  { key: "traffic", label: "Verkehr", hint: "Passt sich automatisch an die Bildrate an.", opts: [{ v: "off", l: "Aus" }, { v: "low", l: "Wenig" }, { v: "auto", l: "Normal", def: true }, { v: "high", l: "Viel" }] },
-  { key: "eventTest", select: true, label: "Ereignis testen", hint: "Zum Anschauen: das gewählte Ereignis kommt gleich auf deiner gesetzten Route, etwa 750 m voraus. Dafür muss eine Route aktiv sein.", opts: [
+  { key: "intro", group: "welt", label: "Kamerafahrt am Tagesbeginn", hint: "Nach dem Laden am Hof fliegt die Kamera kurz über deinen Hof, dann geht es los. Enter überspringt sie.", opts: [{ v: true, l: "An", def: true }, { v: false, l: "Aus" }] },
+  { key: "dayNight", group: "welt", label: "Tag-Nacht-Zyklus", hint: "Die Uhr läuft 10× schneller (wie der Fahrtenschreiber). Aus: echte Uhrzeit von BeamNG.Earth.", opts: [{ v: true, l: "An", def: true }, { v: false, l: "Aus" }] },
+  { key: "traffic", group: "verkehr", label: "Verkehr", hint: "Passt sich automatisch an die Bildrate an.", opts: [{ v: "off", l: "Aus" }, { v: "low", l: "Wenig" }, { v: "auto", l: "Normal", def: true }, { v: "high", l: "Viel" }] },
+  { key: "eventTest", group: "test", select: true, label: "Ereignis testen", hint: "Zum Anschauen: das gewählte Ereignis kommt gleich auf deiner gesetzten Route, etwa 750 m voraus. Dafür muss eine Route aktiv sein.", opts: [
     { v: "roadworks:rand", l: "Fahrbahnrand" }, { v: "roadworks:ampel", l: "Ampel" }, { v: "roadworks:belag", l: "Belag" }, { v: "roadworks:wand", l: "Betonwand" },
     { v: "roadworks:kurz", l: "Tagesbaustelle" }, { v: "roadworks:kanal", l: "Kanal" }, { v: "roadworks:bruecke", l: "Brücke" }, { v: "roadworks:nacht", l: "Nacht" },
     { v: "radar", l: "Blitzer" }, { v: "laser", l: "Laser" }, { v: "control", l: "Kontrolle" }, { v: "breakdown", l: "Panne" }, { v: "cargo", l: "Ladung" },
     { v: "crash", l: "Unfall" }, { v: "oil", l: "Ölspur" }, { v: "grit", l: "Splitt" }, { v: "potholes", l: "Schlaglöcher" }, { v: "mowing", l: "Mähen" },
     { v: "siren", l: "Blaulicht" }, { v: "heavy", l: "Schwertransport" }, { v: "ghost", l: "Falschfahrer" }, { v: "npc", l: "Begegnung an der Tür" },
     { v: "fail:tire", l: "Eigene Panne: Reifen" }, { v: "fail:radiator", l: "Eigene Panne: Kühler" }, { v: "fail:hose", l: "Eigene Panne: Notlauf" }, { v: "fail:oil", l: "Eigene Panne: Öl" } ] },
-  { key: "breakdowns", label: "Pannen unterwegs", hint: "Hin und wieder platzt ein Reifen oder der Kühler gibt auf, auch wenn du nichts falsch gemacht hast. Dann hilft der Pannendienst.", opts: [{ v: true, l: "An", def: true }, { v: false, l: "Aus" }] },
-  { key: "mood", label: "Stimmungsmusik", hint: "Leise Musik passend zur Situation: am Rastplatz, bei Begegnungen, Kontrollen und nach der Lieferung. Bei „An“ pausiert das Radio dafür am Rastplatz und im Gespräch.", opts: [{ v: "all", l: "An", def: true }, { v: "noradio", l: "Nur ohne Radio" }, { v: "off", l: "Aus" }] },
-  { key: "moodVol", label: "Lautstärke Stimmungsmusik", hint: "Damit sie im Hintergrund bleibt.", opts: [{ v: "low", l: "Leise" }, { v: "mid", l: "Mittel", def: true }, { v: "high", l: "Lauter" }] },
-  { key: "loadMusic", label: "Lademusik", hint: "Der Truck-Beat auf den Ladebildschirmen: beim Reinladen, zum Hof, auf Fähren und Flügen.", opts: [{ v: true, l: "An", def: true }, { v: false, l: "Aus" }] },
-  { key: "radioRegional", label: "Regionalsender", hint: "Fährst du in ein anderes Bundesland, wechselt das Radio mit kurzem Rauschen auf den Sender von dort. Von Hand umschalten geht weiterhin.", opts: [{ v: true, l: "An", def: true }, { v: false, l: "Aus" }] },
-  { key: "cb", label: "CB-Funk", hint: "Alle paar Minuten meldet sich ein anderer Fahrer auf dem Kanal. Steht wirklich etwas auf deiner Route, sagt er es dir.", opts: [{ v: true, l: "An", def: true }, { v: false, l: "Aus" }] },
-  { key: "realWeather", label: "Echtes Wetter", hint: "Wolken, Regen, Nebel, Wind und Temperatur kommen von BeamNG.Earth – das tatsächliche Wetter dort, wo du gerade fährst. Die Uhrzeit bleibt die der Karriere. Aus: das Wetter stellst du im Spiel selbst ein.", opts: [{ v: true, l: "An", def: true }, { v: false, l: "Aus" }] },
-  { key: "trafficCars", label: "Verkehrsfahrzeuge", hint: "Agent Traffic: die europäischen Verkehrsautos der Mod Agent Traffic (falls installiert – sonst automatisch BeamNG). BeamNG vereinfacht: die vereinfachten Autos des Spiels. Beide sparen Rechenleistung; Busse und LKW gibt es nicht vereinfacht – davon fährt höchstens einer.", opts: [{ v: "agent", l: "Agent Traffic", def: true }, { v: "simple", l: "BeamNG vereinfacht" }] },
-  { key: "aiTraffic", label: "Zusatz-Mod „Realistic AI Traffic“", hint: "Nicht nötig fürs Überholen – das macht „Verkehr: Überholen & Rücksicht“. Diese fremde Beta-Mod gibt den Fahrern zusätzlich Persönlichkeiten, kann aber ruckeln, viel hupen und sich abgestellte Fahrzeuge greifen. Empfohlen: Aus. Wirkt nach Neustart.", opts: [{ v: false, l: "Aus (empfohlen)", def: true }, { v: true, l: "An (Beta)" }] },
-  { key: "parked", label: "Geparkte Autos", hint: "Auf Parkplätzen und am Straßenrand in Ortsstraßen (nicht an Haupt- und Landstraßen).", opts: [{ v: "off", l: "Aus" }, { v: "low", l: "Wenig" }, { v: "auto", l: "Normal", def: true }, { v: "high", l: "Viel" }] },
-  { key: "navVoice", label: "Navi-Ansagen", hint: "Abbiegehinweise mit Pfeil im Routenberater und als Sprache (deutsche Stimme). Den Ton schaltet auch der Lautsprecher-Knopf auf der Karte.", opts: [{ v: true, l: "An", def: true }, { v: false, l: "Aus" }] },
-  { key: "perfMode", label: "Leistung", hint: "Maximale FPS: weniger Verkehr, keine geparkten Autos, Spiegel auf „Sparsam“. Ausgewogen: deine vorherigen Einstellungen.", opts: [{ v: "balanced", l: "Ausgewogen", def: true }, { v: "max", l: "Maximale FPS" }] },
-  { key: "slowmo", label: "Unfall-Zeitlupe", hint: "Kracht es ab etwa 25 km/h, läuft der Aufprall kurz in Zeitlupe ab – mit dumpfem Schlag und Ohrenpfeifen. Aus: alles in Echtzeit.", opts: [{ v: true, l: "An", def: true }, { v: false, l: "Aus" }] },
-  { key: "drugFx", label: "Rausch-Effekt", hint: "Nach Bier oder Joint schwankt die Sicht leicht, das Bild bekommt einen dunklen Rand und eine Färbung. Aus: kein Bildeffekt – Promille und THC zählen bei Kontrollen trotzdem.", opts: [{ v: true, l: "An", def: true }, { v: false, l: "Aus" }] },
-  { key: "smartTraffic", label: "Verkehr: Überholen & Rücksicht", hint: "Autos überholen langsame LKW, wenn der Gegenverkehr es zulässt (brechen ab, wenn es eng wird), und bremsen vor Baustellen, Blitzern, Kontrollen und Unfällen. Hauptstraßen werden automatisch Vorfahrtsstraßen.", opts: [{ v: true, l: "An", def: true }, { v: false, l: "Aus" }] },
-  { key: "accidents", label: "Unfälle & Polizei", hint: "Nach einem Unfall kommen Polizei (und Rettungsdienst) und nehmen einen Bericht auf.", opts: [{ v: true, l: "An", def: true }, { v: false, l: "Aus" }] },
-  { key: "autoPhotos", label: "Automatik-Fotomodus", hint: "Macht alles allein: Es öffnet nacheinander die Menüs, fotografiert sie, fährt los und nimmt die Fahrt von nah und fern auf, auch mit Kippe und Bier. Dauert etwa 8 Minuten und läuft am besten im eigenen Lkw im Stand los. Fertig liegt alles im Ordner screenshots/trucks_of_earth_github. Strg+Umschalt+C bricht ab.", opts: [{ v: false, l: "Aus", def: true }, { v: true, l: "An" }] },
-  { key: "photoSeries", label: "Fotomodus im Autodrive", hint: "An: Im Autodrive erscheint neben Cinematic der Knopf „Fotos“. Dann entstehen laufend Bilder von der Kabine und deinen Einbauten, von außen und von innen, bis du sie mit Strg+Umschalt+C beendest. Die Bilder landen im Ordner screenshots/trucks_of_earth und brauchen Platz.", opts: [{ v: false, l: "Aus", def: true }, { v: true, l: "An" }] },
-  { key: "devResets", label: "Entwicklermodus: BeamNG-Reset", hint: "Normal sind Reset, Bergen, Neuladen und die Fahrzeug- und Teilemenüs von BeamNG in der Karriere gesperrt, sonst wäre jede Reparatur umsonst. An: Sie funktionieren wieder, und ein Reset repariert den Lkw kostenlos.", opts: [{ v: false, l: "Aus", def: true }, { v: true, l: "An" }] },
-  { key: "events", label: "Ereignisse", hint: "Baustellen, mobile Blitzer und Polizeikontrollen auf der Route.", opts: [{ v: true, l: "An", def: true }, { v: false, l: "Aus" }] },
-  { key: "hitch", label: "Ankuppeln", hint: "Automatisch: rückwärts heranfahren und anhalten. Selbst: darunter setzen und L.", opts: [{ v: "auto", l: "Automatisch", def: true }, { v: "manual", l: "Selbst" }] },
-  { key: "tutorial", label: "Einführung", hint: "Das Handbuch vom ersten Tag noch einmal zeigen: Aufträge, Fahrzeit, Müdigkeit, Kabine, Radio, Pannen, Club, Versicherung und alle Hilfen.", opts: [{ v: "again", l: "Noch einmal zeigen" }] },
-  { key: "truckRules", label: "LKW-Tempo", hint: "Echte LKW-Regeln: Autobahn 80 km/h, Landstraße 60 km/h, in Orten das Schild – dazu der Tempobegrenzer bei 90 km/h (ausbauen lassen kann man ihn in der Werkstatt …). Strafen gibt es nur an echten Blitzern und bei Kontrollen. Aus: es gilt das Schild wie für Autos.", opts: [{ v: true, l: "An", def: true }, { v: false, l: "Aus" }] },
-  { key: "speedWarn", label: "Tempo-Warnung", hint: "Der Tacho blinkt, wenn du zu schnell fährst.", opts: [{ v: true, l: "An", def: true }, { v: false, l: "Aus" }] },
+  { key: "breakdowns", group: "fahren", label: "Pannen unterwegs", hint: "Hin und wieder platzt ein Reifen oder der Kühler gibt auf, auch wenn du nichts falsch gemacht hast. Dann hilft der Pannendienst.", opts: [{ v: true, l: "An", def: true }, { v: false, l: "Aus" }] },
+  { key: "mood", group: "welt", label: "Stimmungsmusik", hint: "Leise Musik passend zur Situation: am Rastplatz, bei Begegnungen, Kontrollen und nach der Lieferung. Bei „An“ pausiert das Radio dafür am Rastplatz und im Gespräch.", opts: [{ v: "all", l: "An", def: true }, { v: "noradio", l: "Nur ohne Radio" }, { v: "off", l: "Aus" }] },
+  { key: "moodVol", group: "welt", label: "Lautstärke Stimmungsmusik", hint: "Damit sie im Hintergrund bleibt.", opts: [{ v: "low", l: "Leise" }, { v: "mid", l: "Mittel", def: true }, { v: "high", l: "Lauter" }] },
+  { key: "loadMusic", group: "welt", label: "Lademusik", hint: "Der Truck-Beat auf den Ladebildschirmen: beim Reinladen, zum Hof, auf Fähren und Flügen.", opts: [{ v: true, l: "An", def: true }, { v: false, l: "Aus" }] },
+  { key: "radioRegional", group: "welt", label: "Regionalsender", hint: "Fährst du in ein anderes Bundesland, wechselt das Radio mit kurzem Rauschen auf den Sender von dort. Von Hand umschalten geht weiterhin.", opts: [{ v: true, l: "An", def: true }, { v: false, l: "Aus" }] },
+  { key: "cb", group: "welt", label: "CB-Funk", hint: "Alle paar Minuten meldet sich ein anderer Fahrer auf dem Kanal. Steht wirklich etwas auf deiner Route, sagt er es dir.", opts: [{ v: true, l: "An", def: true }, { v: false, l: "Aus" }] },
+  { key: "realWeather", group: "welt", label: "Echtes Wetter", hint: "Wolken, Regen, Nebel, Wind und Temperatur kommen von BeamNG.Earth – das tatsächliche Wetter dort, wo du gerade fährst. Die Uhrzeit bleibt die der Karriere. Aus: das Wetter stellst du im Spiel selbst ein.", opts: [{ v: true, l: "An", def: true }, { v: false, l: "Aus" }] },
+  { key: "trafficCars", group: "verkehr", label: "Verkehrsfahrzeuge", hint: "Agent Traffic: die europäischen Verkehrsautos der Mod Agent Traffic (falls installiert – sonst automatisch BeamNG). BeamNG vereinfacht: die vereinfachten Autos des Spiels. Beide sparen Rechenleistung; Busse und LKW gibt es nicht vereinfacht – davon fährt höchstens einer.", opts: [{ v: "agent", l: "Agent Traffic", def: true }, { v: "simple", l: "BeamNG vereinfacht" }] },
+  { key: "parked", group: "verkehr", label: "Geparkte Autos", hint: "Auf Parkplätzen und am Straßenrand in Ortsstraßen (nicht an Haupt- und Landstraßen).", opts: [{ v: "off", l: "Aus" }, { v: "low", l: "Wenig" }, { v: "auto", l: "Normal", def: true }, { v: "high", l: "Viel" }] },
+  { key: "navVoice", group: "fahren", label: "Navi-Ansagen", hint: "Abbiegehinweise mit Pfeil im Routenberater und als Sprache (deutsche Stimme). Den Ton schaltet auch der Lautsprecher-Knopf auf der Karte.", opts: [{ v: true, l: "An", def: true }, { v: false, l: "Aus" }] },
+  { key: "perfMode", group: "leistung", label: "Leistung", hint: "Maximale FPS: weniger Verkehr, keine geparkten Autos, Spiegel auf „Sparsam“. Ausgewogen: deine vorherigen Einstellungen.", opts: [{ v: "balanced", l: "Ausgewogen", def: true }, { v: "max", l: "Maximale FPS" }] },
+  { key: "slowmo", group: "welt", label: "Unfall-Zeitlupe", hint: "Kracht es ab etwa 25 km/h, läuft der Aufprall kurz in Zeitlupe ab – mit dumpfem Schlag und Ohrenpfeifen. Aus: alles in Echtzeit.", opts: [{ v: true, l: "An", def: true }, { v: false, l: "Aus" }] },
+  { key: "drugFx", group: "welt", label: "Rausch-Effekt", hint: "Nach Bier oder Joint schwankt die Sicht leicht, das Bild bekommt einen dunklen Rand und eine Färbung. Aus: kein Bildeffekt – Promille und THC zählen bei Kontrollen trotzdem.", opts: [{ v: true, l: "An", def: true }, { v: false, l: "Aus" }] },
+  { key: "smartTraffic", group: "verkehr", label: "Verkehr: Überholen & Rücksicht", hint: "Autos überholen langsame LKW, wenn der Gegenverkehr es zulässt (brechen ab, wenn es eng wird), und bremsen vor Baustellen, Blitzern, Kontrollen und Unfällen. Hauptstraßen werden automatisch Vorfahrtsstraßen.", opts: [{ v: true, l: "An", def: true }, { v: false, l: "Aus" }] },
+  { key: "ownDriver", group: "feature", label: "Eigene Fahr-KI (Beta)", hint: "Experimentell: Unsere eigene Fahr-KI lenkt und bremst die Autos, hält an Ampeln und Stoppschildern, und an Kreuzungen vergibt eine Zentrale die Durchfahrt. Bei großen Kreuzungen, Lkw beim Abbiegen und Problemen übernimmt automatisch wieder BeamNG. Wirkt nur mit „Verkehr: Überholen & Rücksicht“.", opts: [{ v: false, l: "Aus", def: true }, { v: true, l: "An" }] },
+  { key: "accidents", group: "verkehr", label: "Unfälle & Polizei", hint: "Nach einem Unfall kommen Polizei (und Rettungsdienst) und nehmen einen Bericht auf.", opts: [{ v: true, l: "An", def: true }, { v: false, l: "Aus" }] },
+  { key: "autoPhotos", group: "test", label: "Automatik-Fotomodus", hint: "Macht alles allein: Es öffnet nacheinander die Menüs, fotografiert sie, fährt los und nimmt die Fahrt von nah und fern auf, auch mit Kippe und Bier. Dauert etwa 8 Minuten und läuft am besten im eigenen Lkw im Stand los. Fertig liegt alles im Ordner screenshots/trucks_of_earth_github. Strg+Umschalt+C bricht ab.", opts: [{ v: false, l: "Aus", def: true }, { v: true, l: "An" }] },
+  { key: "photoSeries", group: "test", label: "Fotomodus im Autodrive", hint: "An: Im Autodrive erscheint neben Cinematic der Knopf „Fotos“. Dann entstehen laufend Bilder von der Kabine und deinen Einbauten, von außen und von innen, bis du sie mit Strg+Umschalt+C beendest. Die Bilder landen im Ordner screenshots/trucks_of_earth und brauchen Platz.", opts: [{ v: false, l: "Aus", def: true }, { v: true, l: "An" }] },
+  { key: "devResets", group: "test", label: "Entwicklermodus: BeamNG-Reset", hint: "Normal sind Reset, Bergen, Neuladen und die Fahrzeug- und Teilemenüs von BeamNG in der Karriere gesperrt, sonst wäre jede Reparatur umsonst. An: Sie funktionieren wieder, und ein Reset repariert den Lkw kostenlos.", opts: [{ v: false, l: "Aus", def: true }, { v: true, l: "An" }] },
+  { key: "events", group: "fahren", label: "Ereignisse", hint: "Baustellen, mobile Blitzer und Polizeikontrollen auf der Route.", opts: [{ v: true, l: "An", def: true }, { v: false, l: "Aus" }] },
+  { key: "hitch", group: "fahren", label: "Ankuppeln", hint: "Automatisch: rückwärts heranfahren und anhalten. Selbst: darunter setzen und L.", opts: [{ v: "auto", l: "Automatisch", def: true }, { v: "manual", l: "Selbst" }] },
+  { key: "tutorial", group: "test", label: "Einführung", hint: "Das Handbuch vom ersten Tag noch einmal zeigen: Aufträge, Fahrzeit, Müdigkeit, Kabine, Radio, Pannen, Club, Versicherung und alle Hilfen.", opts: [{ v: "again", l: "Noch einmal zeigen" }] },
+  { key: "truckRules", group: "fahren", label: "LKW-Tempo", hint: "Echte LKW-Regeln: Autobahn 80 km/h, Landstraße 60 km/h, in Orten das Schild – dazu der Tempobegrenzer bei 90 km/h (ausbauen lassen kann man ihn in der Werkstatt …). Strafen gibt es nur an echten Blitzern und bei Kontrollen. Aus: es gilt das Schild wie für Autos.", opts: [{ v: true, l: "An", def: true }, { v: false, l: "Aus" }] },
+  { key: "speedWarn", group: "fahren", label: "Tempo-Warnung", hint: "Der Tacho blinkt, wenn du zu schnell fährst.", opts: [{ v: true, l: "An", def: true }, { v: false, l: "Aus" }] },
 ]
 const TYPE_COLORS = { fuel: "#ffb12e", rest: "#8fd14f", workshop: "#ff8a5e", truckdealer: "#5fb4ff", cardealer: "#5fb4ff",
   viewpoint: "#b86bff", logistics: "#cfd6de", post: "#ffd84a", supermarket: "#4fd18b", industry: "#9aa4b2", port: "#5fb4ff" }
 
 const rootEl = ref(null)
-const st = ref(null)
+// (2026-11-10: shallow - the state is replaced as a whole every second; made deeply reactive each time, thousands of entries, it made the office stutter)
+const st = shallowRef(null)
 const tab = ref("home")
 const evOpen = ref(false)
 const townQ = ref(""), townSort = ref("recent")
@@ -852,6 +901,9 @@ function dealerStyle(p) { let h = 5381; const s = String(p.id); for (let i = 0; 
 const dealerTab = ref("new")
 
 const offers = computed(() => toArray(st.value && st.value.offers))
+const ug = computed(() => (st.value && st.value.ug) || {})
+const ugOffers = computed(() => toArray(ug.value.offers))
+const ugPct = computed(() => ug.value.to ? Math.min(100, Math.round((ug.value.xp - ug.value.from) / Math.max(1, ug.value.to - ug.value.from) * 100)) : 100)
 const filteredOffers = computed(() => offers.value.filter(o => kind.value === "all" || (kind.value === "long" ? o.long : !o.long)))
 const owned = computed(() => toArray(st.value && st.value.owned))
 const types = computed(() => toArray(st.value && st.value.types))
@@ -1134,14 +1186,18 @@ function trailerPic(o) {
 function seizeFee(t) { return Math.round((t.price || 60000) * 0.25 / 100) * 100 }
 function trailerName(o) { return (o && o.trailer && o.trailer.name) || "Auflieger" }
 const PLACE_TABS = ["map", "dealer", "messages"]
+// (the long lists come only when they changed: what did not come is kept)
+const KEEP = ["documents", "log", "statsView"]
 function take(s) {
   if (!s) return
   if (s.places !== undefined && s.places !== null) placesCache.value = toArray(s.places)
+  const prev = st.value
+  if (prev) for (const k of KEEP) if (s[k] === undefined || s[k] === null) s[k] = prev[k]
   st.value = s
 }
 function refresh() {
   const need = PLACE_TABS.includes(tab.value) || !placesCache.value.length
-  call("uiState", need, tab.value === "bank", s => { if (s) { take(s); if (tab.value === "dealer") loadCatalogs() } })
+  call("uiState", need, tab.value === "bank", tab.value, s => { if (s) { take(s); if (tab.value === "dealer") loadCatalogs() } })
 }
 function act(fn, ...args) { call(fn, ...args, () => refresh()) }
 let usedStale = false
@@ -1494,6 +1550,18 @@ h3 { margin: 0 0 10px; font-size: 11px; letter-spacing: .12em; text-transform: u
 .btn:disabled { opacity: .4; pointer-events: none; }
 /* the Zentrale */
 .hub { animation: hubIn .3s ease-out; }
+/* the underground (2026-11-10) */
+.ugp { background: radial-gradient(ellipse at top left, rgba(52,255,148,.08), transparent 60%), #0b0f0d; border: 1px solid rgba(52,255,148,.18); border-radius: 14px; padding: 16px; color: #d8efe2; }
+.ughead { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+.ugbadge { width: 58px; height: 58px; border-radius: 14px; display: grid; place-items: center; font-size: 28px; font-weight: 900; color: #06130c; background: linear-gradient(160deg, #3dff9a, #12b866); box-shadow: 0 0 22px rgba(61,255,154,.35); }
+.ugwho { flex: 1; min-width: 200px; } .ugwho small { display: block; color: #7fbf9c; font-size: 11px; letter-spacing: .8px; } .ugwho b { font-size: 22px; color: #eafff3; }
+.ugbar { height: 7px; border-radius: 4px; background: rgba(255,255,255,.08); overflow: hidden; margin: 6px 0 4px; } .ugbar i { display: block; height: 100%; background: linear-gradient(90deg, #12b866, #3dff9a); }
+.ugstat { min-width: 90px; text-align: center; background: rgba(255,255,255,.04); border: 1px solid rgba(61,255,154,.15); border-radius: 10px; padding: 8px 10px; } .ugstat b { display: block; font-size: 17px; color: #3dff9a; } .ugstat small { color: #7fbf9c; font-size: 11px; }
+.ugline { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 14px 0; color: #a9cdb9; } .ugline span { flex: 1; min-width: 220px; }
+.ugbtn { background: #1fd97f !important; color: #06130c !important; border-color: transparent !important; font-weight: 800; }
+.ugt td, .ugt th { border-color: rgba(61,255,154,.12) !important; } .ugnone { padding: 18px 0; }
+.ugheat { padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 800; } .ugheat.h0 { background: rgba(61,255,154,.15); color: #3dff9a; } .ugheat.h1 { background: rgba(255,177,46,.16); color: #ffb12e; } .ugheat.h2 { background: rgba(255,107,94,.18); color: #ff6b5e; }
+.ugperks { margin-top: 16px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; } .ugperks b { margin-right: 6px; } .ugperks span { padding: 3px 9px; border-radius: 999px; background: rgba(255,255,255,.05); color: #6f8f7d; font-size: 12px; } .ugperks span.on { background: rgba(61,255,154,.16); color: #3dff9a; } .ugperks small { flex-basis: 100%; color: #7fbf9c; margin-top: 6px; }
 @keyframes hubIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 .hub .hello { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 14px; }
 .hub .hello .day { display: block; font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: #f5a623; font-weight: 800; }
@@ -1587,6 +1655,18 @@ aside { background: rgba(9, 12, 17, .55); border-right-color: rgba(255, 255, 255
 .ycard { transition: border-color .2s ease, transform .2s cubic-bezier(.16, 1, .3, 1), box-shadow .2s ease; }
 .ycard:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(0, 0, 0, .3); }
 .setting { transition: background .2s ease; }
+.setgrp { margin: 26px 0 2px; font-size: 11.5px; font-weight: 800; letter-spacing: .9px; text-transform: uppercase; color: #ffb12e; }
+.feat { display: flex; align-items: center; gap: 20px; padding: 20px 22px; margin: 4px 0 6px; border-radius: 10px; background: linear-gradient(135deg, #1b2533, #121820); border: 1px solid #2c3a4d; }
+.feat.on { border-color: #2fbf71; background: linear-gradient(135deg, #16301f, #111a14); }
+.feat-ic { font-size: 40px; flex: none; }
+.feat small { font-size: 11px; font-weight: 800; letter-spacing: .8px; text-transform: uppercase; color: #5fb4ff; }
+.feat.on small { color: #7fe3a4; }
+.feat h3 { margin: 3px 0 6px; font-size: 21px; color: #fff; }
+.feat p { margin: 0; font-size: 13px; line-height: 1.45; color: #aeb7c3; }
+.feat-sw { display: flex; flex: none; border: 1px solid #36414f; border-radius: 8px; overflow: hidden; }
+.feat-sw a { padding: 12px 22px; font-size: 15px; font-weight: 800; color: #8b95a3; cursor: pointer; }
+.feat-sw a.on { background: #2fbf71; color: #08210f; }
+.feat-sw a:first-child.on { background: #3a4452; color: #fff; }
 @media (prefers-reduced-motion: reduce) { .frame, .tabIn, .tbl tbody tr { animation: none; } }
 aside { overflow-y: auto; scrollbar-width: thin; } .nav { padding-top: 7px; padding-bottom: 7px; } .sect { padding-top: 10px !important; padding-bottom: 4px !important; }
 .dlp { font-style: normal; font-weight: 800; } .dlp.p1 { color: #7fdc8a; } .dlp.p2 { color: #ffc964; } .dlp.p3 { color: #ff9a7a; }

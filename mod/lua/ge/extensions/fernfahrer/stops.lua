@@ -189,6 +189,8 @@ function M.update(ctx, dt)
 end
 
 function M.inside() return ring and ring.inside and ring.place or nil end
+-- (2026-11-10) the ring as it lies: { pos, place } (the rest area's police check is set up there)
+function M.ring() return ring end
 
 -- for the HUD: the prompt (inside) or the way there (near: from SHOW_M on, with the direction)
 M.SHOW_M = 220

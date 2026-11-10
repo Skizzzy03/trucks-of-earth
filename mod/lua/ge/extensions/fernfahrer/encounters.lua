@@ -7,9 +7,10 @@ M.COOLDOWN_KM = { 12, 35 }
 M.CHANCE = 0.6
 M.SHAPE = '/levels/beamng_earth/art/shapes/ffa/ff_npc_'
 local X, st, E
+local PX = require('fernfahrer/passenger')
 
 local BYE = 'Weiterfahren'
-M.ORDER = { 'fremder', 'kollege', 'tramper', 'diesel', 'paket', 'opa', 'panne', 'schlitzer', 'uhr', 'dealer', 'huetchen', 'aluhut' }
+M.ORDER = { 'fremder', 'kollege', 'tramper', 'diesel', 'paket', 'opa', 'panne', 'schlitzer', 'uhr', 'dealer', 'huetchen', 'aluhut', 'spotter', 'hund', 'imbiss', 'umfrage', 'musiker', 'party' }
 M.SC = {
   fremder = { bed = 'rast', knock = 2, who = 'Fremder', face = 'hoodie', start = 'a', n = {
     a = { say = 'Hallo, Fremder.', react = 'think', ch = {
@@ -50,6 +51,82 @@ M.SC = {
       { t = '„Na gut, steig ein.“', to = 'rein', fx = { hitch = true } }, { t = '„Tut mir leid, heute nicht.“', to = 'nein' } } },
     rein = { nar = true, say = 'Sie wirft den Rucksack in die Kabine und legt die Füße aufs Armaturenbrett. Das kann ja was werden.', mood = 2, react = 'laugh' },
     nein = { say = 'Schon gut. Trotzdem gute Fahrt.', react = 'sad' },
+  } },
+  -- (2026-11-10) the same at the roadside: she has walked up to the passenger door (fernfahrer/crew.lua); not one of the rest area's
+  tramper_strasse = { bed = 'warm', who = 'Anhalterin', face = 'hitch', start = 'a', mood = 1, n = {
+    a = { say = 'Hey, danke, dass du anhältst! Ich stehe hier schon ewig, keiner hält an. Nimmst du mich ein Stück mit?', react = 'nervous', ch = {
+      { t = '„Steig ein.“', sub = 'sie fährt ein Stück mit', to = 'rein', fx = { hitch = true } },
+      { t = '„Wo willst du denn hin?“', to = 'wohin', mood = 1 },
+      { t = '„Sorry, ich darf niemanden mitnehmen.“', to = 'nein', mood = -1 } } },
+    wohin = { say = 'Zu meiner Schwester. Die wohnt irgendwo da vorne, ich erkenne es, wenn ich es sehe. Hoffentlich.', react = 'laugh', ch = {
+      { t = '„Na gut, steig ein.“', to = 'rein', fx = { hitch = true } }, { t = '„Tut mir leid, heute nicht.“', to = 'nein' } } },
+    rein = { nar = true, say = 'Sie läuft ums Führerhaus, klettert auf den Beifahrersitz und stellt den Rucksack zwischen die Füße. „Ich bin übrigens %NAME%.“', mood = 2, react = 'laugh' },
+    nein = { say = 'Okay. Trotzdem danke fürs Anhalten. Gute Fahrt!', react = 'sad' },
+  } },
+  -- (2026-11-10) more people at the rest area: a lorry spotter, a lost dog, the snack van, a survey, a musician
+  spotter = { bed = 'warm', who = 'Lkw-Fan', face = 'nerd', start = 'a', mood = 1, n = {
+    a = { say = 'Entschuldigung! Ist das Ihrer? Ich fotografiere Lkw. Darf ich ein Bild von Ihrem machen? Für meinen Blog.', react = 'nervous', ch = {
+      { t = '„Klar, mach ruhig.“', to = 'foto', mood = 1 },
+      { t = '„Was ist das für ein Blog?“', to = 'blog', mood = 1 },
+      { t = '„Lieber nicht.“', to = 'nein', mood = -1 } } },
+    blog = { say = '„Brummis von unten“. Ich lieg dafür auf dem Boden und fotografier die Achsen. 340 Leser! Also, 340 Klicks. Wahrscheinlich viel meine Mutter.', react = 'laugh', ch = {
+      { t = '„Na dann leg los.“', to = 'foto', mood = 1 }, { t = '„Die Achsen? Ernsthaft?“', to = 'achse', mood = 1 } } },
+    achse = { say = 'Achsen erzählen Geschichten! Ihre zum Beispiel: viel Autobahn, wenig Baustelle. Und einmal eine Bordsteinkante, oder?', react = 'think', fx = { xp = 15 }, ch = {
+      { t = '„Erwischt.“', to = 'foto', mood = 2 }, { t = '„Das war ein anderer.“', to = 'foto' } } },
+    foto = { nar = true, say = 'Er legt sich tatsächlich unter die Stoßstange, macht dreißig Fotos und steht strahlend wieder auf. „Der kommt aufs Titelbild!“', mood = 2, react = 'laugh', fx = { xp = 30 } },
+    nein = { say = 'Schon gut, schon gut. Ich fotografier dann den da drüben. Der ist eh schmutziger.', react = 'sad' },
+  } },
+  hund = { bed = 'warm', who = 'Ältere Dame', face = 'old', start = 'a', mood = 0, n = {
+    a = { say = 'Entschuldigen Sie, haben Sie einen kleinen braunen Hund gesehen? Er heißt Bruno. Er ist mir an der Tankstelle weggelaufen.', react = 'sad', ch = {
+      { t = '„Ich helfe Ihnen suchen.“', to = 'suchen', mood = 2 },
+      { t = 'In den Spiegeln nachschauen', to = 'spiegel', mood = 1 },
+      { t = '„Tut mir leid, nein.“', to = 'nein' } } },
+    suchen = { nar = true, say = 'Ihr lauft zusammen einmal um den Rastplatz. Hinter einem Kühlauflieger sitzt Bruno und frisst eine Bockwurst, die jemand fallen gelassen hat. Die Dame weint vor Freude.', mood = 3, react = 'laugh', fx = { xp = 60, tired = 0.05, note = '🐶 Bruno ist wieder da. Die Dame hat dir ein Stück Kuchen eingepackt.' } },
+    spiegel = { say = 'Oh! Da, im rechten Spiegel, hinter dem Mülleimer! Bruno! Vielen, vielen Dank, Sie sind ein Engel!', react = 'laugh', mood = 3, fx = { xp = 40 } },
+    nein = { say = 'Trotzdem danke. Wenn Sie ihn sehen, er hört auf „Wurst“. Leider besser als auf „Bruno“.', react = 'sad' },
+  } },
+  imbiss = { bed = 'warm', who = 'Imbisswirt', face = 'trucker', start = 'a', mood = 1, n = {
+    a = { say = 'Na, Chef! Ich mach gleich zu. Eine Currywurst hab ich noch, die würd ich dir für zwei Euro geben. Sonst kriegt sie meine Katze.', react = 'nod', ch = {
+      { t = '„Her damit.“', sub = 'kostet 2 €', cost = 2, to = 'wurst', fx = { pay = -2, cat = 'Sonstiges', why = 'Currywurst am Imbiss' } },
+      { t = '„Wie läuft das Geschäft?“', to = 'geschaeft', mood = 1 },
+      { t = '„Gib sie der Katze.“', to = 'katze' } } },
+    wurst = { say = 'Mit extra Soße, geht aufs Haus. Und pass auf, morgen früh ist an der Ausfahrt eine Baustelle. Die blitzen da gern.', react = 'laugh', fx = { tired = -0.08, xp = 20, note = '🌭 Die Currywurst war richtig gut. Du fühlst dich wacher.' } },
+    geschaeft = { say = 'Seit sie die neue Raststätte gebaut haben, kommen nur noch die Stammkunden. Lkw-Fahrer halt. Ihr seid die Besten. Ihr meckert nie.', react = 'think', fx = { xp = 15 }, ch = {
+      { t = '„Dann nehm ich doch die Wurst.“', sub = 'kostet 2 €', cost = 2, to = 'wurst', fx = { pay = -2, cat = 'Sonstiges', why = 'Currywurst am Imbiss' } }, { t = '„Halt durch!“' } } },
+    katze = { say = 'Die freut sich. Die ist eh schon so dick wie mein Grill. Gute Fahrt!', react = 'laugh' },
+  } },
+  umfrage = { bed = 'warm', who = 'Studentin', face = 'woman', start = 'a', mood = 1, n = {
+    a = { say = 'Hallo! Ich mache eine Umfrage für meine Uni, zum Thema Schlaf bei Berufskraftfahrern. Hätten Sie zwei Minuten?', react = 'nod', ch = {
+      { t = '„Klar, frag los.“', to = 'f1', mood = 1 },
+      { t = '„Ich hab keine Zeit.“', to = 'nein', mood = -1 } } },
+    f1 = { say = 'Wie viele Stunden schlafen Sie im Schnitt pro Nacht? Ehrlich bitte, es ist anonym.', react = 'think', ch = {
+      { t = '„Acht. Ich halte meine Pausen ein.“', to = 'gut', mood = 1 },
+      { t = '„Fünf. Wenn’s hochkommt.“', to = 'wenig', mood = 1 },
+      { t = '„Schlaf ist was für Schwache.“', to = 'schwach' } } },
+    gut = { say = 'Vorbildlich! Sie sind der Erste heute, der das sagt. Hier, ein Gutschein vom Uni-Café. Leider nur in Göttingen gültig.', react = 'laugh', fx = { xp = 30 } },
+    wenig = { say = 'Das sagen fast alle. Bitte passen Sie auf sich auf. Müdigkeit ist so gefährlich wie Alkohol am Steuer.', react = 'sad', fx = { xp = 20 } },
+    schwach = { say = 'Das schreib ich so auf. Mit drei Ausrufezeichen. Und einem traurigen Smiley.', react = 'shake', fx = { xp = 10 } },
+    nein = { say = 'Kein Problem. Gute Fahrt und schlafen Sie genug!', react = 'nod' },
+  } },
+  musiker = { bed = 'warm', who = 'Straßenmusiker', face = 'stoned', start = 'a', mood = 1, n = {
+    a = { say = 'Hey, Mann. Ich spiel hier ein bisschen Gitarre für die Fahrer. Willst du ein Lied hören? Du darfst dir eins wünschen.', react = 'nod', ch = {
+      { t = '„Spiel was übers Fernfahren.“', to = 'lied', mood = 2 },
+      { t = 'Zwei Euro in den Hut werfen', sub = 'kostet 2 €', cost = 2, to = 'hut', fx = { pay = -2, cat = 'Sonstiges', why = 'Straßenmusik' } },
+      { t = '„Nee, lass mal.“', to = 'nein' } } },
+    lied = { nar = true, say = 'Er spielt ein selbst geschriebenes Lied über einen Fahrer, der nie ankommt, weil er an jeder Raststätte jemanden kennenlernt. Ziemlich schön, eigentlich.', mood = 2, react = 'laugh', fx = { xp = 25, tired = -0.05 } },
+    hut = { say = 'Danke, Mann! Dafür gibt’s die Zugabe. Die ist lauter.', react = 'laugh', mood = 2, fx = { xp = 20 } },
+    nein = { say = 'Alles klar. Gute Fahrt. Und lass das Radio an, die Stille macht einen komisch.', react = 'nod' },
+  } },
+  party = { bed = 'warm', who = 'Festivalgänger', face = 'stoned', start = 'a', mood = 2, n = {
+    a = { say = 'Ey, Lkw-Mann! Wir kommen vom Festival, unser Bus hat einen Platten, und wir haben noch drei Kisten Bier und keine Lust aufs Warten. Feierst du kurz mit?', react = 'laugh', ch = {
+      { t = '„Ich muss fahren. Aber ich helf euch mit dem Reifen.“', to = 'reifen', mood = 2 },
+      { t = '„Eine Cola trink ich mit.“', to = 'cola', mood = 1 },
+      { t = '„Macht mal ohne mich.“', to = 'nein' } } },
+    reifen = { nar = true, say = 'Ihr wechselt zu fünft den Reifen, einer hält die Taschenlampe, einer die Bluetoothbox, der Rest grölt die Anweisungen. Am Ende jubelt der ganze Rastplatz.', mood = 3, react = 'laugh', ch = {
+      { t = 'Weiter', to = 'dank' } } },
+    dank = { say = 'Du bist der Größte! Hier, nimm wenigstens das mit. Ist für nach der Fahrt, nicht für unterwegs, ja?', react = 'wink', fx = { xp = 60, cab = 'joint', n = 1, note = '🌿 Die Festivalleute haben dir einen Joint dagelassen. Er liegt bei deinem Vorrat, für den Feierabend.' } },
+    cola = { say = 'Cola! Respekt, der Mann hat Prinzipien. Prost! Und wenn du mal ein Festival brauchst: Wir sind jedes Jahr da. Wir sind die mit dem Plattfuß-Bus.', react = 'laugh', fx = { xp = 30, tired = -0.05 } },
+    nein = { say = 'Schade! Dann winken wir dir hinterher. Gute Fahrt, Lkw-Mann!', react = 'nod' },
   } },
   diesel = { bed = 'komisch', who = 'Mann mit Kanister', face = 'shady', start = 'a', n = {
     a = { say = 'Psst, Chef. 200 Liter Diesel, halber Preis. Ist sozusagen vom Laster gefallen.', react = 'wink', ch = {
@@ -182,7 +259,12 @@ function M.nextForTest()
 end
 
 local function robSum() return math.max(60, math.min(450, math.floor(math.max(0, X.money()) * 0.04 / 10) * 10)) end
-local function fill(s) return s and (s:gsub('%%ROB%%', X.fmt(E.rob))) or nil end
+local function fill(s)
+  if not s then return nil end
+  s = s:gsub('%%ROB%%', X.fmt(E.rob))
+  s = s:gsub('%%NAME%%', (st.hitch and st.hitch.name) or 'Lea')
+  return s
+end
 local function apply(fx)
   if not fx then return end
   if fx.rob then
@@ -201,7 +283,11 @@ local function apply(fx)
   if fx.freight then X.freight(fx.freight) end
   if fx.note then E.notes = E.notes or {}; E.notes[#E.notes + 1] = fx.note end
   if fx.msg then E.msg = fx.msg end
-  if fx.hitch then st.hitch = { km = X.km() + 15 + math.random() * 30 }; X.notify('🎒 Die Anhalterin fährt ein Stück mit.', 5) end
+  if fx.hitch then
+    -- (a name and a story of her own for this ride: fernfahrer/passenger.lua, told by fernfahrer/crew.lua on the way)
+    st.hitch = { km0 = X.km(), km = X.km() + 15 + math.random() * 30, name = PX.NAMES[math.random(#PX.NAMES)], story = math.random(#PX.STORIES), mood = 0 }
+    X.notify('🎒 ' .. st.hitch.name .. ' fährt ein Stück mit.', 5)
+  end
   if fx.pack then st.pack = { km = X.km() + 30 + math.random() * 40 } end
 end
 local function send()
@@ -230,7 +316,7 @@ local function say(key)
   send()
 end
 
-function M.start(key)
+function M.start(key, opt)
   local sc = M.SC[key]
   if E or not sc then return false end
   st.seen[#st.seen + 1] = key
@@ -240,7 +326,9 @@ function M.start(key)
   E = { key = key, sc = sc, id = 0, seed = math.random(1, 4000), mood = (sc.mood or 0) + math.random(-1, 1), rob = robSum(), who = sc.who, node = sc.start,
     knockAt = c + 1.6, lookAt = c + 3.3, wait = c + 4.6 }
   X.bed(false)
-  X.stage(M.SHAPE .. sc.face .. '.dae')
+  -- (someone who walked up by themselves stands there already; and at the passenger door the head turns right)
+  if not (opt and opt.noStage) then X.stage(M.SHAPE .. sc.face .. '.dae') end
+  E.yaw = opt and opt.yaw or nil
   return true
 end
 function M.answer(i)
@@ -279,7 +367,7 @@ function M.tick(moving)
   end
   local c = os.clock()
   if E.knockAt and c >= E.knockAt then E.knockAt = nil; X.knock(E.sc.knock) end
-  if E.lookAt and c >= E.lookAt then E.lookAt = nil; X.look(true) end
+  if E.lookAt and c >= E.lookAt then E.lookAt = nil; X.look(true, E.yaw) end
   if E.wait then
     if c >= E.wait then E.wait = nil; X.bed(E.sc.bed); say(E.node); E.sent = c end
     return
@@ -291,19 +379,35 @@ function M.reset() if E then M.finish() end end
 -- what came along: the hitchhiker gets off, the parcel is fetched
 function M.kmTick(km)
   if not st then return end
-  if st.hitch and km >= st.hitch.km then
+  -- (2026-11-10: she sits beside the driver; when she is nearly there she asks to be let out, and gets out where the truck stops)
+  if st.hitch and km >= st.hitch.km and not st.hitch.ask then
+    st.hitch.ask = true
+    X.notify('🎒 „Da vorne kannst du mich rauslassen.“ Halt kurz an, dann steigt sie aus.', 8)
+  end
+  if st.hitch and st.hitch.ask and (not X.stopped or X.stopped()) and not E then
+    local h = st.hitch
     st.hitch = nil
+    -- (her goodbye in the window: decided first, said as she gets out)
+    local mm = h.mood or 0
+    local byeLine = mm >= 2 and PX.BYE_GOOD[math.random(#PX.BYE_GOOD)] or (mm < 0 and PX.BYE_BAD[math.random(#PX.BYE_BAD)] or PX.BYE_OK[math.random(#PX.BYE_OK)])
+    if X.ride then X.ride(false, { name = h.name or 'Anhalterin', seed = h.seed, mood = mm, line = byeLine }) end
+    -- (2026-11-10: how the ride went counts - a good talk on the way, a bigger thank-you and seldom a hand in the tray)
+    local m, who = h.mood or 0, h.name or 'Anhalterin'
+    local theft = math.max(0.03, 0.2 - m * 0.03)
+    local gift = math.min(0.4, math.max(0.05, 0.12 + m * 0.04))
+    local bye = byeLine
     local r = math.random()
-    if r < 0.68 then
-      X.pay('Sonstiges', 40, 'Anhalterin hat sich beteiligt'); X.xp(40)
-      X.message('Sie steigt an der nächsten Ausfahrt aus, drückt dir 40 € in die Hand und malt einen Smiley auf die beschlagene Scheibe.', 'Anhalterin')
-    elseif r < 0.88 then
+    if r < theft then
       local a = math.min(math.max(0, X.money()), 120)
       if a > 0 then X.pay('Sonstiges', -a, 'Anhalterin') end
-      X.message('Sie steigt aus und winkt noch. Erst später merkst du, dass ' .. X.fmt(a) .. ' aus der Ablage fehlen.', 'Anhalterin')
+      X.message('Sie steigt aus und winkt noch. Erst später merkst du, dass ' .. X.fmt(a) .. ' aus der Ablage fehlen.', who)
+    elseif r < theft + gift then
+      X.give('wimpelkette'); X.xp(40 + math.max(0, m) * 5)
+      X.message((bye and ('„' .. bye .. '“ ') or '') .. 'Zum Abschied hängt sie dir eine Wimpelkette in die Kabine. Sie liegt bei deinem Zubehör.', who)
     else
-      X.give('wimpelkette'); X.xp(40)
-      X.message('Zum Abschied hängt sie dir eine Wimpelkette in die Kabine. Sie liegt bei deinem Zubehör.', 'Anhalterin')
+      local tip = 40 + math.max(0, math.min(6, m)) * 10
+      X.pay('Sonstiges', tip, 'Anhalterin hat sich beteiligt'); X.xp(40 + math.max(0, m) * 5)
+      X.message((bye and ('„' .. bye .. '“ ') or '') .. 'Sie drückt dir ' .. X.fmt(tip) .. ' in die Hand und malt zum Abschied einen Smiley auf die beschlagene Scheibe.', who)
     end
     X.save()
   end

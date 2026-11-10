@@ -3,10 +3,11 @@
 const fs = require('fs'), path = require('path')
 const dir = path.join(process.argv[2], 'levels/beamng_earth/art/shapes/ffa')
 const SIDES = 12
-let parts
+let parts, ZS = 0
 function add(mat, a, b, c, na, nb, nc) { const m = parts[mat] = parts[mat] || { p: [], n: [] }; m.p.push(...a, ...b, ...c); m.n.push(...na, ...nb, ...nc) }
 const norm = a => { const l = Math.hypot(...a) || 1; return [a[0] / l, a[1] / l, a[2] / l] }
 function loft(mat, rings) {
+  rings = rings.map(r => [r[0], r[1], r[2] + ZS, r[3], r[4]])
   const ring = r => { const o = []; for (let i = 0; i < SIDES; i++) { const t = i / SIDES * 2 * Math.PI; o.push([r[0] + Math.cos(t) * r[3], r[1] + Math.sin(t) * r[4], r[2]]) } return o }
   const R = rings.map(ring)
   const out = (k, i) => norm([Math.cos(i / SIDES * 2 * Math.PI) / (rings[k][3] || 1), Math.sin(i / SIDES * 2 * Math.PI) / (rings[k][4] || 1), 0])
@@ -14,9 +15,32 @@ function loft(mat, rings) {
   const fan = (k, up) => { const r = rings[k], c = [r[0], r[1], r[2]], n = [0, 0, up]; for (let i = 0; i < SIDES; i++) { const j = (i + 1) % SIDES; up > 0 ? add(mat, c, R[k][i], R[k][j], n, n, n) : add(mat, c, R[k][j], R[k][i], n, n, n) } }
   fan(0, -1); fan(R.length - 1, 1)
 }
-const COL = { skin: [0.75, 0.53, 0.42], pale: [0.86, 0.66, 0.54], tan: [0.55, 0.36, 0.25], dark: [0.34, 0.2, 0.12], black: [0.02, 0.02, 0.024], charcoal: [0.06, 0.065, 0.08], jeans: [0.06, 0.1, 0.22], red: [0.34, 0.05, 0.04], teal: [0.08, 0.3, 0.27], olive: [0.18, 0.2, 0.09], green: [0.1, 0.28, 0.08], yellow: [0.82, 0.58, 0.04], grey: [0.26, 0.26, 0.24], blue: [0.05, 0.2, 0.32], silver: [0.7, 0.72, 0.76], brown: [0.2, 0.11, 0.05], blond: [0.48, 0.3, 0.12], rust: [0.5, 0.15, 0.06], white: [0.8, 0.8, 0.78] }
+// a tube along +Y (a thigh of someone sitting): both windings, so it is closed from every side
+function loftY(mat, rings) {
+  rings = rings.map(r => [r[0], r[1], r[2] + ZS, r[3], r[4]])
+  const ring = r => { const o = []; for (let i = 0; i < SIDES; i++) { const t = i / SIDES * 2 * Math.PI; o.push([r[0] + Math.cos(t) * r[3], r[1], r[2] + Math.sin(t) * r[4]]) } return o }
+  const R = rings.map(ring)
+  const out = (k, i) => norm([Math.cos(i / SIDES * 2 * Math.PI) / (rings[k][3] || 1), 0, Math.sin(i / SIDES * 2 * Math.PI) / (rings[k][4] || 1)])
+  const both = (a, b, c, na, nb, nc) => { add(mat, a, b, c, na, nb, nc); add(mat, a, c, b, na, nc, nb) }
+  for (let k = 0; k + 1 < R.length; k++) for (let i = 0; i < SIDES; i++) { const j = (i + 1) % SIDES; both(R[k][i], R[k][j], R[k + 1][j], out(k, i), out(k, j), out(k + 1, j)); both(R[k][i], R[k + 1][j], R[k + 1][i], out(k, i), out(k + 1, j), out(k + 1, i)) }
+  for (const [k, up] of [[0, -1], [R.length - 1, 1]]) { const r = rings[k], c = [r[0], r[1], r[2]], n = [0, up, 0]; for (let i = 0; i < SIDES; i++) { const j = (i + 1) % SIDES; both(c, R[k][i], R[k][j], n, n, n) } }
+}
+const COL = { orange: [0.86, 0.3, 0.02], skin: [0.75, 0.53, 0.42], pale: [0.86, 0.66, 0.54], tan: [0.55, 0.36, 0.25], dark: [0.34, 0.2, 0.12], black: [0.02, 0.02, 0.024], charcoal: [0.06, 0.065, 0.08], jeans: [0.06, 0.1, 0.22], red: [0.34, 0.05, 0.04], teal: [0.08, 0.3, 0.27], olive: [0.18, 0.2, 0.09], green: [0.1, 0.28, 0.08], yellow: [0.82, 0.58, 0.04], grey: [0.26, 0.26, 0.24], blue: [0.05, 0.2, 0.32], silver: [0.7, 0.72, 0.76], brown: [0.2, 0.11, 0.05], blond: [0.48, 0.3, 0.12], rust: [0.5, 0.15, 0.06], white: [0.8, 0.8, 0.78] }
 function person(o) {
-  for (const s of [-1, 1]) {
+  // sitting: the origin is the seat; thighs forward, shins down to the floor 0.45 below, hands on the knees. The body above as standing, 0.9 lower
+  if (o.sit) {
+    for (const s of [-1, 1]) {
+      const x = s * 0.105
+      loftY(o.legs, [[x, -0.03, 0.075, 0.08, 0.075], [x, 0.22, 0.07, 0.07, 0.068], [x, 0.43, 0.06, 0.062, 0.06]])
+      loft(o.legs, [[x, 0.47, -0.4, 0.055, 0.06], [x, 0.455, -0.05, 0.06, 0.064], [x, 0.44, 0.1, 0.062, 0.062]])
+      loft(o.shoe || 'black', [[x, 0.51, -0.45, 0.055, 0.12], [x, 0.51, -0.4, 0.055, 0.115]])
+      loft(o.top, [[s * 0.25, 0.04, 0.2, 0.042, 0.047], [s * 0.265, 0.02, 0.4, 0.05, 0.055], [s * 0.225, 0, 0.57, 0.065, 0.07]])
+      loftY(o.top, [[s * 0.23, 0.02, 0.2, 0.04, 0.042], [s * 0.19, 0.3, 0.17, 0.036, 0.038]])
+      loftY(o.skin, [[s * 0.185, 0.3, 0.17, 0.036, 0.034], [s * 0.17, 0.4, 0.165, 0.034, 0.03]])
+    }
+    ZS = -0.9
+  }
+  for (const s of (o.sit ? [] : [-1, 1])) {
     const x = s * 0.105
     loft(o.shoe || 'black', [[x, 0.04, 0, 0.055, 0.13], [x, 0.04, 0.05, 0.055, 0.125], [x, 0, 0.1, 0.055, 0.08]])
     loft(o.legs, [[x, 0, 0.08, 0.06, 0.07], [x, 0, 0.5, 0.068, 0.075], [x * 1.02, 0, 0.92, 0.095, 0.105]])
@@ -26,6 +50,7 @@ function person(o) {
   }
   loft(o.top, [[0, 0, 0.9, 0.2, 0.14], [0, 0, 1.2, 0.2, 0.135], [0, 0, 1.42, 0.23, 0.135], [0, 0, 1.5, 0.15, 0.09]])
   if (o.band) loft(o.band, [[0, 0, 1.18, 0.207, 0.142], [0, 0, 1.24, 0.209, 0.144]])
+  if (o.band2) loft(o.band2, [[0, 0, 1.33, 0.218, 0.14], [0, 0, 1.37, 0.222, 0.141]])
   loft(o.skin, [[0, 0, 1.48, 0.06, 0.06], [0, 0, 1.57, 0.055, 0.055]])
   loft(o.skin, [[0, 0.01, 1.54, 0.05, 0.06], [0, 0.015, 1.6, 0.082, 0.098], [0, 0.015, 1.68, 0.09, 0.103], [0, 0.01, 1.74, 0.08, 0.09], [0, 0.005, 1.78, 0.045, 0.05]])
   loft(o.skin, [[0, 0.11, 1.635, 0.012, 0.014], [0, 0.125, 1.665, 0.012, 0.012], [0, 0.112, 1.69, 0.008, 0.006]])
@@ -38,6 +63,7 @@ function person(o) {
   if (o.flat) { loft(o.flat, [[0, 0.01, 1.745, 0.1, 0.112], [0, 0.015, 1.79, 0.115, 0.135], [0, 0.01, 1.815, 0.07, 0.09]]) }
   if (o.foil) loft('silver', [[0, 0, 1.745, 0.1, 0.112], [0, 0, 2.02, 0.006, 0.006]])
   if (o.wild) for (const [x, y] of [[-0.09, 0], [0.09, 0], [-0.05, -0.08], [0.05, -0.08]]) loft(o.wild, [[x, y, 1.72, 0.04, 0.04], [x * 1.5, y * 1.5, 1.83, 0.006, 0.006]])
+  ZS = 0
 }
 const KIND = {
   hoodie: { top: 'charcoal', legs: 'black', skin: 'skin', hood: 'charcoal' },
@@ -47,6 +73,8 @@ const KIND = {
   hitch: { top: 'teal', legs: 'jeans', skin: 'pale', long: 'blond', beanie: 'rust', shoe: 'brown' },
   shady: { top: 'charcoal', legs: 'charcoal', skin: 'tan', hair: 'black', beard: 'black' },
   stoned: { top: 'green', legs: 'grey', skin: 'dark', long: 'brown', beanie: 'yellow', shoe: 'white' },
+  mechanic: { top: 'orange', band: 'silver', band2: 'silver', legs: 'charcoal', skin: 'skin', cap: 'orange', shoe: 'black' },
+  hitch_sit: { top: 'teal', legs: 'jeans', skin: 'pale', long: 'blond', beanie: 'rust', shoe: 'brown', sit: true },
   nerd: { top: 'grey', legs: 'olive', skin: 'pale', hair: 'grey', wild: 'white', foil: true },
 }
 const num = a => a.map(v => +v.toFixed(4)).join(' ')

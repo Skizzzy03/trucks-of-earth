@@ -270,13 +270,14 @@ local function finish()
   local s = st.svc
   local c = club()
   st.svc, st.fail, st.water, st.oil = nil, nil, nil, nil
+  if api.crewClean then api.crewClean() end
   api.repair(s.total, (M.FAIL[s.kind] or M.FAIL.recover).title, function()
     c.rescues = (c.rescues or 0) + 1
     if s.cover > 0 then note('teil', 'Panne: ' .. (M.FAIL[s.kind] or M.FAIL.recover).title, s.part + s.cover, s.cover, 'Kasko übernimmt die Teile (SB 150 €).') end
     api.notify(string.format('🛠 Repariert%s. Gute Fahrt!', s.total > 0 and (' · ' .. api.moneyText(-s.total)) or ' – auf Kosten des Clubs'), 7)
     accidents.serviceLeave()
     api.save()
-  end)
+  end, s.kind)
 end
 
 function M.tick(dt)
@@ -304,6 +305,7 @@ function M.tick(dt)
   local away = vec3(v:getPosition()):distance(s.pos)
   if away > M.AWAY_M then
     accidents.serviceCancel()
+    if api.crewClean then api.crewClean() end
     st.svc = nil
     api.pay('Pannendienst', -M.CANCEL_FEE, 'Anfahrt storniert')
     api.notify(string.format('Einsatz abgebrochen, du bist weggefahren · %s', api.moneyText(-M.CANCEL_FEE)), 6)
@@ -321,9 +323,18 @@ function M.tick(dt)
   elseif s.stage == 'coming' then
     local state = accidents.serviceState()
     if state == 'there' or state == nil then
-      s.stage, s.t0, s.dur = 'work', t, (M.FAIL[s.kind] or M.FAIL.recover).work
-      api.message('Bin da, schaue es mir an. Das dauert einen Moment.', M.SHORT .. ' Pannenhelfer')
+      s.dur, s.club = (M.FAIL[s.kind] or M.FAIL.recover).work, M.SHORT
+      -- (2026-11-10: someone gets out, walks over, asks, works and walks back; without the car (none to be had) as before)
+      if state == 'there' and api.crewStart and api.crewStart(s, accidents.serviceCar()) then
+        s.stage = 'crew'
+      else
+        s.stage, s.t0 = 'work', t
+        api.message('Bin da, schaue es mir an. Das dauert einen Moment.', M.SHORT .. ' Pannenhelfer')
+      end
     end
+  elseif s.stage == 'crew' then
+    local ph = api.crewPhase()
+    if ph == 'done' or ph == nil then finish() end
   elseif s.stage == 'work' and t - s.t0 >= s.dur then
     finish()
   end
@@ -344,6 +355,8 @@ function M.hud()
     elseif s.stage == 'coming' then
       local _, d = accidents.serviceState()
       x.text, x.dist = 'Pannendienst kommt', d and math.floor(d / 10 + 0.5) * 10 or nil
+    elseif s.stage == 'crew' and (api.crewPhase() ~= 'work' or not s.t0) then
+      x.text = api.crewPhase() == 'back' and 'Pannenhelfer packt zusammen' or 'Pannenhelfer ist bei dir'
     else
       x.text = 'Pannenhelfer arbeitet'
       x.pct = math.min(100, math.floor((now() - s.t0) / s.dur * 100))
@@ -416,6 +429,6 @@ function M.act(id, arg)
   api.save()
 end
 
-function M.reset() st = { km = 0 } end
+function M.reset() st = { km = 0 }; if api and api.crewClean then pcall(api.crewClean) end end
 
 return M

@@ -15,6 +15,7 @@ M.SHAPE = '/levels/beamng_earth/art/shapes/fernfahrer/yard/ff_yard.dae'
 M.DECO = '/levels/beamng_earth/art/shapes/fernfahrer/yard/ff_yard_deco.dae'
 M.W, M.D = 24, 48              -- (half width along the road, depth into the yard: the model's slab)
 M.SEARCH_M = 180               -- (the yard's centre at most this far from the home)
+M.SETTLE_S = 12               -- (the player this long near the home before the search: Earth's buildings come after its ground)
 M.NEAR_M = 220                 -- (the search runs with the player this near the home: the colliders are there)
 M.BUILD_M = 700                -- (built with the player this near; gone beyond DROP_M)
 M.DROP_M = 2500
@@ -539,7 +540,10 @@ function M.update(ctx)
   -- not found yet: searched with the player near the home (a few candidates per call: the rays cost)
   local home = ctx.homeWorld()
   if not home then return end
-  if (home.x - pp.x) ^ 2 + (home.y - pp.y) ^ 2 > M.NEAR_M ^ 2 then M.status = 'drive home to build'; return end
+  if (home.x - pp.x) ^ 2 + (home.y - pp.y) ^ 2 > M.NEAR_M ^ 2 then M.status = 'drive home to build'; M.nearSince = nil; return end
+  -- (2026-11-10: in Hannover it was built inside houses - searched the moment the player arrived, the ground loaded, the buildings not yet)
+  M.nearSince = M.nearSince or os.clock()
+  if not search and os.clock() - M.nearSince < M.SETTLE_S then M.status = 'waiting for the buildings'; return end
   local nodes = map and map.getMap and map.getMap().nodes
   if not nodes or not next(nodes) then return end
   -- (2026-11-05: in passes – strict and near first; then farther (still where the colliders are) and less strict about

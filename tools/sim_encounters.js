@@ -2,8 +2,10 @@
 const fs = require('fs'), path = require('path')
 const fengari = require('fengari'), { lua, lauxlib, lualib, to_luastring: S, to_jsstring: J } = fengari
 const src = fs.readFileSync('C:/Users/test/Desktop/fernfahrer_karriere/lua/ge/extensions/fernfahrer/encounters.lua', 'utf8')
+const psrc = fs.readFileSync('C:/Users/test/Desktop/fernfahrer_karriere/lua/ge/extensions/fernfahrer/passenger.lua', 'utf8')
 const L = lauxlib.luaL_newstate(); lualib.luaL_openlibs(L)
 const test = `
+package.preload["fernfahrer/passenger"] = function() ${psrc} end
 local M = (function() ${src} end)()
 local log, money = {}, 5000
 local X = { money=function() return money end, fmt=function(v) return tostring(v)..' EUR' end, pay=function(c,a,l) assert(type(a)=='number' and l); money=money+a end, xp=function(n) assert(n>0) end,

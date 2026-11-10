@@ -41,7 +41,18 @@ angular.module('beamng.apps')
       scope.$on('$destroy', function () { clearInterval(blinkT) })
       // (the frame in the layout has room for the row of driver assistance; the content stands at its bottom)
       // (the frame is the game's and takes the mouse; here it is much bigger than the card, and the view has to stay turnable through it)
-      for (var hostEl = el[0].parentElement; hostEl && hostEl !== document.body; hostEl = hostEl.parentElement) { hostEl.style.pointerEvents = 'none'; if (hostEl.classList.contains('ui-app-host')) { break } }
+      // (2026-11-10: at this moment the app is not in the page yet, there was no frame to find: the cab's took every click meant for the tachograph under it. Looked for until it is there)
+      var freeFrame = function () {
+        var host = el[0].parentElement
+        while (host && !host.classList.contains('ui-app-host')) { host = host.parentElement }
+        if (!host) { return false }
+        for (var x = el[0].parentElement; x; x = x.parentElement) { x.style.pointerEvents = 'none'; if (x === host) { break } }
+        return true
+      }
+      if (!freeFrame()) {
+        var frameT = setInterval(function () { if (freeFrame()) { clearInterval(frameT) } }, 200)
+        scope.$on('$destroy', function () { clearInterval(frameT) })
+      }
       scope.h = { mode: false }
       scope.on = false
       scope.last = null

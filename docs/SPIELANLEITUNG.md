@@ -123,6 +123,18 @@ Alle 7 Tage ohne Schaden steigt die Schadenfreiheitsklasse und der Beitrag sinkt
 
 Im Büro unter **Einstellungen** lässt sich fast alles an- und abschalten: Verkehrsmenge, Ereignisse, Pannen, Unfälle, Lkw-Tempo, Wetter, Tag und Nacht, Lademusik, Regionalsender, Navi-Ansagen, Rausch-Effekt und mehr. Bei schwachem Rechner hilft **Leistung → Maximale FPS**.
 
+## Neu in 1.0.3
+
+**Kluger Verkehr.** Die Autos überholen, machen Platz und sprechen sich an Kreuzungen ab. Morgens und abends ist viel los, auf der Autobahn gibt es Staus. Unsere eigene Fahr-KI (Beta) schaltest du im Büro unter **Einstellungen** ganz oben ein.
+
+**Anhalterinnen.** Auf Landstraßen steht ab und zu jemand mit dem Daumen raus. Halt an, dann kommt sie an die Beifahrertür. Unterwegs erzählt sie dir ihre Geschichte. Antworte über das Gesprächsfenster. Wie lange sie noch mitfährt, zeigt der Balken im Routenberater. Will sie raus, halt kurz an.
+
+**Pannendienst.** Der Pannenhelfer kommt zu dir an die Tür und fragt, was los ist. Nach einem Unfall macht er eine Notreparatur, damit du weiterkommst. Ganz repariert wird der Lkw in der Werkstatt.
+
+**Polizeikontrolle auf dem Rastplatz.** Fahr in die blaue Fläche bei den Streifenwagen und halte an.
+
+**Dein Hof.** Er braucht Platz und kann nicht mitten in einer Stadt stehen. Wähl einen Ort am Stadtrand, im Gewerbegebiet oder auf dem Land.
+
 ## Neu in 1.0.2
 
 **Underground.** Rote Orte auf der Karte, zum Beispiel ein dunkles Hafengebiet oder ein Waldlager. Dort gibt es Fracht ohne Papiere: sehr gut bezahlt, aber heiß. Wirst du erwischt, kommt die Polizei. Bleib in Bewegung, bis keine Streife mehr hinter dir ist. Stehst du neben einem Streifenwagen still, ist es vorbei.

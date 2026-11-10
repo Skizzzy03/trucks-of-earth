@@ -768,6 +768,11 @@ function M.serviceState()
   if u.arrived then return 'there', 0 end
   return 'coming', vehPos(uv):distance(svc.pos)
 end
+-- (2026-11-10) the service car, for its mechanic to get out of
+function M.serviceCar()
+  local u = svc and svc.units[1]
+  return u and u.id or nil
+end
 function M.serviceLeave()
   local u = svc and svc.units[1]
   if not u then return end

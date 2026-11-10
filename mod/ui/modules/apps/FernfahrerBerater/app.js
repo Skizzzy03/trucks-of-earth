@@ -26,6 +26,8 @@ angular.module('beamng.apps')
     '.ffb .bar{height:4px;background:#252c36;border-radius:2px;overflow:hidden}.ffb .bar i{display:block;height:100%}' +
     '.ffb .step{padding:6px 12px;font-size:12.5px;font-weight:700;color:#15100a;background:#f5a623}' +
     '.ffb .step.ok{background:#2fbf71;color:#08210f}.ffb .step.bad{background:#d9483b;color:#fff}' +
+    '.ffb .hitch{padding:6px 12px 7px;background:#16282a;border-top:1px solid #234044}.ffb .hitch .hl{display:flex;align-items:baseline;gap:6px;font-size:12.5px;font-weight:700;color:#e8f4f2}' +
+    '.ffb .hitch .hl small{margin-left:auto;font-size:11.5px;font-weight:600;color:#8fc9c0}.ffb .hitch.ask .hl small{color:#ffcf5e}.ffb .hitch .bar{margin-top:5px}' +
     '.ffb .tabs{display:flex;background:#0d1015;border-bottom:1px solid #222832}' +
     '.ffb .tabs a{flex:1;text-align:center;padding:6px 2px;font-size:11px;font-weight:700;color:#8b95a3;cursor:pointer;border-bottom:2px solid transparent;text-transform:uppercase;letter-spacing:.06em}' +
     '.ffb .tabs a.on{color:#fff;border-bottom-color:#f5a623}' +
@@ -94,6 +96,9 @@ angular.module('beamng.apps')
         '<div class="step" ng-if="h.job" ng-class="{ok: h.job.phase === \'unloading\' || h.job.phase === \'atDelivery\', bad: h.job.routeError || h.job.phase === \'needTrailer\'}">' +
           '{{ h.job.text }}<span ng-if="h.job.trailerDist !== undefined"> · {{ dist(h.job.trailerDist) }}</span>' +
           '<span ng-if="h.job.spotDist !== undefined && h.job.phase === \'toDelivery\' && h.job.spotDist < 200"> · Fläche {{ dist(h.job.spotDist) }}</span></div>' +
+        '<div class="hitch" ng-if="h.hitch" ng-class="{ask: h.hitch.ask}"><div class="hl">🎒 {{ h.hitch.name }} fährt mit' +
+          '<small>{{ h.hitch.ask ? \'will raus – kurz anhalten\' : (\'steigt in ca. \' + (h.hitch.left < 1 ? \'1\' : (h.hitch.left | number:0)) + \' km aus\') }}</small></div>' +
+          '<div class="bar"><i ng-style="{width: (h.hitch.pct*100)+\'%\', background: h.hitch.ask ? \'#ffb12e\' : \'#3fc1b0\'}"></i></div></div>' +
         '<div class="navcue" ng-if="h.nav && h.nav.dir && h.nav.dist < 900"><span class="arr">{{ arrow(h.nav.dir) }}</span>' +
           '<b>{{ h.nav.dir === \'end\' ? \'\' : dist(h.nav.dist) }}</b><span class="nt">{{ cueText(h.nav) }}</span></div>' +
         '<div class="tabs"><a ng-class="{on: tab===\'map\'}" ng-click="tab=\'map\'">Karte</a><a ng-class="{on: tab===\'route\'}" ng-click="tab=\'route\'">Route</a><a ng-class="{on: tab===\'job\'}" ng-click="tab=\'job\'">Auftrag</a><a ng-class="{on: tab===\'veh\'}" ng-click="tab=\'veh\'">Fahrzeug</a></div>' +
@@ -132,6 +137,7 @@ angular.module('beamng.apps')
             '<div style="margin-top:8px;display:flex;gap:5px;flex-wrap:wrap">' +
               '<button class="btn" ng-click="lua(\'navToNearest\', \'fuel\')">Tankstelle</button>' +
               '<button class="btn" ng-click="lua(\'navToNearest\', \'rest\')">Rastplatz</button>' +
+              '<button class="btn" ng-click="lua(\'navToNearest\', \'parking\')">Parkplatz</button>' +
               '<button class="btn" ng-click="lua(\'navToNearest\', \'workshop\')">Werkstatt</button>' +
               '<button class="btn" ng-click="lua(\'navToHome\')">Hof</button>' +
               '<button class="btn" ng-if="h.job && h.job.needSecure" ng-click="lua(\'secureLoad\')" style="background:#ffb12e;color:#15100a">Ladung sichern</button>' +

@@ -77,6 +77,10 @@ function M.lotNear(lat, lon, m)
   end
   if best then return { id = best.id, lat = best.la / best.n, lon = best.lo / best.n }, bd end
 end
+-- (2026-11-10) the nearest car park of all the world has shown, for the route (no distance limit but maxM)
+function M.lotNearest(lat, lon, maxM)
+  return M.lotNear(lat, lon, maxM or 30000)
+end
 -- (2026-11-09) all the fuel stations Earth has shown so far, remembered between sessions: they go on the office's map
 M.FUEL_FILE = '/settings/fernfahrer/earth_fuel.json'
 M.FUEL_MAX = 30000
