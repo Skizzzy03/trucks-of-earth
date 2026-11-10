@@ -2,6 +2,8 @@
 
 ## 1.0.3
 
+> **Zum Verkehr:** Der Verkehr ist viel klüger geworden, aber perfekt bekomme ich ihn nicht hin. Es kann weiterhin vorkommen, dass ein Auto komisch fährt, zögert oder sich falsch einordnet. Bitte habt dafür etwas Nachsicht. Wenn euch etwas auffällt, schickt gern ein [Issue](https://github.com/Skizzzy03/trucks-of-earth/issues) mit Ort und Uhrzeit, das hilft beim Verbessern.
+
 ### Neu
 
 - **Kluger Verkehr:** Auf Autobahnen und Schnellstraßen wechseln die Autos die Spur, überholen links und fahren danach wieder rechts. Jeder Fahrer hat sein eigenes Tempo, Verkehrs-Lkw halten sich an die Lkw-Regeln (Autobahn 80, Landstraße 60). Fädelst du ein oder blinkst du, wird Platz gemacht.
