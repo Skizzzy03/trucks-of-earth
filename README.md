@@ -18,6 +18,38 @@ Eine große Lkw-Karriere für <a href="https://www.beamng.com/">BeamNG.drive</a>
 | **Region** | Aktuell nur Europa, der Rest der Welt ist noch nicht dabei |
 | **System** | Windows, Internetverbindung |
 
+## Neu in 1.0.5: Ein Verkehr, der mitdenkt
+
+<p align="center"><img src="docs/bilder/anim/01_leitstelle.webp" width="100%" alt="Animation: die Leitstelle schwebt über dem LKW und spricht alle halbe Sekunde mit jedem echten Auto"></p>
+
+<p align="center"><b>Eine eigene Leitstelle schaut alle halbe Sekunde auf jedes Auto um deinen Lkw:</b> Tempo, Spur, Abstand, Ausweichen.<br>In jedem Auto sitzt ein eigener Fahrer mit Charakter, der weich folgt, überholt und sich rechts einordnet.</p>
+
+<table>
+<tr>
+<td width="50%"><img src="docs/bilder/anim/02_virtueller_verkehr.webp" alt="Animation: virtueller Verkehr, Punkte auf dem Netz werden zu Platzhaltern und nah am Lkw zu echten Autos"></td>
+<td width="50%"><img src="docs/bilder/anim/03_ausweichen.webp" alt="Animation: ein Auto wartet vor einer Baustelle auf eine Lücke und fährt mit Blinker vorbei, danach der Lkw"></td>
+</tr>
+<tr>
+<td><b>Viel Verkehr, wenig Rechenarbeit</b><br>Außer Sicht ist jedes Auto nur ein Punkt auf dem Straßennetz, weiter weg ein Modell ohne Physik. Nah an dir wird es echt, an derselben Stelle, mit demselben Tempo.</td>
+<td><b>Mitdenken statt Vollbremsung</b><br>Baustellen und Unfälle werden erkannt. Der Verkehr wartet auf eine Lücke im Gegenverkehr und fährt mit Blinker vorbei, auch dein Lkw im Autodrive.</td>
+</tr>
+<tr>
+<td><img src="docs/bilder/anim/04_stau.webp" alt="Animation: Unfall an der Stauspitze, Rettungsgasse, Stop-and-go als Welle, der Lkw bremst weich am Stauende"></td>
+<td><img src="docs/bilder/anim/05_schmale_strasse.webp" alt="Animation: Lkw und Gegenverkehr werden auf einer engen Straße langsamer, weichen aus und kommen aneinander vorbei"></td>
+</tr>
+<tr>
+<td><b>Stau mit Grund</b><br>Unfall an der Spitze, Rettungsgasse, Stop-and-go als Welle und Warnblinker am Stauende. Dein Lkw sieht das Stauende früh und bremst weich.</td>
+<td><b>Platz machen statt stehen bleiben</b><br>Auf engen Straßen werden beide früh langsamer, weichen an den Rand aus und kommen aneinander vorbei.</td>
+</tr>
+</table>
+
+<p align="center"><img src="docs/bilder/anim/06_test_kreislauf.webp" width="80%" alt="Animation: Spieltest, Verkehrslabor, digitaler Zwilling und Verbessern als Kreislauf"></p>
+
+<p align="center"><b>Jeder Test macht die KI klüger:</b> 36 Minuten Testfahrt im Spiel, ein Labor misst alles, ein digitaler Zwilling fährt Dutzende Fahrten nach.<br>
+<a href="docs/VERKEHR.md"><b>Wie alles zusammenspielt</b></a> · <a href="https://github.com/Skizzzy03/trucks-of-earth/releases/download/v1.0.5/trucks_of_earth_verkehrs_ki_1080p.mp4"><b>▶ Das ganze Video in 1080p</b></a></p>
+
+> Virtueller Verkehr und eigene Fahr-KI sind noch **Beta** und standardmäßig aus. Du schaltest sie in den Einstellungen im Büro ein.
+
 ## So sieht es aus
 
 <p align="center"><a href="https://youtu.be/OS39HtHoTSo"><img src="docs/bilder/trailer_youtube.jpg" alt="Trailer auf YouTube ansehen"></a><br><a href="https://youtu.be/OS39HtHoTSo"><b>▶ Trailer auf YouTube ansehen</b></a></p>
@@ -100,12 +132,6 @@ Diese kurzen Filme findest du im Spiel im Büro unter **Fahrschule**. Sie zeigen
 - Cinematic-Modus mit Außenkamera-Fahrten während Autodrive, dazu eine Fotoserie von Kabine und Fahrt
 
 Ein Handbuch im Spiel erklärt beim ersten Start alles Schritt für Schritt.
-
-## Die neue Verkehrs-KI (ab 1.0.5)
-
-<p align="center"><img src="docs/bilder/verkehr_3d.svg" alt="3D-Ansicht: der LKW auf der Straße, nah echte Autos, weiter weg Platzhalter, außer Sicht Punkte"></p>
-
-Der Verkehr um deinen Lkw denkt jetzt mit. Er bremst weich statt mit Vollbremsung, fährt um Unfälle und Baustellen herum, macht auf schmalen Straßen Platz, beschleunigt auf Autobahnauffahrten und hält sich außerorts an die Vorfahrtsstraße. Neu und noch als **Beta** in den Einstellungen: der **virtuelle Verkehr**, der viel mehr Autos ermöglicht, ohne die Bildrate zu drücken, und die **eigene Fahr-KI**, die die Autos selbst lenkt. Wie das alles zusammenspielt, zeigt [die Verkehrs-KI im Überblick](docs/VERKEHR.md).
 
 ## Schnellstart
 

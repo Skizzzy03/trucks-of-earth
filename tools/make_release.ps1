@@ -7,7 +7,7 @@ $ErrorActionPreference = "Stop"   # (a file that cannot be copied must stop the 
 $root = Split-Path -Parent $PSScriptRoot
 $gh = Join-Path $root 'github'; $rel = Join-Path $root 'release'
 foreach ($d in $gh, $rel) {   # (the repository's .git stays)
-  if (Test-Path $d) { Get-ChildItem $d -Force | Where-Object { $_.Name -ne '.git' } | Remove-Item -Recurse -Force } else { New-Item -ItemType Directory $d | Out-Null }
+  if (Test-Path $d) { Get-ChildItem $d -Force | Where-Object { $_.Name -ne '.git' -and $_.Name -ne 'animationen' } | Remove-Item -Recurse -Force } else { New-Item -ItemType Directory $d | Out-Null }
 }
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 
