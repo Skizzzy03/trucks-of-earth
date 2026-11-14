@@ -5,8 +5,9 @@
   <div ref="root" class="ff-map" @mousedown="down" @wheel.prevent="wheel">
     <img v-for="t in tiles" :key="t.key" class="tile" :class="{ overlay: t.overlay }" :src="t.src"
          :style="{ left: t.left + 'px', top: t.top + 'px' }" draggable="false" @error="e => e.target.style.visibility = 'hidden'" />
-    <div v-for="(m, i) in placed" :key="'m' + i" class="marker" :class="m.kind"
-         :style="{ left: m.x + 'px', top: m.y + 'px' }" :title="m.label">
+    <div v-for="(m, i) in placed" :key="'m' + i" class="marker" :class="[m.kind, { go: m.id != null }]"
+         :style="{ left: m.x + 'px', top: m.y + 'px' }" :title="m.label"
+         @mousedown="m.id != null && $event.stopPropagation()" @click.stop="m.id != null && emit('select', m)">
       <span v-if="m.icon" class="ic">{{ m.icon }}</span>
     </div>
     <div v-if="!tilesOk" class="notice">Kartenbilder nicht verfügbar – läuft der BeamNG.Earth-Server? Suche und Klick funktionieren trotzdem.</div>
@@ -28,7 +29,7 @@ const props = defineProps({
   markers: { type: Array, default: () => [] },
   labels: { type: Boolean, default: true },
 })
-const emit = defineEmits(["pick", "view"])
+const emit = defineEmits(["pick", "view", "select"])
 
 const TILE = 256
 const DIR = "/temp/beamngEarth/maptiles/"
@@ -197,6 +198,8 @@ onUnmounted(() => { clearTimeout(askTimer); if (ro) ro.disconnect(); up() })
 .marker.pickup { background: #ffb12e; } .marker.delivery { background: #ff6b5e; }
 .marker.depot { width: 10px; height: 10px; background: #2c3e50; border-width: 1.5px; }
 .marker.depot .ic { font-size: 12px; top: -16px; }
+.marker.go { cursor: pointer; }
+.marker.go:hover { box-shadow: 0 0 0 4px rgba(255, 177, 46, 0.45); }
 .notice { position: absolute; left: 12px; top: 12px; right: 70px; z-index: 5; background: rgba(14,17,22,.85); color: #eef1f5;
   padding: 8px 12px; border-radius: 6px; font-size: 13px; }
 .zoom { position: absolute; right: 12px; top: 12px; z-index: 5; display: flex; flex-direction: column; gap: 4px; }

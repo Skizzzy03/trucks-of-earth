@@ -17,6 +17,7 @@ M.STRAIGHT = -0.6           -- the through pair: their directions out of the jun
 -- a side road is rated at most this share of the main road. (0.9 of it: a car still turned off at one junction in four or so.
 -- The AI weighs a turn by the square of this, and by the angle.)
 M.SIDE_SHARE = 0.65
+M.RURAL_MS = 19             -- (2026-11-14) a road straight through a junction at this limit or more (about 70 km/h): out of town, the priority road
 -- Oncoming room: the AI brakes for an oncoming vehicle whose line comes within half their two widths of its own
 -- (ai.lua awareness: 0.505 * (ego + other width)) – a car (1.9 m) meeting a truck (2.55 m) at 2.22 m. Earth's
 -- ordinary streets are 2.75 m a lane (radius 2.75): lane centres 2.75 m apart, so a truck a few decimetres off its
@@ -116,7 +117,11 @@ function M.process(g)
         -- a real main road: at least as good as any side road, and better at one end (two equal roads crossing: left alone).
         -- (2026-11-09: "better at both ends" missed the commonest place: the road's class changes where a street as good as its
         -- lower piece joins. Cars coming along the lower piece gave way there, on the main road.)
-        if mainMin >= sideMax - 0.05 and mainMax > sideMax + 0.05 then
+        -- (2026-11-14, the player: "wenn ich auf der Hauptstraße bin, habe ich an Kreuzungen Vorfahrt, da zählt kein rechts oder links". Two
+        -- roads of one class meeting out of town - OpenStreetMap rates most country roads alike - were left to right before left. Out of town
+        -- (the road straight through at RURAL_MS or more) the road going straight on is the priority road, as the signs say there)
+        local ruralThrough = math.min(ei[6] or 0, ej[6] or 0) >= M.RURAL_MS
+        if mainMin >= sideMax - 0.05 and (mainMax > sideMax + 0.05 or ruralThrough) then
           M.stats.junctions = M.stats.junctions + 1
           mainAt[name] = { pair = { list[bi].i, list[bj].i }, sides = sides }
         end

@@ -173,4 +173,44 @@ M.BYE_GOOD = { 'Danke für die Fahrt. Das war die schönste seit Wochen.', 'Pass
 M.BYE_OK = { 'So, hier steig ich aus. Danke fürs Mitnehmen, mach’s gut!', 'Tschüss! Und gute Fahrt noch, ja?', 'Danke dir! Vielleicht sieht man sich mal wieder an einer Raststätte.', 'Ciao! Und grüß deinen Lkw von mir.' }
 M.BYE_BAD = { 'Na ja. Danke fürs Mitnehmen.', 'Danke. Du redest nicht gern, oder?', 'Okay. Ciao.' }
 
+-- (2026-11-11) one of them again (people.lua): she knows the driver, says so, and tells how her story went on. AGAIN: her first words;
+-- SEQUEL[story]: how it went on, one topic per story (the order of M.STORIES).
+M.AGAIN = {
+  'Nein! Du bist das! Der Lkw kam mir gleich so bekannt vor. Erinnerst du dich an mich?',
+  'Ich glaub’s ja nicht. Du schon wieder! Die Welt ist ein Dorf. Ein Dorf mit Autobahn.',
+  'Hey, du! Ich hab dir doch versprochen, dass ich dir erzähle, wie’s weiterging. Jetzt muss ich wohl.',
+}
+M.AGAIN_CH = {
+  { t = '„Klar erinnere ich mich. Steig ein!“', r = 'Ich wusste es! Okay, pass auf, du wirst nicht glauben, was seitdem passiert ist.', m = 2 },
+  { t = '„Hilf mir kurz … %NAME%, richtig?“', r = 'Richtig! Puh. Ich dachte schon, ich wär nur eine von vielen.', m = 1 },
+}
+M.SEQUEL = {
+  { say = 'Weißt du noch, die Garage mit dem Boot? Der Typ, der Opa hieß, hat mich angerufen. Das Boot war seins. Er hat es mit Discokugel zu Wasser gelassen, und ich war eingeladen.', ch = {
+    { t = '„Und, ist es geschwommen?“', r = 'Zehn Minuten! Dann haben wir alle im See gestanden und weitergetanzt. Bester Abend des Jahres.', m = 2 },
+    { t = '„Du kommst ja rum.“', r = 'Irgendwer muss die Afterhours ja retten.', m = 1 } } },
+  { say = 'Ich muss dir was beichten. Dienstag hat nicht geklappt. Aber Mittwoch! Seit sechs Wochen keine einzige Zigarette.', ch = {
+    { t = '„Wahnsinn, ich bin stolz auf dich.“', r = 'Ehrlich? Danke. Ich kaue jetzt Kaugummi. Sehr viel Kaugummi. Mein Kiefer ist wie aus Stahl.', m = 3 },
+    { t = '„Und die Schachtel, die ich habe?“', r = 'Behalt sie. Als Trophäe. Oder rauch sie selber, aber erzähl’s mir nicht.', m = 1 } } },
+  { say = 'Die Rave-Leute aus dem Wald haben jetzt einen Verein gegründet. Mit Satzung und Kassenwart. Ich bin Schriftführerin.', ch = {
+    { t = '„Ordnung muss sein.“', r = 'Genau das steht in Paragraf eins. Paragraf zwei: Glitzer ist Pflicht.', m = 2 },
+    { t = '„Das ist das Gegenteil von Rave.“', r = 'Das ist deutscher Rave. Mit Protokoll.', m = 1 } } },
+  { say = 'Ich war bei meiner Schwester. Ich hab gesagt, dass sie mir fehlt. Deinen Satz. Und dann haben wir beide geheult und den halben Kuchen gegessen.', ch = {
+    { t = '„Das freut mich wirklich.“', r = 'Mich auch. Sie lässt dich grüßen. Sie will den Fahrer kennenlernen, der uns versöhnt hat.', m = 3 },
+    { t = '„Und das Pferd?“', r = 'Ist jetzt bei ihr. Und der Mann ist weg. Das Pferd war eh der Bessere von beiden.', m = 2 } } },
+  { say = 'Rate mal, wer den Gummistiefel wiedergefunden hat! Ein Typ aus Holland hat ihn auf Instagram gepostet. Ich hab ihn zurück. Und seine Nummer.', ch = {
+    { t = '„Der Stiefel hat euch zusammengebracht!“', r = 'Genau! Wir fahren nächstes Jahr zusammen hin. Mit vier Stiefeln. Sicherheitshalber.', m = 2 },
+    { t = '„Ziemlich viel Aufwand für einen Stiefel.“', r = 'Es war ein sehr guter Stiefel.', m = 0 } } },
+  { say = 'Ich hab den Job! Ich bin jetzt Pinguin-Pflegerin. Und es gibt wirklich einen Herbert. Er ist klein, frech und beißt nur mich.', ch = {
+    { t = '„Er mag dich eben am meisten.“', r = 'Das sagt mein Chef auch. Komm vorbei, ich stell dich vor. Du bist dann sein zweiter Lieblingsmensch.', m = 3 },
+    { t = '„Wusste ich doch.“', r = 'Du hast mir die Daumen gedrückt. Das hat geholfen. Ganz bestimmt.', m = 2 } } },
+  { say = 'Ich war zuhause. Zwei Wochen. Dann hab ich’s nicht mehr ausgehalten. Jetzt geht’s nach Norden, bis ans Nordkap.', ch = {
+    { t = '„Und dein Heft mit den Geschichten?“', r = 'Fast voll. Deine Geschichte steht auf Seite drei. Gleich nach dem Hai.', m = 2 },
+    { t = '„Pass auf dich auf da oben.“', r = 'Mach ich. Ich hab jetzt auch eine Mütze. Meine Mutter hat sie mir aufgezwungen.', m = 1 } } },
+  { say = 'Ich hab die Prüfung bestanden! Und ich hab dem Professor deinen Reibungs-Witz erzählt. Er hat gelacht. Zum zweiten Mal in seinem Leben.', ch = {
+    { t = '„Dann gehört mir die Hälfte der Note.“', r = 'Eine Eins geteilt durch zwei. Das ist physikalisch nicht möglich, aber für dich mach ich’s.', m = 3 },
+    { t = '„Glückwunsch, Frau Physikerin.“', r = 'Danke. Jetzt rechne ich wirklich den Kaffee pro Kilometer aus. Du bist immer noch meine Quelle.', m = 2 } } },
+  { say = '„Autobahnkreuz“ läuft im Radio! Also einmal, nachts, in einem ganz kleinen Sender. Aber es lief!', ch = {
+    { t = '„Ich hab’s gehört!“', r = 'Echt jetzt? Das war um drei Uhr nachts! Du bist offiziell unser Fan Nummer eins.', m = 3 },
+    { t = '„Ist das nicht peinlich?“', r = 'Punk ist nie peinlich. Punk ist nur laut.', m = 1 } } },
+}
 return M

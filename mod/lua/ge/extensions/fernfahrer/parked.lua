@@ -43,7 +43,16 @@ local function noteLots(rows)
           stalls[s], nStalls = true, nStalls + 1
           local k = math.floor(lat / M.CELL) .. ':' .. math.floor(lon / (M.CELL * 1.6))
           local c = lots[k] or { n = 0, la = 0, lo = 0, id = k }
+          -- (one remembered from before: counted anew from its stalls, what it was known as kept)
+          if c.saved then c = { n = 0, la = 0, lo = 0, id = k, hw = c.hw }; lots[k] = c end
           c.n, c.la, c.lo = c.n + 1, c.la + lat, c.lo + lon
+          -- (2026-11-10: one real stall of it, the one nearest its middle: the ring goes there, not onto the road beside it -
+          -- "da steht zwar Parkplatz, aber auf der Straße")
+          local mla, mlo = c.la / c.n, c.lo / c.n
+          if not c.sla or (lat - mla) ^ 2 + ((lon - mlo) * 0.62) ^ 2 < (c.sla - mla) ^ 2 + ((c.slo - mlo) * 0.62) ^ 2 then
+            c.sla, c.slo, c.sh = lat, lon, tonumber(r[4])
+          end
+          if c.n == M.LOT_MIN then M.lotDirty = true; M.lotCount = (M.lotCount or 0) + 1 end
           lots[k] = c
         end
       end
@@ -81,6 +90,95 @@ end
 function M.lotNearest(lat, lon, maxM)
   return M.lotNear(lat, lon, maxM or 30000)
 end
+-- (2026-11-10) the car parks as places: around lat / lon within m, the cells of one car park merged (a big one lies over several
+-- 80 m cells), biggest first. { id, lat, lon, n (stalls), sla, slo, sh (a stall: where the ring lies, its heading), hw (beside a motorway) }
+M.MERGE_M = 130
+function M.lotsAround(lat, lon, m)
+  local kx, ky = 111320 * math.cos(math.rad(lat)), 111320
+  local dLa, dLo = m / ky + 0.002, m / kx + 0.003
+  local cand = {}
+  for _, c in pairs(lots) do
+    if c.n >= M.LOT_MIN then
+      local la, lo = c.la / c.n, c.lo / c.n
+      if math.abs(la - lat) < dLa and math.abs(lo - lon) < dLo then cand[#cand + 1] = { c = c, la = la, lo = lo } end
+    end
+  end
+  table.sort(cand, function(a, b) return a.c.n > b.c.n end)
+  local out = {}
+  for _, x in ipairs(cand) do
+    local host
+    for _, o in ipairs(out) do
+      if math.sqrt(((o.lon - x.lo) * kx) ^ 2 + ((o.lat - x.la) * ky) ^ 2) < M.MERGE_M then host = o; break end
+    end
+    if host then
+      host.n = host.n + x.c.n
+      if x.c.hw then host.hw = true end
+    else
+      local d = math.sqrt(((x.lo - lon) * kx) ^ 2 + ((x.la - lat) * ky) ^ 2)
+      if d <= m then
+        out[#out + 1] = { id = 'lot:' .. x.c.id, lat = x.la, lon = x.lo, n = x.c.n, sla = x.c.sla, slo = x.c.slo, sh = x.c.sh, hw = x.c.hw, d = d, cell = x.c }
+      end
+    end
+  end
+  return out
+end
+function M.lotById(id)
+  local c = lots[tostring(id):gsub('^lot:', '')]
+  if c and c.n > 0 then return { id = 'lot:' .. c.id, lat = c.la / c.n, lon = c.lo / c.n, n = c.n, sla = c.sla, slo = c.slo, sh = c.sh, hw = c.hw, cell = c } end
+end
+-- beside a motorway? (a fast one-way road within ~150 m: the car park of a rest area). Asked once per car park, when the game's road
+-- graph is there (near the player); nil: can't tell yet
+function M.classify(c)
+  if not c or c.hw ~= nil then return c and c.hw end
+  local a = M.anchor and M.anchor()
+  if not (a and a.geodeticToWorld and map and map.findClosestRoad and map.getMap) then return nil end
+  local x, y = a:geodeticToWorld(c.la / c.n, c.lo / c.n, 0)
+  local nodes = map.getMap().nodes
+  local seen = 0
+  for _, r in ipairs({ 0, 60, 120 }) do
+    for k = 0, (r == 0 and 0 or 7) do
+      local ang = k * math.pi / 4
+      local p = vec3(x + math.cos(ang) * r, y + math.sin(ang) * r, 0)
+      local okR, n1, n2, d = pcall(map.findClosestRoad, p)
+      if okR and n1 and n2 and nodes[n1] and nodes[n2] then
+        seen = seen + 1
+        local link = (nodes[n1].links and nodes[n1].links[n2]) or (nodes[n2].links and nodes[n2].links[n1])
+        if type(link) == 'table' and link.oneWay and (tonumber(link.speedLimit) or 0) >= 25 and (not d or d < 40) then
+          c.hw = true; M.lotDirty = true
+          return true
+        end
+      end
+    end
+  end
+  if seen >= 6 then c.hw = false; M.lotDirty = true end
+  return c.hw
+end
+-- remembered between sessions, as the fuel stations: the map shows the car parks one has seen
+M.LOT_FILE = '/settings/fernfahrer/earth_lots.json'
+M.LOT_MAX = 25000
+function M.lotLoad()
+  if M.lotLoaded then return end
+  M.lotLoaded = true
+  local ok, d = pcall(jsonReadFile, M.LOT_FILE)
+  if ok and type(d) == 'table' then
+    for _, x in ipairs(d) do
+      if x.id and x.n and x.la and not lots[x.id] then
+        lots[x.id] = { id = x.id, n = x.n, la = x.la * x.n, lo = x.lo * x.n, sla = x.sla, slo = x.slo, sh = x.sh, hw = x.hw, saved = true }
+      end
+    end
+  end
+end
+function M.lotSave()
+  if not M.lotDirty then return end
+  M.lotDirty = false
+  local list = {}
+  for _, c in pairs(lots) do
+    if c.n >= M.LOT_MIN and #list < M.LOT_MAX then
+      list[#list + 1] = { id = c.id, n = c.n, la = c.la / c.n, lo = c.lo / c.n, sla = c.sla, slo = c.slo, sh = c.sh, hw = c.hw }
+    end
+  end
+  pcall(jsonWriteFile, M.LOT_FILE, list, false)
+end
 -- (2026-11-09) all the fuel stations Earth has shown so far, remembered between sessions: they go on the office's map
 M.FUEL_FILE = '/settings/fernfahrer/earth_fuel.json'
 M.FUEL_MAX = 30000
@@ -113,6 +211,7 @@ function M.resetPlaces() lots, stalls, nStalls, fuels = {}, {}, 0, {} end
 
 function M.install()
   pcall(M.fuelLoad)
+  pcall(M.lotLoad)
   -- (Earth's fuel stations: hooked once, whatever becomes of the parking below)
   local okG, gs = pcall(require, 'beamngEarth/gasstations')
   if okG and type(gs) == 'table' and gs.onRows and not gs.__fernfahrerFuel then
@@ -152,6 +251,9 @@ function M.start(amount, pos)
     if gp.setActiveAmount then pcall(gp.setActiveAmount, amount) end
     return true
   end
+  -- (2026-11-12) Earth's far cars would take the new parked cars for the player's own and delete them (career.lua L.farcarsHold)
+  local car = rawget(_G, 'fernfahrer_career')
+  if car and car.farcarsHold then pcall(car.farcarsHold, 90) end
   local ok, err = pcall(gp.setupVehicles, amount, { pos = pos })
   if not ok then log('W', 'fernfahrer', 'parked cars: ' .. tostring(err)) end
   return ok

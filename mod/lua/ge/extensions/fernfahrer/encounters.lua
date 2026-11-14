@@ -8,6 +8,8 @@ M.CHANCE = 0.6
 M.SHAPE = '/levels/beamng_earth/art/shapes/ffa/ff_npc_'
 local X, st, E
 local PX = require('fernfahrer/passenger')
+local PEOPLE = require('fernfahrer/people')
+local SAGA = require('fernfahrer/saga')
 
 local BYE = 'Weiterfahren'
 M.ORDER = { 'fremder', 'kollege', 'tramper', 'diesel', 'paket', 'opa', 'panne', 'schlitzer', 'uhr', 'dealer', 'huetchen', 'aluhut', 'spotter', 'hund', 'imbiss', 'umfrage', 'musiker', 'party' }
@@ -62,6 +64,14 @@ M.SC = {
       { t = '„Na gut, steig ein.“', to = 'rein', fx = { hitch = true } }, { t = '„Tut mir leid, heute nicht.“', to = 'nein' } } },
     rein = { nar = true, say = 'Sie läuft ums Führerhaus, klettert auf den Beifahrersitz und stellt den Rucksack zwischen die Füße. „Ich bin übrigens %NAME%.“', mood = 2, react = 'laugh' },
     nein = { say = 'Okay. Trotzdem danke fürs Anhalten. Gute Fahrt!', react = 'sad' },
+  } },
+  -- (2026-11-11) one met before, at the roadside again: she knows the driver
+  tramper_wieder = { bed = 'warm', who = '%NAME%', face = 'hitch', start = 'a', mood = 2, n = {
+    a = { say = 'Das gibt’s doch nicht! Du bist das! %NAME%, weißt du noch? Du hast mich schon mal mitgenommen. Fährst du wieder in meine Richtung?', react = 'laugh', ch = {
+      { t = '„Klar erinnere ich mich. Steig ein!“', sub = 'sie fährt wieder ein Stück mit', to = 'rein', fx = { hitch = true } },
+      { t = '„Heute leider nicht, sorry.“', to = 'nein' } } },
+    rein = { nar = true, say = 'Sie klettert auf den Beifahrersitz, als wäre es ihr Stammplatz, und grinst. „Ich hab dir so viel zu erzählen.“', mood = 2, react = 'laugh' },
+    nein = { say = 'Schade. Aber schön, dich zu sehen. Gute Fahrt!', react = 'sad' },
   } },
   -- (2026-11-10) more people at the rest area: a lorry spotter, a lost dog, the snack van, a survey, a musician
   spotter = { bed = 'warm', who = 'Lkw-Fan', face = 'nerd', start = 'a', mood = 1, n = {
@@ -230,6 +240,8 @@ M.SC = {
     weg = { say = 'Das sagen die alle. Bis die Möwen kommen. Die Möwen sind nicht echt, wissen Sie.', react = 'shake' },
   } },
 }
+-- (2026-11-11) the story's scenes (saga.lua): played as any other, never drawn at random (not in M.ORDER)
+for k, sc in pairs(SAGA.SCENES) do M.SC[k] = sc end
 
 function M.attach(t, ctx) st, X = t, ctx; st.seen = st.seen or {} end
 function M.active() return E ~= nil end
@@ -262,7 +274,8 @@ local function robSum() return math.max(60, math.min(450, math.floor(math.max(0,
 local function fill(s)
   if not s then return nil end
   s = s:gsub('%%ROB%%', X.fmt(E.rob))
-  s = s:gsub('%%NAME%%', (st.hitch and st.hitch.name) or 'Lea')
+  s = s:gsub('%%NAME%%', (st.hitch and st.hitch.name) or (st.hitchNext and st.hitchNext.name) or 'Lea')
+  s = s:gsub('%%BARN%%', (st.saga and st.saga.barn and st.saga.barn.name) or 'dem Dorf')
   return s
 end
 local function apply(fx)
@@ -285,14 +298,28 @@ local function apply(fx)
   if fx.msg then E.msg = fx.msg end
   if fx.hitch then
     -- (a name and a story of her own for this ride: fernfahrer/passenger.lua, told by fernfahrer/crew.lua on the way)
-    st.hitch = { km0 = X.km(), km = X.km() + 15 + math.random() * 30, name = PX.NAMES[math.random(#PX.NAMES)], story = math.random(#PX.STORIES), mood = 0 }
-    X.notify('🎒 ' .. st.hitch.name .. ' fährt ein Stück mit.', 5)
+    local nx = st.hitchNext
+    st.hitchNext = nil
+    if nx and nx.rec then
+      -- (2026-11-11: one met before - her story is told; she says how it went on: crew.lua, passenger.lua AGAIN / SEQUEL)
+      st.hitch = { km0 = X.km(), km = X.km() + 15 + math.random() * 30, name = nx.name, story = nx.rec.story, seed = nx.rec.seed,
+        mood = math.min(2, nx.rec.mood or 0), again = (nx.rec.rides or 1), chap = 99 }
+      X.notify('🎒 ' .. st.hitch.name .. ' fährt wieder mit – ihr kennt euch schon.', 5)
+    elseif SAGA.wantRonja() then
+      -- (2026-11-11: the story's Ronja - saga.lua)
+      st.hitch = { km0 = X.km(), km = X.km() + 22 + math.random() * 20, name = 'Ronja', saga = true, seed = 1998, mood = 1 }
+      X.notify('🎒 Ronja fährt ein Stück mit.', 5)
+    else
+      st.hitch = { km0 = X.km(), km = X.km() + 15 + math.random() * 30, name = PX.NAMES[math.random(#PX.NAMES)], story = math.random(#PX.STORIES), mood = 0 }
+      X.notify('🎒 ' .. st.hitch.name .. ' fährt ein Stück mit.', 5)
+    end
   end
+  if fx.saga then SAGA.step(fx.saga) end
   if fx.pack then st.pack = { km = X.km() + 30 + math.random() * 40 } end
 end
 local function send()
   if not E or E.wait then return end
-  X.trigger('FernfahrerCop', { id = E.id, who = E.who, face = E.sc.face, seed = E.seed, mood = E.mood, react = E.react, line = E.line, nar = E.nar, choices = E.list })
+  X.trigger('FernfahrerCop', { id = E.id, who = fill(E.who), face = E.sc.face, seed = E.seed, mood = E.mood, react = E.react, line = E.line, nar = E.nar, choices = E.list })
 end
 local function say(key)
   local n = E.sc.n[key]
@@ -323,7 +350,7 @@ function M.start(key, opt)
   while #st.seen > 6 do table.remove(st.seen, 1) end
   -- (the music dies away, a moment of nothing, a knock on the left; only then the head turns, and someone is standing there)
   local c = os.clock()
-  E = { key = key, sc = sc, id = 0, seed = math.random(1, 4000), mood = (sc.mood or 0) + math.random(-1, 1), rob = robSum(), who = sc.who, node = sc.start,
+  E = { key = key, sc = sc, id = 0, seed = (opt and opt.seed) or math.random(1, 4000), mood = (sc.mood or 0) + math.random(-1, 1), rob = robSum(), who = sc.who, node = sc.start,
     knockAt = c + 1.6, lookAt = c + 3.3, wait = c + 4.6 }
   X.bed(false)
   -- (someone who walked up by themselves stands there already; and at the passenger door the head turns right)
@@ -387,6 +414,9 @@ function M.kmTick(km)
   if st.hitch and st.hitch.ask and (not X.stopped or X.stopped()) and not E then
     local h = st.hitch
     st.hitch = nil
+    -- (2026-11-11: remembered - she may stand at the road again one day; Ronja's ride moves the story on)
+    pcall(PEOPLE.noteHitch, st, h, km)
+    if h.saga then pcall(SAGA.step, 'ronja') end
     -- (her goodbye in the window: decided first, said as she gets out)
     local mm = h.mood or 0
     local byeLine = mm >= 2 and PX.BYE_GOOD[math.random(#PX.BYE_GOOD)] or (mm < 0 and PX.BYE_BAD[math.random(#PX.BYE_BAD)] or PX.BYE_OK[math.random(#PX.BYE_OK)])

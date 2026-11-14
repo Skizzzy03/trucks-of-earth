@@ -181,7 +181,19 @@
                 </tbody>
               </table>
             </div>
-            <FfMap class="map" :center="mapCenter" :zoom="11" :markers="placeMarkers" />
+            <div class="mapwrap">
+              <FfMap class="map" :center="mapCenter" :zoom="11" :markers="placeMarkers" @select="pickMarker" />
+              <!-- (2026-11-10: a place clicked on the map - "wenn ich auf Parkplatz oder Rastplatz klicke": the route there) -->
+              <div v-if="selPlace" class="mapcard">
+                <a class="x" @click="selPlace = null">✕</a>
+                <b>{{ selPlace.icon }} {{ selPlace.name }}</b>
+                <div class="muted">{{ selPlace.typeName }}{{ selPlace.detail ? " · " + selPlace.detail : "" }}{{ selPlace.d != null ? " · " + dist(selPlace.d) : "" }}</div>
+                <div class="row">
+                  <button class="btn primary" @click="act('navToPlace', selPlace.id); close()">Navi dorthin</button>
+                  <button class="btn" @click="routeCall('routeAdd', selPlace.lat, selPlace.lon, selPlace.name)">+ Route</button>
+                </div>
+              </div>
+            </div>
           </div>
 
           <!-- travel: ferries and flights -->
@@ -828,11 +840,13 @@ const SETTINGS = [
   { key: "realWeather", group: "welt", label: "Echtes Wetter", hint: "Wolken, Regen, Nebel, Wind und Temperatur kommen von BeamNG.Earth – das tatsächliche Wetter dort, wo du gerade fährst. Die Uhrzeit bleibt die der Karriere. Aus: das Wetter stellst du im Spiel selbst ein.", opts: [{ v: true, l: "An", def: true }, { v: false, l: "Aus" }] },
   { key: "trafficCars", group: "verkehr", label: "Verkehrsfahrzeuge", hint: "Agent Traffic: die europäischen Verkehrsautos der Mod Agent Traffic (falls installiert – sonst automatisch BeamNG). BeamNG vereinfacht: die vereinfachten Autos des Spiels. Beide sparen Rechenleistung; Busse und LKW gibt es nicht vereinfacht – davon fährt höchstens einer.", opts: [{ v: "agent", l: "Agent Traffic", def: true }, { v: "simple", l: "BeamNG vereinfacht" }] },
   { key: "parked", group: "verkehr", label: "Geparkte Autos", hint: "Auf Parkplätzen und am Straßenrand in Ortsstraßen (nicht an Haupt- und Landstraßen).", opts: [{ v: "off", l: "Aus" }, { v: "low", l: "Wenig" }, { v: "auto", l: "Normal", def: true }, { v: "high", l: "Viel" }] },
+  { key: "routeMode", group: "fahren", label: "Routenart", hint: "Autobahn: die schnellste Route. Landstraße: das Navi führt von Ort zu Ort über Land, ohne Autobahn (bei Zielen über 20 km). Umschalten geht auch im Routenberater.", opts: [{ v: "fast", l: "Autobahn", def: true }, { v: "land", l: "Landstraße" }] },
   { key: "navVoice", group: "fahren", label: "Navi-Ansagen", hint: "Abbiegehinweise mit Pfeil im Routenberater und als Sprache (deutsche Stimme). Den Ton schaltet auch der Lautsprecher-Knopf auf der Karte.", opts: [{ v: true, l: "An", def: true }, { v: false, l: "Aus" }] },
   { key: "perfMode", group: "leistung", label: "Leistung", hint: "Maximale FPS: weniger Verkehr, keine geparkten Autos, Spiegel auf „Sparsam“. Ausgewogen: deine vorherigen Einstellungen.", opts: [{ v: "balanced", l: "Ausgewogen", def: true }, { v: "max", l: "Maximale FPS" }] },
   { key: "slowmo", group: "welt", label: "Unfall-Zeitlupe", hint: "Kracht es ab etwa 25 km/h, läuft der Aufprall kurz in Zeitlupe ab – mit dumpfem Schlag und Ohrenpfeifen. Aus: alles in Echtzeit.", opts: [{ v: true, l: "An", def: true }, { v: false, l: "Aus" }] },
   { key: "drugFx", group: "welt", label: "Rausch-Effekt", hint: "Nach Bier oder Joint schwankt die Sicht leicht, das Bild bekommt einen dunklen Rand und eine Färbung. Aus: kein Bildeffekt – Promille und THC zählen bei Kontrollen trotzdem.", opts: [{ v: true, l: "An", def: true }, { v: false, l: "Aus" }] },
   { key: "smartTraffic", group: "verkehr", label: "Verkehr: Überholen & Rücksicht", hint: "Autos überholen langsame LKW, wenn der Gegenverkehr es zulässt (brechen ab, wenn es eng wird), und bremsen vor Baustellen, Blitzern, Kontrollen und Unfällen. Hauptstraßen werden automatisch Vorfahrtsstraßen.", opts: [{ v: true, l: "An", def: true }, { v: false, l: "Aus" }] },
+  { key: "virtualTraffic", group: "feature", label: "Virtueller Verkehr (Beta)", hint: "Experimentell: Autos außer Sicht sind nur Punkte auf dem Straßennetz, in der Ferne siehst du sie als Modelle ohne Physik, und erst in deiner Nähe werden sie zu echten Autos. So ist viel mehr Verkehr möglich, ohne dass die Bildrate leidet. Wirkt nur mit „Verkehr: Überholen & Rücksicht“.", opts: [{ v: false, l: "Aus", def: true }, { v: true, l: "An" }] },
   { key: "ownDriver", group: "feature", label: "Eigene Fahr-KI (Beta)", hint: "Experimentell: Unsere eigene Fahr-KI lenkt und bremst die Autos, hält an Ampeln und Stoppschildern, und an Kreuzungen vergibt eine Zentrale die Durchfahrt. Bei großen Kreuzungen, Lkw beim Abbiegen und Problemen übernimmt automatisch wieder BeamNG. Wirkt nur mit „Verkehr: Überholen & Rücksicht“.", opts: [{ v: false, l: "Aus", def: true }, { v: true, l: "An" }] },
   { key: "accidents", group: "verkehr", label: "Unfälle & Polizei", hint: "Nach einem Unfall kommen Polizei (und Rettungsdienst) und nehmen einen Bericht auf.", opts: [{ v: true, l: "An", def: true }, { v: false, l: "Aus" }] },
   { key: "autoPhotos", group: "test", label: "Automatik-Fotomodus", hint: "Macht alles allein: Es öffnet nacheinander die Menüs, fotografiert sie, fährt los und nimmt die Fahrt von nah und fern auf, auch mit Kippe und Bier. Dauert etwa 8 Minuten und läuft am besten im eigenen Lkw im Stand los. Fertig liegt alles im Ordner screenshots/trucks_of_earth_github. Strg+Umschalt+C bricht ab.", opts: [{ v: false, l: "Aus", def: true }, { v: true, l: "An" }] },
@@ -881,6 +895,7 @@ const km0 = x => Math.round(x || 0).toLocaleString("de-DE")
 const de1 = x => Number(x || 0).toFixed(1).replace(".", ",")
 const date0 = t => new Date(t * 1000).toLocaleDateString("de-DE")
 const sel = ref(null), selPlace = ref(null), filter = ref(null), kind = ref("all")
+function pickMarker(m) { const p = places.value.find(x => x.id === m.id); if (p) selPlace.value = p }
 const confirmReset = ref(false)
 const trucks = ref([]), trucksUsed = ref([]), cars = ref([]), carQuery = ref(""), openModel = ref(null)
 // the showroom of the dealer the truck stands at (career.lua L.showroom); the same styles as there, for the list of dealers
@@ -981,7 +996,7 @@ const marketMarkers = computed(() => {
 // (2026-11-07: every known place on the map, not only the 80 nearest of the list – the map shows those in view and
 // thins them out where they crowd)
 const placeMarkers = computed(() => [
-  ...places.value.filter(p => !filter.value || p.type === filter.value).map(p => ({ lat: p.lat, lon: p.lon, kind: selPlace.value && selPlace.value.id === p.id ? "pickup" : "depot", icon: p.icon, label: p.name })),
+  ...places.value.filter(p => !filter.value || p.type === filter.value).map(p => ({ id: p.id, lat: p.lat, lon: p.lon, kind: selPlace.value && selPlace.value.id === p.id ? "pickup" : "depot", icon: p.icon, label: p.name + " – klicken für Navi" })),
   ...homeMarker(), ...playerMarker()])
 
 // the Zentrale's tiles: every area with what matters there right now
@@ -1366,6 +1381,12 @@ h3 { margin: 0 0 10px; font-size: 11px; letter-spacing: .12em; text-transform: u
 .town b { font-size: 13.5px; } .town .tn { font-size: 12px; color: #cfd6de; } .town em { font-style: normal; color: #ffc23d; }
 @media (max-width: 1100px) { .stiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .map { border-radius: 4px; min-height: 380px; height: 100%; border: 1px solid #252c36; }
+.mapwrap { position: relative; height: 100%; min-height: 380px; }
+.mapcard { position: absolute; left: 12px; bottom: 30px; z-index: 20; max-width: 320px; background: rgba(15, 18, 23, 0.95); border: 1px solid #3a4452;
+  border-radius: 6px; padding: 10px 12px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5); }
+.mapcard b { display: block; padding-right: 18px; }
+.mapcard .row { margin-top: 8px; display: flex; gap: 6px; }
+.mapcard .x { position: absolute; right: 8px; top: 6px; cursor: pointer; color: #8d99a6; }
 .tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
 /* the yard's upgrades (2026-11-07) */
 .yardup { margin-bottom: 14px; }

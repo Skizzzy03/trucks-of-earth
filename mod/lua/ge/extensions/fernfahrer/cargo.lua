@@ -79,7 +79,7 @@ M.CARGO = {
     trailers = { { 'eu_trailers', 'flatbed3a_pipes' }, { 'flatbed', '48ft_tires' } } },
   { key = 'fertilizer', name = 'Dünger & Saatgut', icon = '🌱', t = 20, mult = 1.00,
     from = { 'industry', 'logistics' }, to = { 'farm' },
-    trailers = { { 'dryvan', '48ft_19200kg' } } },
+    trailers = { { 'eu_trailers', 'box3a' }, { 'dryvan', '48ft_19200kg' } } },
   { key = 'container', name = 'Container',     icon = '🚢', t = 26, mult = 1.15,
     from = { 'port', 'logistics' }, to = { 'logistics', 'industry' },
     trailers = { { 'eu_trailers', 'flatbed3a_container_40ft' }, { 'containerTrailer', '40ft_3axle_40ft' } } },

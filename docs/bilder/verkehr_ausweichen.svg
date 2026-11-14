@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 400" width="960" height="400" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+  <title>Ausweichen an der Baustelle und Begegnung auf schmaler Straße</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#151b24"/><stop offset="1" stop-color="#0d1117"/></linearGradient>
+    <clipPath id="left"><rect x="20" y="70" width="440" height="250" rx="12"/></clipPath>
+    <clipPath id="right"><rect x="500" y="70" width="440" height="250" rx="12"/></clipPath>
+    <g id="carY">
+      <rect x="-17" y="-8" width="34" height="16" rx="5" fill="#ffb12e"/>
+      <rect x="4" y="-6" width="8" height="12" rx="2" fill="#0d1117" opacity="0.55"/>
+    </g>
+  </defs>
+  <rect width="960" height="400" rx="18" fill="url(#bg)"/>
+  <text x="480" y="34" text-anchor="middle" font-size="20" font-weight="700" fill="#e6edf3">Mitdenken statt Vollbremsung</text>
+  <text x="480" y="56" text-anchor="middle" font-size="12.5" fill="#8b98a8">Die Leitstelle kennt Baustellen, Wracks und Engstellen – und plant die Fahrt drumherum</text>
+
+  <!-- left: roadworks -->
+  <rect x="20" y="70" width="440" height="250" rx="12" fill="#121820" stroke="#2c3542"/>
+  <g clip-path="url(#left)">
+    <rect x="20" y="148" width="440" height="104" fill="#222a35"/>
+    <line x1="20" y1="148" x2="460" y2="148" stroke="#c9d4e0" stroke-width="2"/>
+    <line x1="20" y1="252" x2="460" y2="252" stroke="#c9d4e0" stroke-width="2"/>
+    <line x1="20" y1="200" x2="460" y2="200" stroke="#c9d4e0" stroke-width="2" stroke-dasharray="16 12"/>
+    <!-- the shut strip -->
+    <rect x="286" y="204" width="70" height="44" fill="#ff6b6b" opacity="0.12"/>
+    <g fill="#ff8a3d">
+      <path d="M290,246 l6,-14 l6,14 z"/><path d="M306,236 l6,-14 l6,14 z"/><path d="M322,228 l6,-14 l6,14 z"/>
+      <path d="M338,222 l6,-14 l6,14 z"/><path d="M352,222 l6,-14 l6,14 z"/>
+    </g>
+    <rect x="300" y="228" width="40" height="18" rx="3" fill="#ffb12e" opacity="0.85"/>
+    <!-- the oncoming one passes while ours waits -->
+    <g>
+      <animateMotion dur="9s" repeatCount="indefinite" path="M500,174 L-40,174" keyPoints="0;0;1;1" keyTimes="0;0.12;0.42;1" calcMode="linear"/>
+      <g transform="rotate(180)">
+        <rect x="-17" y="-8" width="34" height="16" rx="5" fill="#e6edf3"/>
+        <rect x="4" y="-6" width="8" height="12" rx="2" fill="#0d1117" opacity="0.55"/>
+      </g>
+    </g>
+    <!-- ours: up to the block, waits, round it, back in -->
+    <g>
+      <animateMotion dur="9s" repeatCount="indefinite" rotate="auto" path="M40,226 L232,226 C258,226 262,174 290,174 L362,174 C390,174 394,226 420,226 L500,226" keyPoints="0;0.39;0.39;1" keyTimes="0;0.22;0.45;1" calcMode="linear"/>
+      <use href="#carY"/>
+      <circle cx="13" cy="-7" r="3" fill="#ffd166" opacity="0">
+        <animate attributeName="opacity" dur="9s" repeatCount="indefinite" values="0;0;1;0;1;0;1;0;0" keyTimes="0;0.3;0.38;0.46;0.54;0.62;0.7;0.78;1" calcMode="discrete"/>
+      </circle>
+    </g>
+  </g>
+  <text x="240" y="98" text-anchor="middle" font-size="15" font-weight="700" fill="#e6edf3">Baustelle: warten, dann drumherum</text>
+  <text x="240" y="290" text-anchor="middle" font-size="11.5" fill="#8b98a8">hält 12 m davor, lässt den Gegenverkehr durch,</text>
+  <text x="240" y="306" text-anchor="middle" font-size="11.5" fill="#8b98a8">blinkt, fährt vorbei und reiht sich wieder ein</text>
+
+  <!-- right: narrow road -->
+  <rect x="500" y="70" width="440" height="250" rx="12" fill="#121820" stroke="#2c3542"/>
+  <g clip-path="url(#right)">
+    <rect x="500" y="168" width="440" height="64" fill="#2a3a2a" opacity="0.7"/>
+    <rect x="500" y="176" width="440" height="48" fill="#222a35"/>
+    <line x1="500" y1="176" x2="940" y2="176" stroke="#c9d4e0" stroke-width="1.5"/>
+    <line x1="500" y1="224" x2="940" y2="224" stroke="#c9d4e0" stroke-width="1.5"/>
+    <g>
+      <animateMotion dur="8s" repeatCount="indefinite" rotate="auto" path="M480,210 L650,210 C672,210 676,224 698,224 L742,224 C764,224 768,210 790,210 L980,210" keyPoints="0;0.36;0.6;1" keyTimes="0;0.3;0.72;1" calcMode="linear"/>
+      <use href="#carY"/>
+    </g>
+    <g>
+      <animateMotion dur="8s" repeatCount="indefinite" rotate="auto" path="M980,190 L790,190 C768,190 764,176 742,176 L698,176 C676,176 672,190 650,190 L480,190" keyPoints="0;0.36;0.6;1" keyTimes="0;0.3;0.72;1" calcMode="linear"/>
+      <rect x="-17" y="-8" width="34" height="16" rx="5" fill="#4d9bff"/>
+      <rect x="4" y="-6" width="8" height="12" rx="2" fill="#0d1117" opacity="0.55"/>
+    </g>
+  </g>
+  <text x="720" y="98" text-anchor="middle" font-size="15" font-weight="700" fill="#e6edf3">Schmale Straße: beide machen Platz</text>
+  <text x="720" y="290" text-anchor="middle" font-size="11.5" fill="#8b98a8">beide früh auf Schritttempo, rechts ran, notfalls</text>
+  <text x="720" y="306" text-anchor="middle" font-size="11.5" fill="#8b98a8">ein Stück aufs Bankett – je enger, desto langsamer</text>
+
+  <text x="480" y="372" text-anchor="middle" font-size="11.5" fill="#5d6a7a">Trucks of Earth · trafficai.lua und driver.lua · gilt auch für deinen LKW im Autodrive</text>
+</svg>

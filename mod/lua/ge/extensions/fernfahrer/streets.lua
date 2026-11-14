@@ -128,4 +128,101 @@ function M.placeAt(lat, lon, noSuburbs)
   return { name = best[1], kind = best[2], dist = hav(lat, lon, best[3], best[4]), inside = inside }
 end
 
+-- (2026-11-11) the country route ("eine Landroute will ich fahren anstatt eine Autobahnroute"): BeamNG.Earth's router has no "avoid motorways",
+-- so the way goes from village to village: about every `step` metres along the line from start to destination the nearest small town or
+-- village within 6 km (no cities: their centres are slow), each one further along than the one before. A router asked for 10-15 km between
+-- two villages takes the country road. Returns { {name, lat, lon} ... } in order.
+function M.townsAlong(lat0, lon0, lat1, lon1, step)
+  local D = hav(lat0, lon0, lat1, lon1)
+  local n = math.floor(D / (step or 12000))
+  if n < 1 then return {} end
+  local kx, ky = 111320 * math.cos(math.rad(lat0)), 111320
+  local ex, ey = (lon1 - lon0) * kx, (lat1 - lat0) * ky
+  local L2 = ex * ex + ey * ey
+  local out, lastF = {}, 0.0
+  for k = 1, n do
+    local f = k / (n + 1)
+    local tla, tlo = lat0 + (lat1 - lat0) * f, lon0 + (lon1 - lon0) * f
+    local best, bs
+    -- (first a village or small town within 6 km; where there is none - the Ruhr is all cities - a district or a bigger town within 10 km)
+    for pass = 1, 2 do
+      local R = pass == 1 and 6000 or 10000
+      for la = math.floor(tla - 0.1), math.floor(tla + 0.1) do
+        for lo = math.floor(tlo - 0.16), math.floor(tlo + 0.16) do
+          for _, s in ipairs(townTile(la, lo) or {}) do
+            local pop, kind = s[5], s[2]
+            local okKind = pass == 1 and (kind ~= 'city' and kind ~= 'suburb' and kind ~= 'quarter' and (not pop or (pop >= 150 and pop < 40000)))
+              or (pass == 2 and kind ~= 'city' and (not pop or pop < 150000))
+            if okKind and math.abs(s[3] - tla) < 0.1 and math.abs(s[4] - tlo) < 0.16 then
+              local d = hav(tla, tlo, s[3], s[4])
+              local px, py = (s[4] - lon0) * kx, (s[3] - lat0) * ky
+              local fs = (px * ex + py * ey) / L2
+              if d < R and fs > lastF + 0.03 and fs < 0.97 then
+                local sc = d + ((pop and pop < 400) and 1200 or 0)
+                if not bs or sc < bs then best, bs = { name = s[1], lat = s[3], lon = s[4], f = fs }, sc end
+              end
+            end
+          end
+        end
+      end
+      if best then break end
+    end
+    if best then out[#out + 1] = best; lastF = best.f end
+  end
+  return out
+end
+
+-- (2026-11-11) a village between minM and maxM from a point (the story's barn): small places only, one at random
+function M.villageNear(lat, lon, minM, maxM)
+  local dLa = maxM / 111320
+  local dLo = maxM / (111320 * math.max(0.2, math.cos(math.rad(lat))))
+  local list = {}
+  for la = math.floor(lat - dLa), math.floor(lat + dLa) do
+    for lo = math.floor(lon - dLo), math.floor(lon + dLo) do
+      for _, s in ipairs(townTile(la, lo) or {}) do
+        local pop = s[5]
+        if (s[2] == 'village' or s[2] == 'hamlet' or (pop and pop >= 80 and pop <= 3000)) and s[2] ~= 'suburb' and s[2] ~= 'quarter' and s[2] ~= 'city' then
+          local d = hav(lat, lon, s[3], s[4])
+          if d >= minM and d <= maxM then list[#list + 1] = { name = s[1], lat = s[3], lon = s[4] } end
+        end
+      end
+    end
+  end
+  if #list == 0 then return nil end
+  return list[math.random(#list)]
+end
+
+-- (2026-11-10) the built-up core of a town: only where the houses stand close ("genau da, wo viele Häuser sind"), not the whole area
+-- placeAt counts as the town - its edge, the fields and the industrial estates round it are fine for a yard. The core's radius by size;
+-- a village has none. Returns the town's name and how far from its centre, or nil.
+function M.coreRadius(kind, pop)
+  if pop then
+    return pop >= 500000 and 3500 or pop >= 100000 and 1800 or pop >= 30000 and 900 or pop >= 10000 and 550 or pop >= 3000 and 300 or 0
+  end
+  return ({ city = 2000, town = 500, suburb = 350, quarter = 300 })[kind] or 0
+end
+function M.coreAt(lat, lon)
+  if not lat or not lon then return nil end
+  local lists = {}
+  for la = math.floor(lat - 0.05), math.floor(lat + 0.05) do
+    for lo = math.floor(lon - 0.08), math.floor(lon + 0.08) do
+      local t = townTile(la, lo)
+      if t then lists[#lists + 1] = t end
+    end
+  end
+  if #lists == 0 and settlements then lists[1] = settlements end
+  for _, list in ipairs(lists) do
+    for _, s in ipairs(list) do
+      if math.abs(s[3] - lat) < 0.05 and math.abs(s[4] - lon) < 0.08 then
+        local r = M.coreRadius(s[2], s[5])
+        if r > 0 then
+          local d = hav(lat, lon, s[3], s[4])
+          if d <= r then return s[1], d, s[2] end
+        end
+      end
+    end
+  end
+  return nil
+end
+
 return M

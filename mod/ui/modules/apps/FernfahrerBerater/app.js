@@ -6,7 +6,7 @@ angular.module('beamng.apps')
 .directive('fernfahrerBerater', [function () {
   // map marker per place type: letter and colour (a legend reads them off the same table)
   var MARK = {
-    fuel: ['T', '#f5a623'], rest: ['R', '#7ac943'], workshop: ['W', '#ff7a45'], truckdealer: ['H', '#3d8bfd'],
+    fuel: ['T', '#f5a623'], rest: ['R', '#7ac943'], parking: ['P', '#3d7bd9'], workshop: ['W', '#ff7a45'], truckdealer: ['H', '#3d8bfd'],
     cardealer: ['A', '#3d8bfd'], viewpoint: ['S', '#a66bff'], logistics: ['L', '#8d99a6'], post: ['P', '#e8c63c'],
     supermarket: ['K', '#2fbf71'], hardware: ['K', '#2fbf71'], furniture: ['K', '#2fbf71'], industry: ['G', '#8d99a6'],
     drinks: ['K', '#2fbf71'], dairy: ['K', '#2fbf71'], timber: ['K', '#2fbf71'], building: ['K', '#2fbf71'],
@@ -38,6 +38,7 @@ angular.module('beamng.apps')
     '.ffb .mapbox.dark{background:#1b1f24}.ffb .mapbox.dark .tile{filter:invert(.92) hue-rotate(180deg) brightness(.82) contrast(.92) saturate(.6)}' +
     '.ffb svg.rt{position:absolute;left:0;top:0;z-index:2;overflow:visible}' +
     '.ffb .mk{position:absolute;z-index:3;transform:translate(-50%,-50%);width:15px;height:15px;border-radius:50%;border:1.5px solid #fff;color:#fff;font:800 9px/12px Arial,sans-serif;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.5)}' +
+    '.ffb .mk.go{cursor:pointer}.ffb .mk.go:hover{box-shadow:0 0 0 3px rgba(255,255,255,.45)}.ffb .mk.rst{width:18px;height:18px;font-size:10.5px;line-height:15px;z-index:4}' +
     '.ffb .mk.tg{width:18px;height:18px;line-height:15px;font-size:11px;background:#d9483b;z-index:4;border-radius:3px}.ffb .mk.hm{background:#15100a;color:#f5a623;border-color:#f5a623;border-radius:3px}' +
     '.ffb .me{position:absolute;z-index:5;left:50%;top:50%;width:0;height:0;margin-left:-8px;margin-top:-11px;border-left:8px solid transparent;border-right:8px solid transparent;border-bottom:22px solid #1f6feb;filter:drop-shadow(0 0 2px #fff)}' +
     '.ffb .mapctl{position:absolute;right:6px;top:6px;z-index:6;display:flex;flex-direction:column;gap:3px}' +
@@ -107,13 +108,13 @@ angular.module('beamng.apps')
             '<div class="mapview" ng-style="viewStyle()">' +
             '<img ng-repeat="t in m.tiles track by t.k" class="tile" ng-class="{ov: t.ov}" ng-src="{{ t.src }}" ng-style="{left: t.x + \'px\', top: t.y + \'px\'}" />' +
             '<svg class="rt" ng-attr-width="{{ m.w }}" ng-attr-height="{{ m.h }}"><polyline ng-attr-points="{{ m.route }}" fill="none" stroke="#1f6feb" stroke-width="5" stroke-opacity=".8" stroke-linejoin="round" stroke-linecap="round"/></svg>' +
-            '<div ng-repeat="p in m.places track by $index" class="mk" ng-style="{left: p.x + \'px\', top: p.y + \'px\', background: p.c, transform: mkT()}" title="{{ p.n }}">{{ p.l }}</div>' +
+            '<div ng-repeat="p in m.places track by $index" class="mk" ng-class="{go: p.id, rst: p.t === \'rest\' || p.t === \'parking\'}" ng-click="p.id && lua(\'navToPlace\', p.id)" ng-style="{left: p.x + \'px\', top: p.y + \'px\', background: p.c, transform: mkT()}" title="{{ p.n }}{{ p.id ? \' – klicken: Navi dorthin\' : \'\' }}">{{ p.l }}</div>' +
             '<div class="mk hm" ng-if="m.home" ng-style="{left: m.home.x + \'px\', top: m.home.y + \'px\', transform: mkT()}">H</div>' +
             '<div class="mk tg" ng-if="m.target" ng-style="{left: m.target.x + \'px\', top: m.target.y + \'px\', transform: mkT()}">Z</div>' +
             '</div>' +
             '<div class="me" ng-style="meStyle()"></div>' +
             '<div class="loc" ng-if="h.where" title="{{ h.where.state ? h.where.state + \', \' : \'\' }}{{ h.where.country }}"><span class="fl" ng-style="flag(h.where.code)"></span><span class="cn">{{ h.where.country }}</span><span class="st" ng-if="h.where.state || h.where.town || h.where.street">{{ [h.where.state, h.where.town, h.where.street].filter(ok).join(\' · \') }}</span></div>' +
-            '<div class="legend" ng-if="showLegend"><i style="background:#ff8f1f"></i>Fracht<i style="background:#f5a623"></i>Tank<i style="background:#7ac943"></i>Rast<i style="background:#ff7a45"></i>Werkstatt<i style="background:#3d8bfd"></i>Händler<i style="background:#2fbf71"></i>Kunde</div>' +
+            '<div class="legend" ng-if="showLegend"><i style="background:#ff8f1f"></i>Fracht<i style="background:#f5a623"></i>Tank<i style="background:#7ac943"></i>Rast<i style="background:#3d7bd9"></i>Parken<i style="background:#ff7a45"></i>Werkstatt<i style="background:#3d8bfd"></i>Händler<i style="background:#2fbf71"></i>Kunde</div>' +
             '<div class="mapctl"><a ng-click="zoom(1)">+</a><a ng-click="zoom(-1)">−</a><a ng-click="showLegend = !showLegend">?</a>' +
               '<a ng-click="toggleSound()" title="Navi-Ansagen an/aus" ng-class="{off: !h.navSound}">{{ h.navSound ? \'🔊\' : \'🔇\' }}</a>' +
               '<a ng-click="toggleWarn()" ng-class="{on: h.routeWarn}" title="{{ h.routeWarn ? \'Streckenwarner an (Blitzer, Baustellen, Pannen) – klicken: aus\' : \'Streckenwarner aus – klicken: Blitzer, Baustellen und Pannen werden mit Signalton angezeigt\' }}">⚠</a>' +
@@ -128,6 +129,7 @@ angular.module('beamng.apps')
             '<div class="t2" ng-if="!h.discovering && !h.job && !h.navName">Auftrag im Büro wählen oder ein Ziel setzen.</div>' +
             '<div class="t2" ng-if="h.event" style="color:#f5a623">{{ h.event.title }}{{ h.event.inZone ? \' – du bist drin\' : \' in \' + dist(h.event.dist) }}{{ h.event.limit ? \' · \' + h.event.limit + \' km/h\' : \'\' }}</div>' +
             '<div class="t2" ng-if="h.gps && h.gps.routeError" style="color:#ff6b5e">Keine Route gefunden</div>' +
+            '<div class="t2" ng-if="h.via" style="color:#9ccc65">🌾 Landroute: über {{ h.via.name }} ({{ h.via.i }}/{{ h.via.n }}) – Entfernung bis dorthin</div>' +
             '<div class="kv">' +
               '<div><span>Entfernung</span><b>{{ dist(h.gps && h.gps.remaining !== undefined ? h.gps.remaining : (h.job ? h.job.dist : null)) }}</b></div>' +
               '<div><span>Ankunft in</span><b>{{ time(h.gps && h.gps.eta !== undefined ? h.gps.eta : (h.job ? h.job.eta : null)) }}</b></div>' +
@@ -135,6 +137,7 @@ angular.module('beamng.apps')
               '<div ng-if="!h.job && h.homeDist !== undefined && h.homeDist !== null"><span>Hof</span><b>{{ dist(h.homeDist) }}</b></div>' +
             '</div>' +
             '<div style="margin-top:8px;display:flex;gap:5px;flex-wrap:wrap">' +
+              '<button class="btn" ng-click="lua(\'setRouteMode\', h.routeMode === \'land\' ? \'fast\' : \'land\')" title="Routenart umschalten">{{ h.routeMode === \'land\' ? \'🌾 Landstraße\' : \'🛣 Autobahn\' }}</button>' +
               '<button class="btn" ng-click="lua(\'navToNearest\', \'fuel\')">Tankstelle</button>' +
               '<button class="btn" ng-click="lua(\'navToNearest\', \'rest\')">Rastplatz</button>' +
               '<button class="btn" ng-click="lua(\'navToNearest\', \'parking\')">Parkplatz</button>' +
@@ -378,7 +381,7 @@ angular.module('beamng.apps')
           // (a company with loads waiting: orange, the number of trailers on it)
           if (list[i].t === 'freight') { mk = [String(list[i].j || ''), '#ff8f1f'] }
           if (p.x > -10 - padX && p.y > -10 - padT && p.x < m.w + 10 + padX && p.y < m.h + 10 + padB) {
-            places.push({ x: p.x, y: p.y, l: mk[0], c: mk[1], n: list[i].t === 'freight' ? list[i].n + ' – ' + list[i].j + ' Fracht(en) abholbereit' : list[i].n })
+            places.push({ x: p.x, y: p.y, l: mk[0], c: mk[1], t: list[i].t, id: list[i].id || null, n: list[i].t === 'freight' ? list[i].n + ' – ' + list[i].j + ' Fracht(en) abholbereit' : list[i].n })
           }
         }
         m.places = places

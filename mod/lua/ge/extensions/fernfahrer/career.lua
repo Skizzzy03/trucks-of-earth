@@ -21,10 +21,14 @@ local tacho = require('fernfahrer/tacho')
 local travel = require('fernfahrer/travel')
 local accidents = require('fernfahrer/accidents')
 local trafficAI = require('fernfahrer/trafficai')
+local trafficLab = require('fernfahrer/trafficlab')
+local hazards = require('fernfahrer/hazards')
 local priority = require('fernfahrer/priority')
 local pool = require('fernfahrer/pool')
 local streets = require('fernfahrer/streets')
 local parked = require('fernfahrer/parked')
+local rests = require('fernfahrer/rests')
+rests.init(parked)
 local vices = require('fernfahrer/vices')
 local yard = require('fernfahrer/yard')
 local stops = require('fernfahrer/stops')
@@ -93,6 +97,14 @@ local C = {
   BOOT_WAIT_S = 3,
   TRAFFIC_DELAY_S = 15,
   FPS_WINDOW_S = 15,
+  -- (2026-11-12, Verkehrstest 22-07: "so wenig los" - for 30 minutes 4 to 9 cars driving. More came only above 57 fps, and the game ran at
+  -- 46 to 55: the doubled number the virtual traffic wanted never came. Now more above FPS_UP, fewer below FPS_DOWN, and in the traffic lab
+  -- up regardless; towards a higher number RAMP_N at a time every RAMP_S - never a crowd at once: the lab's measuring scene jumping from 20
+  -- to 36 put 16 cars down at speed in one go, 8 crashes within 2 seconds)
+  FPS_UP = 45,
+  FPS_DOWN = 34,
+  RAMP_S = 2,
+  RAMP_N = 1,
 }
 
 -- price per unit and MJ per unit (the stock career's factors, career/modules/fuel.lua)
@@ -628,6 +640,19 @@ local function isTractor(cfg)
 end
 
 local CAR_BODY_SKIP = { ['box truck'] = 1, ['bus'] = 1, ['dump truck'] = 1, ['flatbed'] = 1 }
+-- (2026-11-11: "Traffic Vehicles dürfen nicht mit verkauft werden" - the simple cars made for the traffic (Agent Traffic's, the game's simplified
+-- ones, the parked ones): one engine for all, no interior. Not for sale)
+local function trafficOnly(info, cfg, key)
+  local t = tostring((cfg and cfg.Type) or ''):lower()
+  if t == 'proptraffic' or t == 'propparked' or t == 'traffic' then return true end
+  local mt = tostring(info.Type or ''):lower()
+  if mt == 'traffic' or mt == 'proptraffic' or info.isAuxiliary then return true end
+  local k = tostring(key or ''):lower()
+  if k:find('traffic', 1, true) or k:find('^simple_') then return true end
+  if tostring(info.Brand or '') == 'Agent' or tostring(info.Name or ''):lower():find('traffic vehicles', 1, true) then return true end
+  local ck = tostring(cfg and cfg.key or ''):lower()
+  return ck:find('_parked$') ~= nil or ck:find('traffic', 1, true) ~= nil
+end
 
 local function buildCatalogs()
   local trucks, cars = {}, {}
@@ -642,6 +667,8 @@ local function buildCatalogs()
       local brand, modelName = info.Brand or '', tr(info.Name, key)
       local carModel
       for _, cfg in pairs(full.configs) do
+        if trafficOnly(info, cfg, key) then goto nextCfg end
+        do
         local value = tonumber(cfg.Value) or 30000
         local entry = { model = key, config = 'vehicles/' .. key .. '/' .. cfg.key .. '.pc', brand = brand,
           modelName = modelName, configName = tr(cfg.Configuration, cfg.key), power = tonumber(cfg.Power),
@@ -655,6 +682,8 @@ local function buildCatalogs()
           carModel = carModel or { model = key, brand = brand, modelName = modelName, eu = eu, configs = {}, preview = cfg.preview or (full.model and full.model.preview) }
           table.insert(carModel.configs, entry)
         end
+        end
+        ::nextCfg::
       end
       if carModel then
         table.sort(carModel.configs, function(a, b) return a.price < b.price end)
@@ -741,27 +770,77 @@ local function adoptPlayerVehicle()
   end
 end
 
-local function damageOf(id)
+local function rawDamageOf(id)
   local o = map and map.objects and map.objects[id]
   local d = o and o.damage or 0
   -- (the damage brought back from the last session: the game counts only what happens after the spawn)
   if R.dmgBase and R.dmgBase.id == id then d = d + R.dmgBase.v end
   return d
 end
+-- (2026-11-10: what the autodrive did is not counted - "während man im Autodrive ist, kann man Schaden bekommen". R.dmgFree: per vehicle, L.autoGuardTick)
+local function damageOf(id)
+  local d = rawDamageOf(id)
+  local f = R.dmgFree and R.dmgFree[id]
+  if f then d = math.max(0, d - f) end
+  return d
+end
 
 ------------------------------------------------------------------------------------------
 -- navigation (BeamNG.Earth GPS: real routing, ground arrows)
 
+-- (2026-11-11) the route kind (S.settings.routeMode): 'fast' as Earth plans it (motorways), 'land' over the country roads: from village to
+-- village (streets.townsAlong), the GPS led to one after the other (L.viaTick), the destination last. Only for more than LAND_MIN_M.
+L.LAND_MIN_M, L.LAND_STEP_M = 20000, 12000
 local function navTo(place, name)
   local gps = place and earthModule('gps')
-  if gps and gps.setDestination then gps.setDestination(place.lat, place.lon, name) end
+  R.via = nil
+  R.navFinal = place and { lat = place.lat, lon = place.lon, name = name } or nil
+  local tgt, label = place, name
+  if place and S and S.settings and S.settings.routeMode == 'land' then
+    local p = here()
+    if p and haversine(p.lat, p.lon, place.lat, place.lon) > L.LAND_MIN_M then
+      local ok, list = pcall(streets.townsAlong, p.lat, p.lon, place.lat, place.lon, L.LAND_STEP_M)
+      if ok and type(list) == 'table' and #list > 0 then
+        R.via = { list = list, idx = 1 }
+        tgt, label = list[1], string.format('Landroute über %s', list[1].name)
+        log('I', logTag, string.format('country route to %s: %d villages on the way', tostring(name), #list))
+      end
+    end
+  end
+  if gps and gps.setDestination then gps.setDestination(tgt.lat, tgt.lon, label) end
   R.navName = name
 end
 
 local function navClear()
   local gps = earthModule('gps')
   if gps and gps.clear then pcall(gps.clear) end
-  R.navName = nil
+  R.navName, R.via, R.navFinal = nil, nil, nil
+end
+-- once a second: a village of the country route reached (within 700 m, or already nearer to the destination than it is) - on to the next
+function L.viaTick()
+  local v = R.via
+  if not v then return end
+  local s, p, fin = v.list[v.idx], here(), R.navFinal
+  if not s or not p or not fin then R.via = nil; return end
+  local passed = haversine(p.lat, p.lon, s.lat, s.lon) < 700
+    or haversine(p.lat, p.lon, fin.lat, fin.lon) + 1500 < haversine(s.lat, s.lon, fin.lat, fin.lon)
+  if not passed then return end
+  local gps = earthModule('gps')
+  v.idx = v.idx + 1
+  local nx = v.list[v.idx]
+  if nx then
+    if gps and gps.setDestination then gps.setDestination(nx.lat, nx.lon, 'Landroute über ' .. nx.name) end
+  else
+    R.via = nil
+    if gps and gps.setDestination then gps.setDestination(fin.lat, fin.lon, fin.name) end
+  end
+end
+function M.setRouteMode(mode)
+  if not S or (mode ~= 'fast' and mode ~= 'land') then return end
+  S.settings.routeMode = mode
+  notify(mode == 'land' and '🌾 Route über Landstraßen – von Ort zu Ort, ohne Autobahn.' or '🛣 Schnellste Route – über die Autobahn.', 5)
+  if R.navFinal then navTo(R.navFinal, R.navFinal.name) end
+  save()
 end
 
 local function gpsStatus()
@@ -899,6 +978,7 @@ function M.routeStop()
 end
 -- once a second: arrived at the stop being driven to → the next
 function L.routeTick()
+  pcall(L.viaTick)
   local r = S and S.route
   if not (r and r.idx and r.stops[r.idx]) then return end
   local s = r.stops[r.idx]
@@ -2043,6 +2123,12 @@ local function makeOffer(cargo, from, to, start, long)
   local urgent = math.random() < (long and 0.1 or 0.2)
   local avail = L.trailersOf(cargo)
   if #avail == 0 then avail = cargo.trailers end
+  -- (2026-11-11: in Europe a European trailer where the load has one - the American 53-foot box only where there is nothing else)
+  if inEurope() then
+    local eu = {}
+    for _, tr in ipairs(avail) do if tr[1] ~= 'dryvan' and tr[1] ~= 'flatbed' then eu[#eu + 1] = tr end end
+    if #eu > 0 then avail = eu end
+  end
   local trailer = avail[math.random(#avail)]
   local tinfo = L.trailerInfo(trailer[1], trailer[2])
   local freight = round((C.BASE_PAY + km * C.PAY_PER_KM) * (cargo.mult or 1) * (urgent and 1.25 or 1) * (L.hasUp('warehouse') and 1.06 or 1), 10)
@@ -2571,14 +2657,26 @@ local function updateNear()
     if f and (not best or df < best.dist) then
       best = { id = 'earthfuel:' .. tostring(f.id), type = 'fuel', name = L.neutralName('fuel', f.name, nil, f.lat, f.lon), icon = '⛽', typeName = 'Tankstelle', action = 'refuel', dist = df, lat = f.lat, lon = f.lon }
     end
+    -- (2026-11-10: the rest areas of the shipped data and the car parks Earth builds, rests.lua - "ich finde nie was zum Schlafen". A rest
+    -- area from 260 m, as the network's; a plain car park only with nothing else near and when slowing down, a big one (30 stalls) also driving by)
     local v0 = playerVeh()
-    if not best and v0 and vehSpeed(v0) <= 11 then
-      local lot, dl = parked.lotNear(p.lat, p.lon, 90)
-      if lot then
-        best = { id = 'lot:' .. lot.id, type = 'parkinglot', parking = true, name = 'Parkplatz', icon = '🅿️', typeName = 'Parkplatz',
-          action = 'sleep', hint = 'Parkplatz – Pause machen und schlafen', dist = dl, lat = lot.lat, lon = lot.lon }
+    local slow = v0 and vehSpeed(v0) <= 11
+    local okR, list = pcall(rests.around, p.lat, p.lon, 260, { classify = 400 })
+    for _, r in ipairs(okR and list or {}) do
+      local isRest = r.kind == 'rest'
+      if (isRest or (not best and (slow or (r.n or 0) >= 30) and r.d <= 120)) and (not best or r.d < best.dist) then
+        best = { id = r.id, type = isRest and 'rest' or 'parkinglot', parking = true, name = r.name, icon = '🅿️', typeName = isRest and 'Rastplatz' or 'Parkplatz',
+          action = 'sleep', hint = isRest and 'Rastplatz – hier schlafen und Pause machen' or 'Parkplatz – Pause machen und schlafen', dist = r.d, lat = r.lat, lon = r.lon,
+          ringLat = r.ringLat, ringLon = r.ringLon, ringHdg = r.ringHdg }
+        break
       end
     end
+  end
+  -- (a rest area of the network: its ring onto a stall of the car park the world has there, if it has one)
+  if best and best.action == 'sleep' and not best.ringLat then
+    local okL, ll = pcall(parked.lotsAround, best.lat, best.lon, rests.MATCH_M)
+    local l = okL and ll and ll[1]
+    if l then best.ringLat, best.ringLon, best.ringHdg, best.parking = l.sla, l.slo, l.sh, true end
   end
   R.near = best
   -- a viewpoint seen for the first time
@@ -2600,7 +2698,7 @@ local function updateNear()
     local dd = math.abs(d.lat - p.lat) < dLat and haversine(p.lat, p.lon, d.lat, d.lon) or math.huge
     if dd < 6000 then
       local t = DEPOT_BY_KEY[d.type]
-      table.insert(list, { lat = d.lat, lon = d.lon, t = d.type, f = t and t.facility or false, n = d.name, d = dd })
+      table.insert(list, { lat = d.lat, lon = d.lon, t = d.type, f = t and t.facility or false, n = d.name, d = dd, id = d.id })
     end
   end
   for _, x in ipairs(travel.hubsNear(p, 6)) do
@@ -2611,6 +2709,19 @@ local function updateNear()
     if math.abs(f.lat - p.lat) < 0.1 and math.abs(f.lon - p.lon) < 0.15 then
       local df = haversine(p.lat, p.lon, f.lat, f.lon)
       if df < 12000 then table.insert(list, { lat = f.lat, lon = f.lon, t = 'fuel', n = L.neutralName('fuel', f.name, nil, f.lat, f.lon), d = df }) end
+    end
+  end
+  -- (2026-11-10: the rest areas and car parks around, rests.lua; a rest area of the network is there already)
+  do
+    local okR, rl = pcall(rests.around, p.lat, p.lon, 12000)
+    local nR, nP = 0, 0
+    for _, r in ipairs(okR and rl or {}) do
+      local dup = false
+      for _, x in ipairs(list) do if x.t == 'rest' and math.abs(x.lat - r.lat) < 0.0018 and math.abs(x.lon - r.lon) < 0.0028 then dup = true; break end end
+      if not dup then
+        if r.kind == 'rest' and nR < 25 then nR = nR + 1; table.insert(list, { lat = r.lat, lon = r.lon, t = 'rest', f = true, n = r.name, d = r.d, id = r.id })
+        elseif r.kind == 'parking' and nP < 12 and r.d < 6000 then nP = nP + 1; table.insert(list, { lat = r.lat, lon = r.lon, t = 'parking', n = r.name, d = r.d, id = r.id }) end
+      end
     end
   end
   -- (companies with loads waiting: a marker of their own with the number of trailers)
@@ -2721,6 +2832,7 @@ end
 -- the vehicle is whole again (as before) – the damage kept from the last session goes with it
 function M.onVehicleResetted(vid)
   if not R.mode or not S or vid ~= R.truckId then return end
+  if R.dmgFree then R.dmgFree[vid] = nil end
   local v = getObjectByID(vid)
   -- (the limiter and the tank's size told again straight away: a reload of the vehicle starts its Lua anew, and the
   -- fuel put back must find the tank at its career size)
@@ -2757,6 +2869,11 @@ function M.onVehicleResetted(vid)
   R.condRestoreAt = now() + 0.6
   if R.svcFix and now() < R.svcFix.till then
     local before = R.dmgTarget.v
+    if L.MEND[R.svcFix.kind] then
+      R.condMend = R.svcFix.kind
+      -- (the fault in the vehicle's own Lua is over as well: no more temperature watch)
+      if v then v:queueLuaCommand('if fernfahrer_wear and fernfahrer_wear.clearFail then fernfahrer_wear.clearFail() end') end
+    end
     if R.svcFix.kind == 'recover' then
       R.dmgTarget.v = math.min(before * 0.5, C.TRUCK_DMG_FULL * 0.5)
       R.condBoost = 0.6
@@ -2789,6 +2906,8 @@ function L.requestCond()
 end
 function M.onConditions(id, c)
   if not S or id ~= R.truckId or type(c) ~= 'table' then return end
+  -- (the autodrive knocked the truck: the condition from before it stays in the file until it is put right)
+  if (R.adG and R.adG.hit) or (R.adHold and now() < R.adHold) then return end
   R.lastCond, R.lastCondAt = c, now()
   local dmg = damageOf(id)
   -- (a whole vehicle: nothing to keep – the file goes, a spawn stays new)
@@ -2836,6 +2955,20 @@ function L.restoreCond(v)
   if R.condDropSlot then
     for k in pairs(cond) do if tostring(k):find(R.condDropSlot, 1, true) then cond[k] = nil end end
     R.condDropSlot = nil
+  end
+  -- (2026-11-11: the fault the service has mended stays mended - "der Kühler wird nicht repariert vom Pannendienst, deswegen überhitzt der Motor
+  -- immer wieder": the condition put back after its reset had the broken radiator in it, and it leaked again)
+  if R.condMend then
+    local pats = L.MEND[R.condMend] or {}
+    local n = 0
+    for k, p in pairs(cond) do
+      local s = tostring(k):lower()
+      for _, q in ipairs(pats) do
+        if s:find(q, 1, true) and type(p) == 'table' then p.integrityValue, p.integrityState = 1, nil; n = n + 1; break end
+      end
+    end
+    log('I', logTag, string.format('breakdown service: %s mended (%d parts)', R.condMend, n))
+    R.condMend = nil
   end
   -- (the breakdown service's emergency repair: engine, drive, chassis up to a level that drives)
   if R.condBoost then
@@ -3192,8 +3325,12 @@ local function usedStock(dealerId)
   local rnd = L.lcg(L.hashStr(key))
   local europe = inEurope()
   local pool = {}
+  -- (2026-11-11: "wenn ich in Deutschland bin, europäische LKWs ... ähnliche oder gleiche LKWs nur in unterschiedlichen Konfigurationen": in
+  -- Europe the European tractors only, in all their configurations; an American one now and then only when there are few)
+  local nEu = 0
+  for _, t in ipairs(R.trucks) do if t.eu then nEu = nEu + 1 end end
   for _, t in ipairs(R.trucks) do
-    if not europe or t.eu or rnd() < 0.25 then pool[#pool + 1] = t end
+    if not europe or t.eu or (nEu < 4 and rnd() < 0.1) then pool[#pool + 1] = t end
   end
   if #pool == 0 then pool = R.trucks end
   -- (2026-11-09: not everything at every dealer: each one deals in its own brands)
@@ -3820,12 +3957,13 @@ function L.trafficGuard(t)
 end
 -- (2026-11-09) "Zum Hof": the truck sank into the ground: it was set down the moment the yard's objects existed, before their collision was in. Now it is held still meanwhile, set down
 -- a moment after the yard stands, and looked at again; the loading screen stays until that is done (uiTrip waits for R.parkAtYard).
+L.YARD_PARK_MAX_S = 25
 function L.parkDone(v)
   if v then v:queueLuaCommand('controller.setFreeze(0)') end
   R.parkAtYard = nil
 end
 function L.parkTick(t)
-  local P, v = R.parkAtYard, careerVeh()
+  local P, v = R.parkAtYard, careerVeh() or playerVeh()
   if v and P.frozen ~= v:getID() and not P.settleAt then P.frozen = v:getID(); v:queueLuaCommand('controller.setFreeze(1)') end
   local sp = yard.parkSpot()
   if P.settleAt then
@@ -3838,7 +3976,7 @@ function L.parkTick(t)
     end
   end
   -- (2026-11-09: the ground has to be there; the houses around may take a minute, the truck stands on the yard's own slab and does not wait for them)
-  local w = earthLoading()
+  local w = L.earthLoading()           -- (2026-11-11: earthLoading is declared further down - called by its local name here it was nil, every time)
   if sp and v and not (w and (w.ground or (w.buildings and yard.builtAge() < 10))) and yard.builtAge() >= 1.8 and vehPos(v):distance(sp.pos) < 800 then
     log('I', logTag, string.format('yard: truck set down at the hall (it was %.0f m away)', vehPos(v):distance(sp.pos)))
     pcall(spawn.safeTeleport, v, sp.pos, quatFromDir(sp.dir, vec3(0, 0, 1)))
@@ -4009,6 +4147,7 @@ function L.workTick()
 end
 function M.workSkip() if R.workShow then R.workShow.len = 0 end end
 L.enc = require('fernfahrer/encounters')
+L.saga = require('fernfahrer/saga')
 -- (2026-11-09) quiet music under the moments (mood.lua). The radio goes silent only for the rest area and a talk at the window, and comes back; "Nur ohne Radio" leaves it alone.
 L.mood = require('fernfahrer/mood')
 L.MOOD_LEVEL = { low = 0.6, mid = 1, high = 1.4 }
@@ -4105,6 +4244,12 @@ function L.crewCtx()
     notify = notify, message = message,
     km = function() return S and S.stats and S.stats.odoKm or 0 end,
     state = function() S.enc = S.enc or {}; return S.enc end,
+    here = function() return here() end,
+    placeName = function()
+      local p = here()
+      local ok, pl = p and pcall(streets.placeAt, p.lat, p.lon, true)
+      return ok and pl and pl.name or nil
+    end,
     hitchOn = function() return S ~= nil and S.enc ~= nil and S.enc.hitch ~= nil end,
     encActive = function() return L.enc.active() end,
     encStart = function(key, opt) L.encAttach(); return L.enc.start(key, opt) end,
@@ -4133,7 +4278,23 @@ function L.encAttach()
   L.enc.reset()
   S.enc = S.enc or {}
   L.enc.attach(S.enc, L.encCtx())
+  L.saga.attach(S.enc, L.sagaCtx())
   R.encFor = S
+end
+-- (2026-11-11) the story's world (saga.lua)
+function L.sagaCtx()
+  return {
+    jobs = function() return S.stats.jobs or 0 end, km = function() return S.stats.odoKm or 0 end, here = function() return here() end,
+    atRest = function() return (R.sagaStill or 0) >= 6 and R.near ~= nil and R.near.action == 'sleep' end,
+    stopped = function() local v = careerVeh(); return v ~= nil and vehSpeed(v) < 0.6 end,
+    encActive = function() return L.enc.active() end,
+    encStart = function(key) L.encAttach(); return L.enc.start(key) end,
+    message = message, notify = notify, save = function() save() end,
+    pay = function(c, a, l) L.pay(c, a, l) end, xp = function(n) addXp(n) end,
+    villageNear = function(la, lo, a, b) local ok, v = pcall(streets.villageNear, la, lo, a, b); return ok and v or nil end,
+    navTo = function(la, lo, name) navTo({ lat = la, lon = lo }, name) end,
+    dist = function(a, b, c, d) return haversine(a, b, c, d) end,
+  }
 end
 function L.encForce()
   L.encAttach()
@@ -4150,7 +4311,13 @@ function L.encTick(t)
   local v = careerVeh()
   if L.enc.active() then L.enc.tick(v ~= nil and vehSpeed(v) > 3); return end
   if not v or vehSpeed(v) > 0.6 or R.cop or R.rcScene or R.restCheck or R.trip or R.pendingTeleport or R.sleep or R.officeOpen or R.stopOpen
-    or cinematic.active() or L.gamePaused() then R.encStill = 0; return end
+    or cinematic.active() or L.gamePaused() then R.encStill = 0; R.sagaStill = 0; return end
+  -- (2026-11-11: the story first - saga.lua - when the tutorial is done)
+  R.sagaStill = (R.sagaStill or 0) + dtc
+  if not (S.tut and not S.tut.done) then
+    pcall(L.saga.tick, t)
+    if L.enc.active() then return end
+  end
   if R.encTest then
     R.encStill = (R.encStill or 0) + dtc
     if R.encStill >= 2 then local k = R.encTest; R.encTest = nil; L.enc.start(k) end
@@ -4202,7 +4369,7 @@ function L.accTick(t)
   R.accT = t
   local got = L.acc.tick()
   if got then notify('📦 Dein Paket ist am Hof: ' .. got .. '. Einbauen in der Werkstatt am Hof.', 8); save() end
-  if t - (R.fuelSaveT or 0) > 60 then R.fuelSaveT = t; pcall(parked.fuelSave) end
+  if t - (R.fuelSaveT or 0) > 60 then R.fuelSaveT = t; pcall(parked.fuelSave); pcall(parked.lotSave) end
 end
 function M.uiShop()
   if R.accFor ~= S then L.accTick(now()) end
@@ -4274,6 +4441,15 @@ function M.navToPlace(id)
     if f then local n = L.neutralName('fuel', f.name, nil, f.lat, f.lon); navTo({ lat = f.lat, lon = f.lon, name = n }, n); notify('Route: ' .. n, 4) end
     return
   end
+  -- (2026-11-10: a rest area or car park of rests.lua)
+  if type(id) == 'string' and (id:sub(1, 5) == 'rest:' or id:sub(1, 4) == 'lot:') then
+    local r = rests.get(id)
+    if r then
+      local tl = r.ringLat and { lat = r.ringLat, lon = r.ringLon } or r
+      navTo({ lat = tl.lat, lon = tl.lon, name = r.name }, r.name); notify('Route: ' .. r.name, 4)
+    end
+    return
+  end
   if type(id) == 'string' and id:sub(1, 4) == 'far:' then
     local la, lo, ty = id:match('^far:([%d%.%-]+):([%d%.%-]+):(%w+)$')
     local t = ty and DEPOT_BY_KEY[ty]
@@ -4287,14 +4463,23 @@ end
 
 function M.navToNearest(typeKey)
   -- (2026-11-10) a car park: the nearest the world has shown, or a rest area if that is nearer
-  if typeKey == 'parking' then
+  -- (2026-11-10: the rest areas and car parks of rests.lua as well - the shipped ones, the ones Earth has built - and the network's)
+  if typeKey == 'parking' or typeKey == 'rest' then
     local p = here()
     if not p then return end
-    local lot, dl = parked.lotNearest(p.lat, p.lon, 30000)
-    local rest, dr = nearestOf('rest')
-    if rest and (not lot or dr < dl) then navTo(rest, rest.name); notify('Route zum nächsten Parkplatz: ' .. rest.name, 5); return end
-    if lot then navTo({ lat = lot.lat, lon = lot.lon, name = 'Parkplatz' }, 'Parkplatz'); notify(string.format('Route zum nächsten Parkplatz (%.1f km)', dl / 1000):gsub('%.(%d km)', ',%1'), 5); return end
-    notify('Kein Parkplatz in der Nähe bekannt.', 4)
+    local okR, r = pcall(rests.nearest, p.lat, p.lon, 40000, typeKey == 'rest' and 'rest' or nil)
+    r = okR and r or nil
+    local dep, dd = nearestOf('rest')
+    local label = typeKey == 'rest' and 'Rastplatz' or 'Parkplatz'
+    local function km(m) return (string.format('%.1f km', m / 1000):gsub('%.', ',')) end
+    if dep and (not r or dd < r.d) then navTo(dep, dep.name); notify('Route zum nächsten ' .. label .. ': ' .. dep.name .. ' (' .. km(dd) .. ')', 5); return end
+    if r then
+      local tl = r.ringLat and { lat = r.ringLat, lon = r.ringLon } or r
+      navTo({ lat = tl.lat, lon = tl.lon, name = r.name }, r.name)
+      notify('Route zum nächsten ' .. label .. ': ' .. r.name .. ' (' .. km(r.d) .. ')', 5)
+      return
+    end
+    notify('Kein ' .. label .. ' in der Nähe bekannt.', 4)
     return
   end
   local d = nearestOf(typeKey)
@@ -4372,7 +4557,11 @@ function M.startTraffic()
   -- a pool larger than what drives: the extra cars stand switched off (memory only, no physics) and the traffic
   -- system swaps them in as it respawns cars out of sight – so the mix changes over time (now a bus, later a lorry)
   -- while never more than `amount` drive at once
-  local POOL_EXTRA = 6                    -- (2026-11-10: and a jam on the motorway brings them all out)
+  -- (2026-11-10: and a jam on the motorway brings them all out. 2026-11-12: 14 cars made a jam of two cars in sight - now 12 more,
+  -- standing switched off until then)
+  -- (2026-11-12, Verkehrstests 19-46 and 20-03: with 40 here, 48 cars, BeamNG's traffic.lua broke off right after spawning them
+  -- (line 987, a car of the list gone: getObjectByID nil) and no car ever came near. With 28, 36 cars, it never did)
+  local POOL_EXTRA = 28                   -- (2026-11-12: the jam puts the ones far from the player to sleep, trafficflow ECO_*; the lab measured 0.1 to 0.2 ms a car)
   local total = amount + POOL_EXTRA
   local group
   -- (2026-11-07) the cars: Agent Traffic's European set (its own light cars, when the mod is installed – the default
@@ -4390,13 +4579,17 @@ function M.startTraffic()
   -- variety: Agent Traffic has cars only – a bus, a lorry and a van from the game itself take three of the pool's
   -- places: heavy vehicles cost the most, so only these few, and they take turns with the cars
   if group and #group >= 6 then
+    -- (2026-11-12, Verkehrstests 19-46, 20-03, 20-22: not one car to be seen. Each time the bus had been drawn - spawned last, and right
+    -- after it BeamNG's traffic.lua broke off setting the traffic up (line 987, job error), so no car was ever brought near. With the
+    -- lorry it never did. No bus any more)
     local heavy = inEurope() and {
-      { model = 'citybus', config = 'city', paintName = 'random' },
       { model = 'percheron', config = 's310_4x2_box_A', paintName = 'random' },
       { model = 'van', config = 'h25_vanster', paintName = 'random' },
+      { model = 'van', config = 'h25_vanster', paintName = 'random' },
     } or {
-      { model = 'citybus', config = 'city', paintName = 'random' },
       { model = 'md_series', config = 'md_70_cargobox_facelift', paintName = 'random' },
+      { model = 'van', config = 'deliverytruck', paintName = 'random' },
+      { model = 'van', config = 'deliverytruck', paintName = 'random' },
       { model = 'van', config = 'deliverytruck', paintName = 'random' },
     }
     local copy = {}
@@ -4412,6 +4605,8 @@ function M.startTraffic()
     end
     group = copy
   end
+  R.trafficSpawning = true
+  pcall(L.farcarsHold, 120)
   local ok, err = pcall(gt.setupTraffic, total, { vehGroup = group, activeAmount = amount })
   if not ok then log('W', logTag, 'traffic: ' .. tostring(err)); return false end
   R.traffic = { max = amount, active = amount, pool = total,
@@ -4497,6 +4692,19 @@ M.applyRealAI = applyRealAI
 
 local function adaptTraffic(dtReal)
   local f = R.fps
+  -- (the ramp: a few at a time towards the number wanted while fps allows it, or in the lab)
+  do
+    local tr0 = R.traffic
+    local gt0 = rawget(_G, 'gameplay_traffic')
+    R.rampT = (R.rampT or 0) + dtReal
+    local inLab0 = trafficLab.running and trafficLab.running()
+    if tr0 and gt0 and gt0.setActiveAmount and R.rampT >= C.RAMP_S and tr0.active < tr0.max
+       and (inLab0 or (R.fpsAvg or 60) > C.FPS_UP) and S.settings.traffic ~= 'off' then
+      R.rampT = 0
+      tr0.active = math.min(tr0.max, tr0.active + C.RAMP_N)
+      pcall(gt0.setActiveAmount, tr0.active)
+    end
+  end
   f.t, f.n = f.t + dtReal, f.n + 1
   if f.t < C.FPS_WINDOW_S then return end
   local fps = f.n / f.t
@@ -4506,11 +4714,14 @@ local function adaptTraffic(dtReal)
   local tr = R.traffic
   local gt = rawget(_G, 'gameplay_traffic')
   if not tr or not gt or not gt.setActiveAmount or S.settings.traffic == 'off' then return end
-  if fps < 38 and tr.active > 3 then
+  -- (2026-11-12: "die Funktion rausmachen, dass er automatisch runterregelt, wenn ich im Test bin" - in the traffic lab the amount stays,
+  -- whatever the frame rate: what it costs is what the test is to show)
+  local inLab = trafficLab.running and trafficLab.running()
+  if fps < C.FPS_DOWN and tr.active > 3 and not inLab then
     tr.active = tr.active - 1
     pcall(gt.setActiveAmount, tr.active)
-  elseif fps > 57 and tr.active < tr.max then
-    tr.active = tr.active + 1
+  elseif tr.active > tr.max then
+    tr.active = tr.active - 1
     pcall(gt.setActiveAmount, tr.active)
   end
 end
@@ -4522,9 +4733,10 @@ end
 -- finds a field beside them). Asked by the setup's map as the place is picked, by the setup itself and by "Hof hierher verlegen".
 function L.homeAllowed(lat, lon)
   if not lat or not lon then return true end
-  local okP, pl = pcall(streets.placeAt, lat, lon)
-  if okP and pl and pl.inside and (pl.kind == 'city' or pl.kind == 'town' or pl.kind == 'suburb' or pl.kind == 'quarter') then
-    return false, string.format('Das liegt mitten in %s. Dort ist kein Platz für einen Hof. Wähl einen Ort außerhalb, am Stadtrand oder im Gewerbegebiet.', tostring(pl.name))
+  -- (2026-11-10: "viel zu pingelig" - only the dense core of a town, where the houses stand close; its edge and everything outside is fine)
+  local okC, name = pcall(streets.coreAt, lat, lon)
+  if okC and name then
+    return false, string.format('Das liegt mitten in %s, zwischen lauter Häusern. Dort ist kein Platz für einen Hof. Ein Stück weiter raus, am Stadtrand oder im Gewerbegebiet, geht es.', tostring(name))
   end
   return true
 end
@@ -4832,6 +5044,7 @@ local function earthLoading()
   if next(w) then return w end
   return nil
 end
+L.earthLoading = earthLoading
 
 -- the passage screen's poll: still on until the move is done and the world at the other end has loaded (at most
 -- TRIP_LOAD_MAX_S after the arrival): nobody sees the ground and the roads come in
@@ -4912,6 +5125,11 @@ L.NEW_CAREER_WAIT_S = 12
 function M.uiTravelLeft()
   if R.mode and S and not (S.company and S.home) then navigate('fernfahrerSetup') end
 end
+-- (2026-11-11) "Schon losfahren" on the loading screen: the player goes on without waiting for the rest of the world
+function M.uiTravelSkip()
+  log('I', logTag, 'loading screen: skipped by the player, it waited for ' .. tostring(R.screenWhy))
+  R.parkAtYard = nil
+end
 function M.uiTrip()
   R.screenAt = now()                             -- (the loading/travel screen asks while it is open: no mirrors over it)
   R.tripPollAt = R.screenAt
@@ -4952,6 +5170,15 @@ function M.uiTrip()
     loading = nil
   end
   local active = moving or loading ~= nil
+  -- (2026-11-11: "der Ladebildschirm geht nicht weg" - what it waits for goes to the log whenever that changes)
+  do
+    local why = moving and string.format('moving (trip %s, teleport %s, world %s, boot %s)', tostring(R.trip ~= nil), tostring(R.pendingTeleport ~= nil),
+      tostring(R.worldLoad ~= nil), tostring(R.boot ~= nil)) or (loading and jsonEncode(loading)) or 'done'
+    if why ~= R.screenWhy then
+      R.screenWhy = why
+      log('I', logTag, string.format('loading screen: %s (%.0f s after arrival)', why, R.tripArrivedAt and now() - R.tripArrivedAt or -1))
+    end
+  end
   -- (the loading screen once stayed up after the first load until Esc, 2026-11-04: the time it has been done is kept –
   -- onUpdate sends the UI back to the road if a screen still asks well after)
   if active then R.tripDoneSince = nil else R.tripDoneSince = R.tripDoneSince or now() end
@@ -5182,6 +5409,9 @@ function M.setOption(key, value)
     if not S.settings.smartTraffic then pcall(trafficAI.reset) end
   end
   if key == 'ownDriver' then S.settings.ownDriver = value and true or false end
+  -- (2026-11-14, 1.0.5) the virtual traffic for everyone, as a beta switch (before only in the traffic lab)
+  if key == 'virtualTraffic' then S.settings.virtualTraffic = value and true or false end
+  if key == 'routeMode' and (value == 'fast' or value == 'land') and value ~= (S.settings.routeMode or 'fast') then M.setRouteMode(value) end
   if key == 'accidents' then
     S.settings.accidents = value and true or false
     if not S.settings.accidents then pcall(accidents.reset) end
@@ -6182,6 +6412,7 @@ function M.roadside() service.request() end
 -- (2026-11-10: what the service does to the truck's condition. A breakdown: the fault mended (a tyre, the radiator, a hose, the oil) - the dents
 -- of before stay, that is not his job. After an accident ('recover'): an emergency repair, enough to drive on: half the damage gone, the truck at
 -- least half whole, engine, drive and chassis parts at least 60 %. Whole again only in a workshop. The reset alone gave everything back, to the point.)
+L.MEND = { radiator = { 'radiator', 'coolant', 'water' }, oil = { 'oilpan', 'oil' }, hose = { 'intercooler', 'turbo', 'intake' }, tire = { 'tire', 'tyre', 'wheel' } }
 function L.serviceRepair(fee, label, after, kind)
   local veh = careerVeh() or playerVeh()
   if not veh then return end
@@ -6197,7 +6428,7 @@ function L.serviceRepair(fee, label, after, kind)
     spawn.safeTeleport(veh, vehPos(veh) + vec3(0, 0, 0.5), rot)
     R.restoreFuel = { id = veh:getID(), tanks = tanks, t = now() + 1.0 }
     if hadTrailer then R.rehitchAt = now() + 2.0 end
-    story('roadside')
+    if kind ~= 'autodrive' then story('roadside') end
     if after then after() end
     save()
   end, 'energyStorage')
@@ -6635,6 +6866,16 @@ local function placeOf(lat, lon)
 end
 
 local trafficCtx = {
+  -- (2026-11-11, twelfth Verkehrstest: the jam's road ahead from the graph ended after a few metres on a motorway, test after test - a
+  -- node with no way on in the game's graph, though the recorded one runs on. The truck's own route, as the GPS has it: samples
+  -- every 8 m for 1.6 km ahead, or nil when it is not on one)
+  routeAhead = function()
+    local v = playerVeh()
+    if not v then return nil end
+    local ok, pts, onRoute = pcall(L.rescuePath, v)
+    if ok and onRoute and type(pts) == 'table' then return pts end
+    return nil
+  end,
   playerVeh = function() return playerVeh() end,
   trailerId = function() return R.trailerId end,
   roadLimit = function() return R.limit end,
@@ -6644,11 +6885,16 @@ local trafficCtx = {
     local out = {}
     for _, z in ipairs(roadEvents.zones() or {}) do out[#out + 1] = z end
     for _, z in ipairs(accidents.zones() or {}) do out[#out + 1] = z end
+    local v = playerVeh()
+    for _, z in ipairs(hazards.zones(v and vehPos(v)) or {}) do out[#out + 1] = z end
     return out
   end,
   protect = function(id) roadEvents.protect(id) end,
   enabled = function() return S.settings.smartTraffic ~= false and S.settings.traffic ~= 'off' end,
   ownDriver = function() return S.settings.ownDriver == true end,
+  -- (2026-11-12) the virtual traffic (virtual.lua): for now in the traffic lab, or with the setting virtualTraffic
+  virtualOn = function() return R.labVirtual == true or (S and S.settings and S.settings.virtualTraffic == true) end,
+  autodriveOn = function() return L.autodriveOn() end,
   notify = function(text, ttl) notify(text, ttl) end,
   hours = function() return clockHours() end,
   trafficBase = function() return L.trafficBase() end,
@@ -6658,10 +6904,67 @@ local trafficCtx = {
     local tr = R.traffic
     local gt = rawget(_G, 'gameplay_traffic')
     if not tr or not gt or not gt.setActiveAmount or S.settings.traffic == 'off' then return end
+    if R.labTraffic then return end                     -- (the lab's measuring scene holds the number)
     tr.max = math.max(3, math.min(tr.pool or n, n))
-    if tr.active > tr.max then tr.active = tr.max; pcall(gt.setActiveAmount, tr.active) end
+    -- (2026-11-11: fewer cars one at a time as well, as adaptTraffic brings more: nobody sees five go at once)
   end,
 }
+
+-- (2026-11-11) the traffic lab: a test drive that measures the traffic (trafficlab.lua, tools/lab_report.js)
+trafficLab.attach({
+  playerVeh = function() return playerVeh() end,
+  trailerId = function() return R.trailerId end,
+  notify = function(text, ttl) notify(text, ttl) end,
+  here = function() return here() end,
+  haversine = haversine,
+  cities = function() return citiesData.LIST end,
+  navTo = function(place, name) navTo(place, name) end,
+  hasRoute = function()
+    local gps = earthModule('gps')
+    local r = gps and gps.route and gps.route()
+    return r and r.points and #r.points > 1 or false
+  end,
+  autodriveOn = function() return L.autodriveOn() end,
+  autodriveToggle = function() M.autodriveToggle() end,
+  limitKmh = function() return R.limit end,
+  settings = function() return S and S.settings end,
+  hours = function() return clockHours() end,
+  trafficActive = function() return R.traffic and R.traffic.active or 0 end,
+  tai = function() return trafficAI end,
+  version = function() return '1.0.5' end,
+  flow = function() return require('fernfahrer/trafficflow') end,
+  hazards = function() local n, z = hazards.count(); return { wrecks = hazards.stats.wrecks, learned = hazards.stats.learned, spots = n, zones = z,
+    steps = hazards.stats.steps or 0, bumps = hazards.stats.bumps or 0 } end,
+  -- (2026-11-11, the full-automatic test: the scenes set the clock and the kind of route, quietly; a jolt the lab felt goes to hazards)
+  setHours = function(h) startClock(h) end,
+  setVirtual = function(on) R.labVirtual = on and true or nil end,
+  -- (2026-11-12) the measuring scene: this many cars driving, at once and held (nil: back to the rhythm of the day). Gives the number set
+  setTrafficAmount = function(n)
+    local tr = R.traffic
+    local gt = rawget(_G, 'gameplay_traffic')
+    if not tr or not gt or not gt.setActiveAmount then return nil end
+    if not n then R.labTraffic = nil; return nil end
+    n = math.max(1, math.min(tr.pool or n, n))
+    R.labTraffic = n
+    -- (fewer at once; more a few at a time, adaptTraffic's ramp)
+    tr.max = n
+    if n < tr.active then tr.active = n; pcall(gt.setActiveAmount, n) end
+    return n
+  end,
+  routeMode = function() return S and S.settings and S.settings.routeMode or 'fast' end,
+  setRouteMode = function(m) if S and S.settings and (m == 'fast' or m == 'land') then S.settings.routeMode = m end end,
+  bump = function(pos, dir, kmh) return hazards.bump(pos, dir, kmh) end,
+  anchor = function() local core = earthCore(); local st = core and core._state and select(2, pcall(core._state)); return type(st) == 'table' and st.anchorId or nil end,
+})
+function M.labStart(minutes, auto)
+  if not R.mode or not S then return end
+  if S.settings.smartTraffic == false or S.settings.traffic == 'off' then notify('Für den Verkehrstest bitte den Verkehr und die schlaue Verkehrs-KI einschalten (Einstellungen).', 6); return end
+  trafficLab.start(minutes, auto)
+end
+-- (2026-11-11) Strg+Umschalt+V: the full-automatic test (30 minutes, four scenes); fernfahrer_career.labStart(25) in the console: one drive as before
+function M.labAuto(minutes) M.labStart(minutes, true) end
+function M.labStop() return trafficLab.stop('stopped') end
+function M.labToggle() if trafficLab.running() then M.labStop() else M.labAuto() end end
 
 local accidentCtx = {
   -- (camera.lua: the dashcam's clip and the scene photos for the report)
@@ -6691,7 +6994,7 @@ local accidentCtx = {
   notify = function(t, ttl) notify(t, ttl) end,
   message = function(t, from) message(t, from) end,
   protect = function(id) roadEvents.protect(id) end,
-  busy = function() return R.trip ~= nil or R.pendingTeleport ~= nil end,
+  busy = function() return R.trip ~= nil or R.pendingTeleport ~= nil or (R.adG ~= nil and L.autodriveOn()) end,
   impairment = function() return vices.readings() end,
   vehicleName = function() local d = activeDef(); return (d.brand or '') .. ' ' .. (d.modelName or '') end,
   onReport = function(doc) service.onReport(doc) end,
@@ -6838,6 +7141,8 @@ local function hudPayload()
   h.event = roadEvents.hud(here())
   h.routeWarn = S.settings.routeWarn == true or nil        -- (the route advisor's warner: cameras, roadworks …)
   h.autodrive = L.autodriveOn() or nil                     -- (BeamNG.Earth's autodrive running)
+  h.routeMode = S.settings.routeMode or 'fast'
+  if R.via and R.via.list[R.via.idx] then h.via = { name = R.via.list[R.via.idx].name, i = R.via.idx, n = #R.via.list } end
   h.cine = L.cine.active() or nil
   h.flash = roadEvents.flash()
   -- (the slower parts of the HUD are made once a second, the nearest fuel station every 3 s – the HUD goes 4× a
@@ -6923,7 +7228,7 @@ function M.uiState(withPlaces, withLedger, tab)
   -- (2026-11-07: with the wide network thousands – sent when the office opens (withPlaces nil) and when they changed,
   -- else the page keeps what it has)
   if withPlaces ~= false then
-    local sig = #S.depots + (parked.fuelCount or 0) * 100000
+    local sig = #S.depots + (parked.fuelCount or 0) * 100000 + (parked.lotCount or 0) * 7
     if withPlaces == nil or sig ~= R.placesSig or now() - (R.placesSentAt or 0) > 30 then
       places = {}
       for _, d in ipairs(S.depots) do table.insert(places, placeView(d)) end
@@ -6938,6 +7243,23 @@ function M.uiState(withPlaces, withLedger, tab)
         if not known then
           places[#places + 1] = { id = 'earthfuel:' .. tostring(fid), name = L.neutralName('fuel', f.name, nil, f.lat, f.lon), detail = 'aus BeamNG.Earth', lat = f.lat, lon = f.lon,
             type = 'fuel', typeName = tf and tf.name or 'Tankstelle', icon = tf and tf.icon or '⛽', facility = true }
+        end
+      end
+      -- (2026-11-10: the rest areas within 120 km and every car park seen, rests.lua - unless the network has one there)
+      do
+        local pp = here()
+        local okR, rl = false, nil
+        if pp then okR, rl = pcall(rests.around, pp.lat, pp.lon, 120000) end
+        local rg = {}
+        for _, d in ipairs(S.depots) do if d.type == 'rest' then rg[math.floor(d.lat / cell) .. ':' .. math.floor(d.lon / (cell * 1.6))] = true end end
+        local tr = DEPOT_BY_KEY.rest
+        for _, r in ipairs(okR and rl or {}) do
+          local cx, cy, known = math.floor(r.lat / cell), math.floor(r.lon / (cell * 1.6)), false
+          for dx = -1, 1 do for dy = -1, 1 do if rg[(cx + dx) .. ':' .. (cy + dy)] then known = true end end end
+          if not known then
+            places[#places + 1] = { id = r.id, name = r.name, detail = r.lot and string.format('%d Stellplätze, aus BeamNG.Earth', r.n or 0) or r.detail, lat = r.lat, lon = r.lon,
+              type = 'rest', typeName = r.kind == 'rest' and 'Rastplatz' or 'Parkplatz', icon = tr and tr.icon or '🅿️', facility = true }
+          end
         end
       end
       R.placesSig, R.placesSentAt = sig, now()
@@ -7045,6 +7367,7 @@ function M.onClientPostStartMission(levelPath)
     R.welcomeDone, R.welcomeCalm = nil, nil
     pcall(L.welcomeHold)
     parked.anchor = function() return earthAnchor() end
+    hazards.anchor = function() return earthAnchor() end
     pcall(parked.install)                         -- (before Earth's first road tiles: their kerbside spots are sorted)
     parked.enabled = true
     -- the careers screen ("Weiterspielen") stayed open over the world (2026-11-03): the loading screen instead, on
@@ -7679,6 +8002,7 @@ end
 function M.onLaneBeep() guihooks.trigger('FernfahrerSound', { name = 'lane' }) end
 function M.onAccState(on) R.accBusy = on and true or nil end
 function M.onOwnDriver(id, on, why) pcall(trafficAI.onOwnDriver, id, on, why) end
+function M.onOwnState(id, vt, thr, gap, why) pcall(trafficAI.onOwnState, id, vt, thr, gap, why) end
 function M.onJunctionAsk(...) pcall(trafficAI.onJunctionAsk, ...) end
 function M.onJunctionDone(id, node) pcall(trafficAI.onJunctionDone, id, node) end
 function M.onCruiseRefused() notify('🌿 Der Tempomat bleibt aus, solange der Joint wirkt. Er geht wieder, sobald die Wirkung nachlässt.', 6) end
@@ -8560,6 +8884,88 @@ function L.extraTick(t)
   if not S or not R.mode then return end
   if R.brakeOffAt and t > R.brakeOffAt then R.brakeOffAt = nil; if not R.stopOpen and not R.garageOn then L.autoBrakeOff() end end
   pcall(L.ugSync, t); pcall(L.viewTick, t); pcall(L.heatTick, t); pcall(L.pursuit.tick, t); pcall(L.shotsTick, t)
+  pcall(L.restAheadTick, t)
+  pcall(L.autoGuardTick, t)
+end
+-- (2026-11-10) the autodrive drives without harm to the career: whatever damage the truck and its trailer take while it drives does not count
+-- (the condition, the repair bill, the cargo, no accident report), and once the truck stands after such a knock it is put right on the spot,
+-- quietly: to the condition it had when the autodrive took over. R.adG: { base = { [id] = counted damage then }, hit, stillT }
+function L.autoGuardTick(t)
+  local on = L.autodriveOn()
+  local g = R.adG
+  if on and not g and t > (R.adHold or 0) then
+    g = { base = {}, at = t }
+    R.adG = g
+    pcall(L.requestCond)                       -- (the condition from before, fresh in the file)
+  end
+  if not g then return end
+  R.dmgFree = R.dmgFree or {}
+  if on then
+    g.offAt = nil
+    for _, id in ipairs({ R.truckId or false, R.trailerId or false }) do
+      if id then
+        local free = R.dmgFree[id] or 0
+        local raw = rawDamageOf(id)
+        if g.base[id] == nil then g.base[id] = math.max(0, raw - free) end
+        local over = raw - g.base[id]
+        if over > free + 30 then
+          R.dmgFree[id] = over
+          if not g.hit then log('I', logTag, string.format('autodrive: a knock (%d), not counted', math.floor(over - free))) end
+          g.hit = true
+        end
+      end
+    end
+  else
+    g.offAt = g.offAt or t
+  end
+  local v = R.truckId and getObjectByID(R.truckId)
+  if g.hit and v and not (R.trip or R.pendingTeleport or R.sleep or R.cop) then
+    if vehSpeed(v) < 0.5 then g.stillT = (g.stillT or 0) + (t - (g.lastT or t)) else g.stillT = 0 end
+    if g.stillT >= 2 then
+      R.adG = nil
+      log('I', logTag, 'autodrive: the truck put right on the spot')
+      notify('🤖 Autodrive-Schutz: Der Schaden aus dem Autodrive ist behoben.', 6)
+      L.serviceRepair(0, 'Autodrive', nil, 'autodrive')
+      R.adHold = t + 6                      -- (the reset and the books squared after it first: then it watches again)
+      return
+    end
+  end
+  g.lastT = t
+  -- (off again and not knocked, or off for a minute while driving on: the guard ends, what was not counted stays so)
+  if g.offAt and (not g.hit or t - g.offAt > 60) then R.adG = nil end
+end
+-- (2026-11-10) a rest area coming up on the road ahead, as the signs on the motorway: "Rastplatz in 1,5 km" once, with how tired one is.
+-- Driving at 50 km/h or more, the rest area within 2.5 km and no more than ~35 degrees off the way the truck is going.
+function L.restAheadTick(t)
+  if t - (R.restAheadT or 0) < 2 then return end
+  R.restAheadT = t
+  if R.trip or R.sleep or R.officeOpen or R.stopOpen then return end
+  local v = careerVeh() or playerVeh()
+  local p = here()
+  local a = earthAnchor()
+  if not v or not p or not a or not a.geodeticToWorld or vehSpeed(v) < 14 then return end
+  local dir = vec3(v:getDirectionVector()); dir.z = 0
+  if dir:length() < 0.1 then return end
+  dir = dir:normalized()
+  local vp = v:getPosition()
+  R.restSaid = R.restSaid or {}
+  local okR, list = pcall(rests.around, p.lat, p.lon, 2500)
+  for _, r in ipairs(okR and list or {}) do
+    if r.kind == 'rest' and r.d > 400 and not R.restSaid[r.id] then
+      local x, y = a:geodeticToWorld(r.lat, r.lon, 0)
+      local to = vec3(x - vp.x, y - vp.y, 0)
+      local l = to:length()
+      if l > 1 and to:dot(dir) / l > 0.82 then
+        R.restSaid[r.id] = t
+        local km = (string.format('%.1f', r.d / 1000):gsub('%.', ','))
+        local lv = S.fatigue and L.fatigueLevel(S.fatigue) or 1
+        local tail = lv >= 3 and ' – du bist müde, dort kannst du schlafen.' or ' – Pause, schlafen, Lenkzeit.'
+        notify('🅿️ ' .. (r.name ~= 'Rastplatz' and r.name or 'Rastplatz') .. ' in ' .. km .. ' km' .. tail, 7)
+        log('I', logTag, string.format('rest area ahead: %s in %.0f m', tostring(r.name), r.d))
+        break
+      end
+    end
+  end
 end
 function L.contactAt(p)
   local s, h = 'c' .. tostring(p and p.id or ''), 11
@@ -8771,7 +9177,66 @@ function M.vice(kind)
   end
 end
 
+-- (2026-11-12, Verkehrstests 19-46 to 20-33: not one car, four times. BeamNG's traffic.lua, taking the spawned group in, stops at
+-- the first car of the list that is no longer there (line 987, getObjectByID nil, a "job error") - every car after it is never made
+-- traffic, nothing brings them near. Which one goes is chance, so at times only a few were missing and the traffic ran. Here: a
+-- moment after the group is there, the cars still there that the traffic does not know are taken in, and the log says who was gone)
+-- (2026-11-12, Verkehrstest 20-45: all 36 traffic cars "deleted while the traffic was being set up". BeamNG.Earth's farcars.lua saves
+-- and deletes the player's own cars further than UNLOAD_M (2.5 km) for 5 s - and the game spawns a traffic group lined up some 12 km off
+-- before it places the cars, not yet in gameplay_traffic's lists, so Earth takes them for the player's cars (collisionfoci.vehicles:
+-- kind 'player'). The parked cars the same. While traffic and parked cars come into being, farcars waits)
+function L.farcarsHold(secs)
+  local fc = (package.loaded and package.loaded['beamngEarth/farcars']) or rawget(_G, 'beamngEarth_farcars')   -- (core.lua: require('beamngEarth/farcars'), no extension of its own)
+  if type(fc) ~= 'table' or type(fc.UNLOAD_M) ~= 'number' then log('W', logTag, 'traffic: Earth far cars not found - cannot hold them'); return end
+  if not R.farcarsUnload then R.farcarsUnload = fc.UNLOAD_M end
+  fc.UNLOAD_M = 1e12
+  R.farcarsUntil = math.max(R.farcarsUntil or 0, os.clock() + secs)
+  log('I', logTag, string.format('traffic: Earth far cars on hold for %.0f s (cars being spawned)', secs))
+end
+function L.farcarsTick()
+  if not R.farcarsUntil or os.clock() < R.farcarsUntil then return end
+  local fc = (package.loaded and package.loaded['beamngEarth/farcars']) or rawget(_G, 'beamngEarth_farcars')   -- (core.lua: require('beamngEarth/farcars'), no extension of its own)
+  if type(fc) == 'table' and R.farcarsUnload then fc.UNLOAD_M = R.farcarsUnload end
+  R.farcarsUntil, R.farcarsUnload = nil, nil
+  log('I', logTag, 'traffic: Earth far cars on again')
+end
+M.farcarsHold = function(secs) L.farcarsHold(secs) end
+
+function M.onVehicleGroupSpawned(vehList, groupId, groupName)
+  if groupName ~= 'autoTraffic' or type(vehList) ~= 'table' then return end
+  local ids = {}
+  for _, id in ipairs(vehList) do ids[#ids + 1] = id end
+  R.trafficHeal = { ids = ids, at = os.clock() + 1.5 }
+end
+function L.trafficHeal()
+  local h = R.trafficHeal
+  R.trafficHeal, R.trafficSpawning = nil, nil
+  local gt = rawget(_G, 'gameplay_traffic')
+  if not h or not gt or not gt.getTrafficData then return end
+  local okD, data = pcall(gt.getTrafficData)
+  if not okD or type(data) ~= 'table' then return end
+  local valid, gone, missing = {}, {}, 0
+  for _, id in ipairs(h.ids) do
+    if getObjectByID(id) then
+      valid[#valid + 1] = id
+      if not data[id] then missing = missing + 1 end
+    else
+      gone[#gone + 1] = tostring(id)
+    end
+  end
+  log('I', logTag, string.format('traffic: %d of %d cars there, gone: %s; %d not taken in by the traffic', #valid, #h.ids,
+    #gone > 0 and table.concat(gone, ',') or 'none', missing))
+  if missing > 0 and gt.activate then
+    local okA, errA = pcall(gt.activate, valid)
+    local okD2, data2 = pcall(gt.getTrafficData)
+    local n = 0
+    if okD2 and type(data2) == 'table' then for _, id in ipairs(valid) do if data2[id] then n = n + 1 end end end
+    log('I', logTag, string.format('traffic: taken in afterwards - %s, now %d of %d in the traffic', okA and 'ok' or tostring(errA), n, #valid))
+  end
+end
+
 function M.onVehicleDestroyed(id)
+  if R.trafficSpawning then log('I', logTag, string.format('traffic: vehicle %d deleted while the traffic was being set up', id)) end
   if id == R.trailerId then R.trailerId = nil end
   if id == R.truckId then R.truckId = nil end
 end
@@ -8790,6 +9255,7 @@ function L.mk(name)
   PROF.last = c
   PROF.acc[name] = (PROF.acc[name] or 0) + d
   if d > (PROF.max[name] or 0) then PROF.max[name] = d end
+  if trafficLab.on then trafficLab.mark(name, d) end
 end
 function L.mkReport(t)
   if t - PROF.at < 60 or PROF.frames == 0 then return end
@@ -8955,6 +9421,11 @@ end
 
 function M.onUpdate(dtReal, dtSim)
   if R.loadWant or R.loadAt then pcall(L.loadMusicTick) end
+  if R.farcarsUntil then pcall(L.farcarsTick) end
+  if R.trafficHeal and os.clock() >= R.trafficHeal.at then
+    local okH, errH = pcall(L.trafficHeal)
+    if not okH then R.trafficHeal = nil; log('W', logTag, 'traffic heal: ' .. tostring(errH)) end
+  end
   pcall(L.moodTick)
   if not S then return end
   L.tickTasks()
@@ -9134,7 +9605,30 @@ function M.onUpdate(dtReal, dtSim)
   end
   -- after "Zum Hof": the truck in front of the hall, facing the gate (once the yard stands there)
   -- (2026-11-07: as soon as the yard stands and the ground is in – under the loading screen, which waits for this)
-  if R.parkAtYard and t > R.parkAtYard.t and not R.pendingTeleport and not R.trailerId and not R.pendingAdopt then pcall(L.parkTick, t) end
+  -- (2026-11-11: "der Ladebildschirm geht nicht weg" – it waited 130 s for this, the yard long built. Now: with a trailer behind it the truck stays
+  -- where it is; every 5 s the log says what it is waiting for; and YARD_PARK_MAX_S after the yard stands it is over in any case)
+  if R.parkAtYard and t > R.parkAtYard.t then
+    local P = R.parkAtYard
+    if not R.pendingTeleport and not R.pendingAdopt then
+      if R.trailerId then L.parkDone(careerVeh() or playerVeh())
+      else
+        local okP, errP = pcall(L.parkTick, t)
+        if not okP then log('E', logTag, 'yard parking: ' .. tostring(errP)) end
+      end
+    end
+    if R.parkAtYard and t - (P.logAt or 0) >= 5 then
+      P.logAt = t
+      local v, sp = careerVeh() or playerVeh(), yard.parkSpot()
+      log('I', logTag, string.format('yard parking waits: truck %s, spot %s, %s m away, yard built %s s ago, world %s, teleport %s, adopt %s, trailer %s, tries %s',
+        tostring(v and v:getID()), tostring(sp ~= nil), (v and sp) and string.format('%.0f', vehPos(v):distance(sp.pos)) or '?',
+        yard.built() and string.format('%.0f', yard.builtAge()) or 'not', jsonEncode(earthLoading() or {}), tostring(R.pendingTeleport ~= nil),
+        tostring(R.pendingAdopt ~= nil), tostring(R.trailerId), tostring(P.tries or 0)))
+    end
+    if R.parkAtYard and yard.built() and yard.builtAge() > L.YARD_PARK_MAX_S then
+      log('W', logTag, 'yard parking: not done ' .. L.YARD_PARK_MAX_S .. ' s after the yard was built, the truck stays where it is')
+      L.parkDone(careerVeh() or playerVeh())
+    end
+  end
   -- after "continue": the vehicle along the road there, the way it was driven
   if R.orient and t > R.orient.t then
     local o = R.orient
@@ -9228,6 +9722,10 @@ function M.onUpdate(dtReal, dtSim)
     local okT, errT = pcall(trafficAI.update, trafficCtx, dtSim or 0)
     if not okT then log('E', logTag, 'traffic ai: ' .. tostring(errT)) end
   L.mk('trafficAI')
+  end
+  if trafficLab.on then
+    local okLb, errLb = pcall(trafficLab.update, dtReal or 0, dtSim or 0)
+    if not okLb then log('E', logTag, 'traffic lab: ' .. tostring(errLb)) end
   end
   L.serviceFrame(dtSim or 0)
   L.accidentFrame(dtSim or 0)

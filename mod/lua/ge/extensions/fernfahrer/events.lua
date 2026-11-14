@@ -369,8 +369,31 @@ end
 
 local function queue(e, list)
   e.queue = e.queue or {}
-  for _, it in ipairs(list) do table.insert(e.queue, it) end
+  e.items = e.items or {}
+  for _, it in ipairs(list) do table.insert(e.queue, it); table.insert(e.items, it) end
 end
+
+-- (2026-11-11: "um die Baustelle drumherum fahren und nicht einfach durch" - the props have no collision on purpose, so the traffic could
+-- squeeze past in an emergency; it drove straight through them. What is shut, worked out from what was put on the road: from the
+-- innermost piece standing on the asphalt to the right-hand edge, from the first to the last of them. Road-lateral (metres right of the
+-- centre line, in the zone's direction) and along the zone from its start (s). Signs, lights and the camera stand beside the road)
+local function blockOf(e)
+  local s0, s1, l0
+  for _, it in ipairs(e.items or {}) do
+    local k = it.key or (it.vehicle and 'vehicle') or ''
+    if it.at and (it.edge or 0) < -0.25 and not k:find('^sign') and not k:find('^cam') and k ~= 'flood' and k ~= 'triangle' then
+      local _, _, half = frameAt(e, it.at)
+      if half then
+        local lat = half + it.edge - (it.vehicle and 1.0 or 0.4)
+        s0, s1 = math.min(s0 or it.at, it.at), math.max(s1 or it.at, it.at)
+        l0 = math.min(l0 or lat, lat)
+      end
+    end
+  end
+  if not s0 then return nil end
+  return { s0 = s0 - 3, s1 = s1 + 3, l0 = l0, l1 = 99 }
+end
+M._blockOf = blockOf
 
 -- the police check's bay: the stock parking-spot marker
 local function showBay(e)
@@ -1242,7 +1265,8 @@ function M.update(ctx, dt)
       local pos, dir = frameAt(ev, 0)
       if pos then
         local lim = ev.kind == 'roadworks' and ev.limit or ev.zoneLimit or (ev.kind == 'control' and 40 or ((ctx.roadLimit() or 100) - 5))
-        ev.zone = { pos = pos, dir = dir, len = ev.zoneLen or 50, limit = lim, kind = ev.kind }
+        ev.zone = { pos = pos, dir = dir, len = ev.zoneLen or 50, limit = lim, kind = ev.kind, block = blockOf(ev) }
+        if ev.zone.block then log('I', 'fernfahrer', string.format('event %s: road shut from %.1f m right of the centre, %.0f to %.0f m', ev.kind, ev.zone.block.l0, ev.zone.block.s0, ev.zone.block.s1)) end
       end
     elseif d < C.SPAWN_M * 0.5 then
       -- (2026-11-08: no road to lay it out on: no event at all – a police check without car and bay was all that was left)

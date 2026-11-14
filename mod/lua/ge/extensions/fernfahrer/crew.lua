@@ -17,6 +17,8 @@ local seq = 0
 local function now() return os.clock() end
 local crew, ride, side, outW = nil, nil, nil, nil
 local PX = require('fernfahrer/passenger')
+local PEOPLE = require('fernfahrer/people')
+local SAGA = require('fernfahrer/saga')
 local chat                -- the passenger's talk on the way: { id, who, line, out, raw, till }
 local secT = 0
 
@@ -86,10 +88,12 @@ local function doorSpot(F, passenger)
   return vec3(spot.x, spot.y, math.max(g.z, F.eye.z - 1.55)), -s, s
 end
 -- a point beside the truck on a side, at the same distance along it as q
+-- (2026-11-11: on the ground. It was at the height of the vehicle's middle - a lorry's is a metre up - and the last steps of a walk climb to the
+-- height of their end point: getting out, she rose into the air, "wie Jesus")
 local function besideAt(F, q, s, out)
   local along = (q - F.p):dot(F.d)
   local w = F.p + F.d * along + s * (F.halfW + (out or 1.0))
-  return vec3(w.x, w.y, F.p.z)
+  return onGround(vec3(w.x, w.y, F.p.z))
 end
 
 -- walking along points: the ground under the feet, a little bob; the last point may be up at a window (then up the last 1.5 m)
@@ -154,7 +158,9 @@ end
 local function crewTalkStart()
   local s = crew.s
   local say = SAY[s.kind] or SAY.recover
-  crewSay(string.format('Hi, ich bin %s vom %s. Wie kann ich Ihnen helfen, was ist das Problem?', crew.name, crew.club or 'Pannendienst'), 'nod', {
+  -- (2026-11-11: his own words; and if he has been here before, he remembers - people.lua)
+  local hello = crew.prof and PEOPLE.greeting(X.state(), crew.prof) or string.format('Hi, ich bin %s vom %s. Wie kann ich Ihnen helfen, was ist das Problem?', crew.name, crew.club or 'Pannendienst')
+  crewSay(hello, 'nod', {
     { t = say[1], go = 'right' },
     { t = '„Keine Ahnung, er läuft einfach nicht richtig.“', sub = 'er sucht selbst, das dauert länger', go = 'search' },
     { t = '„Machen Sie bitte schnell, ich hab’s eilig.“', go = 'hurry' },
@@ -174,7 +180,7 @@ local function crewTalkEnd()
   else
     -- (in front of the cab: the engine, the radiator)
     local corner = besideAt(F, F.front + F.d * 0.8, F.side, 0.8)
-    spot = vec3(F.front.x, F.front.y, F.p.z) + F.d * 0.75
+    spot = onGround(vec3(F.front.x, F.front.y, F.p.z) + F.d * 0.75)
     face = -F.d
     crew.via = corner
   end
@@ -198,7 +204,7 @@ local function chatClose()
 end
 local function chatOpen(topic, h)
   local cargo = (X.cargo and X.cargo()) or 'Kram'
-  local fill = function(s) return s and (s:gsub('%%CARGO%%', cargo)) or nil end
+  local fill = function(s) return s and (s:gsub('%%CARGO%%', cargo):gsub('%%NAME%%', h.name or '')) or nil end
   chat = { id = (h.chatId or 0) + 1, who = h.name .. ' · Beifahrerin', seed = h.seed, mood = math.max(-4, math.min(4, h.mood or 0)), react = 'nod',
     line = fill(topic.say), out = {}, raw = topic.ch, till = now() + 25, fill = fill }
   h.chatId = chat.id
@@ -240,8 +246,14 @@ local function chatTick()
   h.name = h.name or PX.NAMES[math.random(#PX.NAMES)]
   h.story = h.story or math.random(#PX.STORIES)
   h.chap, h.n = h.chap or 0, (h.n or 0) + 1
-  local story, topic = PX.STORIES[h.story] or PX.STORIES[1], nil
-  if h.chap < #story and (h.chap == 0 or h.n % 2 == 1) then
+  local story, topic = (h.saga and SAGA.RONJA) or PX.STORIES[h.story] or PX.STORIES[1], nil
+  if h.again and not h.greeted then
+    h.greeted = true
+    topic = { say = PX.AGAIN[math.random(#PX.AGAIN)], ch = PX.AGAIN_CH }
+  elseif h.again and not h.sequelDone and PX.SEQUEL[h.story] then
+    h.sequelDone = true
+    topic = PX.SEQUEL[h.story]
+  elseif h.chap < #story and (h.chap == 0 or h.n % 2 == 1) then
     h.chap = h.chap + 1
     topic = story[h.chap]
   else
@@ -267,13 +279,28 @@ function M.answer(i)
   local say = SAY[s.kind] or SAY.recover
   if c.go == 'right' then
     crew.talk.mood = 2
-    local more = { { t = '„Danke!“', go = 'end' } }
+    local more = { { t = '„Danke!“', go = 'chat' } }
     if s.kind == 'recover' then more[2] = { t = '„Kriegen Sie den wieder ganz hin?“', go = 'whole' } end
     crewSay(say[2], 'nod', more)
+  elseif c.go == 'chat' and crew.prof and not crew.chatted then
+    -- (2026-11-11: a word before he gets to work: the story's legend the first time, now and then the news of it, else one of his own)
+    crew.chatted = true
+    local tp = SAGA.mechanicTopic() or SAGA.gossip()
+    if tp then crew.sagaTopic = (tp == SAGA.MECH_TOPIC) or nil
+    else tp, crew.topicIdx = PEOPLE.topic(X.state(), crew.prof) end
+    crew.topic = tp
+    local out = {}
+    for i, ch in ipairs(tp.ch) do out[i] = { t = ch.t, go = 'reply', i = i } end
+    crewSay(tp.say, 'think', out)
+  elseif c.go == 'reply' and crew.topic then
+    local ch = crew.topic.ch[c.i] or crew.topic.ch[1]
+    crew.mood = (crew.mood or 0) + (ch.m or 0)
+    if crew.sagaTopic then SAGA.step('legend') end
+    crewSay(ch.r, (ch.m or 0) > 0 and 'laugh' or 'nod', { { t = '„Na dann, an die Arbeit.“', go = 'end' } })
   elseif c.go == 'search' then
     s.dur = (s.dur or 40) * 1.3
     crew.talk.mood = 0
-    crewSay('Na gut, dann such ich mal. Ich schau mir alles einmal an, das kann etwas länger dauern.', 'think', { { t = '„Danke Ihnen.“', go = 'end' } })
+    crewSay('Na gut, dann such ich mal. Ich schau mir alles einmal an, das kann etwas länger dauern.', 'think', { { t = '„Danke Ihnen.“', go = 'chat' } })
   elseif c.go == 'hurry' then
     s.dur = (s.dur or 40) * 0.9
     crew.talk.mood = -1
@@ -298,7 +325,9 @@ function M.serviceStart(s, carId)
   local door = onGround(up + uleft * ((uv:getInitialWidth() or 2) * 0.5 + 0.45) + ud * 0.4)
   local o = figure('mechanic')
   if not o then return false end
-  crew = { s = s, F = F, carId = carId, door = door, name = NAMES[math.random(#NAMES)], seed = math.random(1, 4000), club = s.club,
+  local here = X.here and X.here()
+  local prof = PEOPLE.pickMechanic(X.state(), here and here.lat, here and here.lon)
+  crew = { s = s, F = F, carId = carId, door = door, name = prof.name, seed = prof.seed, club = prof.club or s.club, prof = prof, place = X.placeName and X.placeName() or nil,
     w = walker(o, door, flat(F.p - door) or F.d), phase = 'come', t0 = now() }
   put(o, door, crew.w.dir)
   -- (round to the driver's side first, along the truck, then to the door)
@@ -358,7 +387,10 @@ local function crewFrame(dt)
       pts[#pts + 1] = besideAt(F, c.door, F.side, 1.0)
       pts[#pts + 1] = c.door
       walkTo(c.w, pts)
-      X.message(c.s.kind == 'recover' and 'So, fahrbereit. Fahren Sie vorsichtig und lassen Sie den Rest in der Werkstatt machen.' or 'Erledigt, alles wieder dicht. Gute Fahrt!', c.name .. ' · Pannendienst')
+      local pr = c.prof
+      X.message(c.s.kind == 'recover' and ((pr and pr.recover) or 'So, fahrbereit. Fahren Sie vorsichtig und lassen Sie den Rest in der Werkstatt machen.')
+        or ((pr and pr.fix) or 'Erledigt, alles wieder dicht. Gute Fahrt!'), c.name .. ' · Pannendienst')
+      if pr then pcall(PEOPLE.noteMechanic, X.state(), pr, c.s.kind, c.place, c.topicIdx, (c.mood or 0) + ((c.talk and c.talk.mood) or 0)) end
     end
   elseif c.phase == 'back' then
     if walkStep(c.w, dt) then
@@ -509,7 +541,14 @@ local function sideFrame(dt)
     if X.speed(v) > 2 then s.phase = 'home'; s.no = true; walkTo(s.w, { s.home }); return end
     if walkStep(s.w, dt) then
       s.w.speed = nil
-      if X.encStart('tramper_strasse', { noStage = true, yaw = 66 }) then s.phase = 'talk' else s.phase = 'home'; s.no = true; walkTo(s.w, { s.home }) end
+      -- (2026-11-11: now and then one met before - people.lua; never while the story waits for Ronja)
+      local key, seed = 'tramper_strasse', nil
+      local stt = X.state()
+      if not SAGA.wantRonja() then
+        local name, rec = PEOPLE.knownHitch(stt, X.km(), 0.3)
+        if name then stt.hitchNext = { name = name, rec = rec }; key, seed = 'tramper_wieder', rec.seed end
+      end
+      if X.encStart(key, { noStage = true, yaw = 66, seed = seed }) then s.phase = 'talk' else stt.hitchNext = nil; s.phase = 'home'; s.no = true; walkTo(s.w, { s.home }) end
     end
   elseif s.phase == 'talk' then
     stand(s.w, s.F.side, t)

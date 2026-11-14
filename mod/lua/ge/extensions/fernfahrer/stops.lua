@@ -56,6 +56,13 @@ local function spotFor(place, ctx)
   end
   local a = ctx.anchor()
   if not a or not place.lat then return nil end
+  -- (2026-11-10: a rest area or car park with a stall of its own (rests.lua): the ring lies on that stall, in the car park - not on the road)
+  if place.ringLat and place.ringLon then
+    local x, y = a:geodeticToWorld(place.ringLat, place.ringLon, 0)
+    local pp = ctx.playerPos()
+    local zg = ground(x, y, pp and pp.z or 0, 80)
+    if zg then return vec3(x, y, zg) end
+  end
   local x, y = a:geodeticToWorld(place.lat, place.lon, 0)
   local pp = ctx.playerPos()
   local zg = ground(x, y, pp and pp.z or 0) or (pp and pp.z) or 0
@@ -162,6 +169,11 @@ function M.update(ctx, dt)
     if not pos then return end
     local c = M.COLOR[p.action]
     ring = { key = key, pos = pos, home = vec3(pos), place = p, ids = { makeStatic('ff_ring_' .. c, 'ff_stop_ring'), makeStatic('ff_gem_' .. c, 'ff_stop_gem') } }
+  end
+  -- (2026-11-10: the car park's stall changed - the one on the driver's side of the motorway now nearer: the ring goes there)
+  if p.ringLat and (ring.rl ~= p.ringLat or ring.ro ~= p.ringLon) then
+    if ring.rl then local np = spotFor(p, ctx); if np then ring.pos, ring.home = np, vec3(np) end end
+    ring.rl, ring.ro = p.ringLat, p.ringLon
   end
   ring.place = p
   -- the yard's spot moves with the yard (built a little later than the ring may be)

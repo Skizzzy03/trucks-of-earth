@@ -101,6 +101,12 @@ Diese kurzen Filme findest du im Spiel im Büro unter **Fahrschule**. Sie zeigen
 
 Ein Handbuch im Spiel erklärt beim ersten Start alles Schritt für Schritt.
 
+## Die neue Verkehrs-KI (ab 1.0.5)
+
+<p align="center"><img src="docs/bilder/verkehr_3d.svg" alt="3D-Ansicht: der LKW auf der Straße, nah echte Autos, weiter weg Platzhalter, außer Sicht Punkte"></p>
+
+Der Verkehr um deinen Lkw denkt jetzt mit. Er bremst weich statt mit Vollbremsung, fährt um Unfälle und Baustellen herum, macht auf schmalen Straßen Platz, beschleunigt auf Autobahnauffahrten und hält sich außerorts an die Vorfahrtsstraße. Neu und noch als **Beta** in den Einstellungen: der **virtuelle Verkehr**, der viel mehr Autos ermöglicht, ohne die Bildrate zu drücken, und die **eigene Fahr-KI**, die die Autos selbst lenkt. Wie das alles zusammenspielt, zeigt [die Verkehrs-KI im Überblick](docs/VERKEHR.md).
+
 ## Schnellstart
 
 1. [BeamNG.Earth](https://github.com/TecnaGamer/BeamNG.Earth) von seiner eigenen Seite installieren.
@@ -132,6 +138,8 @@ Die genaue Anleitung und die empfohlenen Zusatz-Mods mit Links stehen in [docs/I
 - **Hof-Upgrades werden in dieser Version noch nicht unterstützt**, auch wenn sie im Spiel angezeigt werden. Das Einstellen von Fahrern setzt ein Hof-Upgrade voraus und ist deshalb ebenfalls betroffen.
 - Der Equalizer wirkt bei Spotify nur über die Quelle LINE.
 - Firmen und Rastplätze sind für Deutschland und die Nachbarländer mitgeliefert. Anderswo gibt es weniger Ziele.
+- **Virtueller Verkehr und eigene Fahr-KI sind Beta:** Beide sind standardmäßig aus. Eingeschaltet können noch Unfälle, ab und zu ein Auto im falschen Modell oder Autos, die zu früh oder spät auftauchen, vorkommen.
+- **Verkehr:** Auf Landstraßen wirst du noch selten überholt, und auf der Autobahn halten sich vor allem die Platzhalter-Autos noch nicht konsequent ans Rechtsfahrgebot. Beides kommt in der nächsten Version dran.
 - Die Mod nutzt interne Funktionen von BeamNG.Earth. Nach größeren Updates von BeamNG oder BeamNG.Earth kann etwas nicht mehr passen.
 
 ## Fehler melden

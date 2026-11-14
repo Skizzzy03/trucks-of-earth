@@ -65,6 +65,7 @@
         <span v-if="kind === 'fly'">Am Ziel zu Fuß zum Mietwagen</span>
       </div>
       <div class="status">{{ statusText }}</div>
+      <button v-if="canSkip" class="skip" @click="skip">Schon losfahren ▸</button>
       <div class="tip" v-if="kind === 'road'"><b>Tipp</b> {{ tip }}</div>
     </div>
   </div>
@@ -131,6 +132,15 @@ function loadParts(l) {
   if (l.buildings) parts.push("Gebäude")
   if (l.trees) parts.push("Bäume (" + l.trees + ")")
   return parts
+}
+// (2026-11-11: "der Ladebildschirm geht nicht weg" – after SKIP_S the player may go on; the rest of the world comes in while driving)
+const SKIP_S = 30
+const canSkip = computed(() => !arrived.value && elapsed.value >= SKIP_S && (kind.value === "road" || !moving.value))
+function skip() {
+  if (timer) { clearInterval(timer); timer = null }
+  leaving = true
+  call("uiTravelSkip")
+  navigate(next)
 }
 const hours = h => (h < 1 ? Math.round(h * 60) + " min" : (Math.round(h * 4) / 4).toLocaleString("de-DE") + " h")
 
@@ -212,6 +222,9 @@ onUnmounted(() => {
 .arc em { position: absolute; top: -13px; left: 50%; font-style: normal; font-size: 18px; transform: translateX(-50%); }
 .facts { display: flex; gap: 18px; flex-wrap: wrap; font-size: 13px; color: #cfd6de; }
 .status { margin-top: 10px; font-size: 13px; font-weight: 700; color: #a6efc0; }
+.skip { margin-top: 10px; padding: 7px 14px; border: 1px solid rgba(166,239,192,.5); border-radius: 6px; background: rgba(166,239,192,.12);
+  color: #eef1f5; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+.skip:hover { background: rgba(166,239,192,.25); }
 .tip { margin-top: 10px; padding-top: 9px; border-top: 1px solid rgba(255,255,255,.08); font-size: 12.5px; color: #cfd6de; line-height: 1.4; }
 .tip b { color: #f5a623; font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; margin-right: 6px; }
 </style>

@@ -128,6 +128,8 @@ end
 
 -- (2026-11-08) a breakdown out of nowhere (service.lua): 'tire', 'radiator', 'hose' (limp home), 'oil'
 local failed, tempT = nil, 0
+-- (2026-11-11) mended by the breakdown service: the fault is over (the tyres whole again too)
+function M.clearFail() failed = nil; tempT = 0; popped = {} end
 function M.fail(kind)
   local e = engine()
   local th = e and e.thermals
